@@ -27,6 +27,7 @@ import {
 import { isMac } from '../../shortcuts'
 import { SimpleIconsGitignoredotio } from './SolarIcons'
 import ghosttyIcon from '../../assets/icons/ghostty.png'
+import terminalIcon from '../../assets/icons/terminal.svg'
 
 const getParentDir = (p: string): string => {
   const normalized = p.replace(/\\/g, '/')
@@ -111,8 +112,8 @@ export const ContextMenu: Component = () => {
   const transformOrigin = (): string => {
     const rawX = contextMenuState().x
     const rawY = contextMenuState().y
-    const relX = Math.max(0, Math.min(260, rawX - coords().x))
-    const relY = Math.max(0, Math.min(480, rawY - coords().y))
+    const relX = Math.max(0, Math.min(270, rawX - coords().x))
+    const relY = Math.max(0, Math.min(520, rawY - coords().y))
     return `${relX}px ${relY}px`
   }
 
@@ -122,13 +123,13 @@ export const ContextMenu: Component = () => {
       const isItemTarget = Boolean(target?.path && target?.name)
       const isDir = Boolean(target?.isDirectory)
       const isGitignore = target?.name === '.gitignore'
-      const gitignoreDelta = isGitignore ? 0 : 39
+      const gitignoreDelta = isGitignore ? 0 : 42
       const estimatedHeight = isItemTarget
         ? isDir
-          ? 500 + gitignoreDelta
-          : 470 + gitignoreDelta
-        : 260
-      const estimatedWidth = 230
+          ? 530 + gitignoreDelta
+          : 500 + gitignoreDelta
+        : 290
+      const estimatedWidth = 250
       const screenW = window.innerWidth
       const screenH = window.innerHeight
 
@@ -385,7 +386,7 @@ export const ContextMenu: Component = () => {
       {/* Ember-style Pitch-Dark Outlined Context Menu Card */}
       <div
         ref={(el) => (menuRef = el)}
-        class="fixed z-[100] min-w-[220px] max-w-[280px] max-h-[calc(100vh-48px)] overflow-y-auto no-scrollbar bg-[#0c0c0e]/98 backdrop-blur-2xl rounded-xl p-1.5 select-none shadow-[0_0_0_1px_rgba(255,255,255,0.09),inset_0_1px_0_0_rgba(255,255,255,0.08),0_8px_24px_-4px_rgba(0,0,0,0.8),0_2px_6px_rgba(0,0,0,0.5)] outline-none animate-[contextMenuIn_120ms_cubic-bezier(0.16,1,0.3,1)] font-sans antialiased"
+        class="fixed z-[100] min-w-[245px] max-w-[300px] max-h-[calc(100vh-48px)] overflow-y-auto no-scrollbar bg-[#0c0c0e]/98 backdrop-blur-2xl rounded-2xl p-2 select-none shadow-[0_0_0_1px_rgba(255,255,255,0.09),inset_0_1px_0_0_rgba(255,255,255,0.08),0_12px_32px_-4px_rgba(0,0,0,0.85),0_3px_8px_rgba(0,0,0,0.6)] outline-none animate-[contextMenuIn_120ms_cubic-bezier(0.16,1,0.3,1)] font-sans antialiased"
         style={{
           left: `${coords().x}px`,
           top: `${coords().y}px`,
@@ -400,7 +401,7 @@ export const ContextMenu: Component = () => {
               <button
                 type="button"
                 onClick={handleNewFile}
-                class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+                class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
               >
                 <span>New File</span>
                 <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
@@ -411,7 +412,7 @@ export const ContextMenu: Component = () => {
               <button
                 type="button"
                 onClick={handleNewFolder}
-                class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+                class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
               >
                 <span>New Folder</span>
                 <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
@@ -419,12 +420,12 @@ export const ContextMenu: Component = () => {
                 </span>
               </button>
 
-              <div class="h-px bg-white/[0.06] my-1 mx-1" />
+              <div class="h-px bg-white/[0.06] my-1.5 mx-1" />
 
               <button
                 type="button"
                 onClick={handleRevealInFileManager}
-                class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+                class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
               >
                 <span>Reveal in File Manager</span>
                 <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
@@ -435,33 +436,36 @@ export const ContextMenu: Component = () => {
               <button
                 type="button"
                 onClick={handleOpenInTerminal}
-                class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+                class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
               >
-                <span>Open in Terminal</span>
+                <span class="flex items-center gap-2.5">
+                  <img src={terminalIcon} alt="" class="w-4 h-4 opacity-75 group-hover:opacity-100 shrink-0" />
+                  <span>Open in Terminal</span>
+                </span>
               </button>
 
               <Show when={hasGhostty()}>
                 <button
                   type="button"
                   onClick={handleOpenGhostty}
-                  class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+                  class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
                 >
-                  <span class="flex items-center gap-2">
-                    <img src={ghosttyIcon} alt="" class="w-3.5 h-3.5 rounded-sm shrink-0" />
+                  <span class="flex items-center gap-2.5">
+                    <img src={ghosttyIcon} alt="" class="w-4 h-4 rounded-[3px] shrink-0 shadow-sm" />
                     <span>Open Ghostty Here</span>
                   </span>
                 </button>
               </Show>
 
-              <div class="h-px bg-white/[0.06] my-1 mx-1" />
+              <div class="h-px bg-white/[0.06] my-1.5 mx-1" />
 
               <button
                 type="button"
                 onClick={handlePaste}
                 disabled={!fileClipboard()}
-                class={`w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold transition-colors outline-none group tracking-[-0.01em] ${
+                class={`w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold transition-colors outline-none group tracking-[-0.01em] ${
                   fileClipboard()
-                    ? 'text-white/85 hover:text-white hover:bg-white/[0.08] cursor-pointer'
+                    ? 'text-white/90 hover:text-white hover:bg-white/[0.08] cursor-pointer'
                     : 'text-white/25 cursor-not-allowed'
                 }`}
               >
@@ -471,22 +475,22 @@ export const ContextMenu: Component = () => {
                 </span>
               </button>
 
-              <div class="h-px bg-white/[0.06] my-1 mx-1" />
+              <div class="h-px bg-white/[0.06] my-1.5 mx-1" />
 
               <button
                 type="button"
                 onClick={handleCopyPath}
-                class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+                class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
               >
                 <span>Copy Path</span>
               </button>
 
-              <div class="h-px bg-white/[0.06] my-1 mx-1" />
+              <div class="h-px bg-white/[0.06] my-1.5 mx-1" />
 
               <button
                 type="button"
                 onClick={handleRefresh}
-                class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+                class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
               >
                 <span>Refresh Explorer</span>
               </button>
@@ -494,7 +498,7 @@ export const ContextMenu: Component = () => {
               <button
                 type="button"
                 onClick={handleCollapseAll}
-                class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+                class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
               >
                 <span>Collapse All</span>
               </button>
@@ -507,7 +511,7 @@ export const ContextMenu: Component = () => {
               <button
                 type="button"
                 onClick={handleNewFile}
-                class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+                class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
               >
                 <span>New File</span>
                 <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
@@ -518,7 +522,7 @@ export const ContextMenu: Component = () => {
               <button
                 type="button"
                 onClick={handleNewFolder}
-                class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+                class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
               >
                 <span>New Folder</span>
                 <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
@@ -526,14 +530,14 @@ export const ContextMenu: Component = () => {
                 </span>
               </button>
 
-              <div class="h-px bg-white/[0.06] my-1 mx-1" />
+              <div class="h-px bg-white/[0.06] my-1.5 mx-1" />
             </Show>
 
             {/* Reveal / Open External */}
             <button
               type="button"
               onClick={handleRevealInFileManager}
-              class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+              class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
             >
               <span>Reveal in File Manager</span>
               <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
@@ -544,7 +548,7 @@ export const ContextMenu: Component = () => {
             <button
               type="button"
               onClick={handleOpenInDefaultApp}
-              class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+              class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
             >
               <span>{isDirectory() ? 'Open Folder' : 'Open in Default App'}</span>
             </button>
@@ -552,19 +556,22 @@ export const ContextMenu: Component = () => {
             <button
               type="button"
               onClick={handleOpenInTerminal}
-              class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+              class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
             >
-              <span>Open in Terminal</span>
+              <span class="flex items-center gap-2.5">
+                <img src={terminalIcon} alt="" class="w-4 h-4 opacity-75 group-hover:opacity-100 shrink-0" />
+                <span>Open in Terminal</span>
+              </span>
             </button>
 
             <Show when={hasGhostty()}>
               <button
                 type="button"
                 onClick={handleOpenGhostty}
-                class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+                class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
               >
-                <span class="flex items-center gap-2">
-                  <img src={ghosttyIcon} alt="" class="w-3.5 h-3.5 rounded-sm shrink-0" />
+                <span class="flex items-center gap-2.5">
+                  <img src={ghosttyIcon} alt="" class="w-4 h-4 rounded-[3px] shrink-0 shadow-sm" />
                   <span>Open Ghostty Here</span>
                 </span>
               </button>
@@ -574,19 +581,19 @@ export const ContextMenu: Component = () => {
               <button
                 type="button"
                 onClick={handleFindInFolder}
-                class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+                class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
               >
                 <span>Find in Folder...</span>
               </button>
             </Show>
 
-            <div class="h-px bg-white/[0.06] my-1 mx-1" />
+            <div class="h-px bg-white/[0.06] my-1.5 mx-1" />
 
             {/* Clipboard Operations */}
             <button
               type="button"
               onClick={handleCut}
-              class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+              class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
             >
               <span>Cut</span>
               <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
@@ -597,7 +604,7 @@ export const ContextMenu: Component = () => {
             <button
               type="button"
               onClick={handleCopy}
-              class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+              class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
             >
               <span>Copy</span>
               <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
@@ -608,7 +615,7 @@ export const ContextMenu: Component = () => {
             <button
               type="button"
               onClick={handleDuplicate}
-              class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+              class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
             >
               <span>Duplicate</span>
               <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
@@ -621,9 +628,9 @@ export const ContextMenu: Component = () => {
                 type="button"
                 onClick={handlePaste}
                 disabled={!fileClipboard()}
-                class={`w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold transition-colors outline-none group tracking-[-0.01em] ${
+                class={`w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold transition-colors outline-none group tracking-[-0.01em] ${
                   fileClipboard()
-                    ? 'text-white/85 hover:text-white hover:bg-white/[0.08] cursor-pointer'
+                    ? 'text-white/90 hover:text-white hover:bg-white/[0.08] cursor-pointer'
                     : 'text-white/25 cursor-not-allowed'
                 }`}
               >
@@ -634,13 +641,13 @@ export const ContextMenu: Component = () => {
               </button>
             </Show>
 
-            <div class="h-px bg-white/[0.06] my-1 mx-1" />
+            <div class="h-px bg-white/[0.06] my-1.5 mx-1" />
 
             {/* Path Copying */}
             <button
               type="button"
               onClick={handleCopyPath}
-              class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+              class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
             >
               <span>Copy Path</span>
               <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
@@ -651,7 +658,7 @@ export const ContextMenu: Component = () => {
             <button
               type="button"
               onClick={handleCopyRelativePath}
-              class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+              class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
             >
               <span>Copy Relative Path</span>
               <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
@@ -661,27 +668,27 @@ export const ContextMenu: Component = () => {
 
             {/* Git Operations */}
             <Show when={target()?.name !== '.gitignore'}>
-              <div class="h-px bg-white/[0.06] my-1 mx-1" />
+              <div class="h-px bg-white/[0.06] my-1.5 mx-1" />
 
               <button
                 type="button"
                 onClick={handleAddToGitignore}
-                class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-rose-400/90 hover:text-rose-300 hover:bg-rose-500/15 transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+                class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-rose-400/90 hover:text-rose-300 hover:bg-rose-500/15 transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
               >
-                <span class="flex items-center gap-2">
-                  <SimpleIconsGitignoredotio class="w-3.5 h-3.5 shrink-0 text-rose-400/80 group-hover:text-rose-300 transition-colors" />
+                <span class="flex items-center gap-2.5">
+                  <SimpleIconsGitignoredotio class="w-4 h-4 shrink-0 text-rose-400/80 group-hover:text-rose-300 transition-colors" />
                   <span>Add to .gitignore</span>
                 </span>
               </button>
             </Show>
 
-            <div class="h-px bg-white/[0.06] my-1 mx-1" />
+            <div class="h-px bg-white/[0.06] my-1.5 mx-1" />
 
             {/* Rename & Trash */}
             <button
               type="button"
               onClick={handleRename}
-              class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+              class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
             >
               <span>Rename</span>
               <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
@@ -692,7 +699,7 @@ export const ContextMenu: Component = () => {
             <button
               type="button"
               onClick={handleTrash}
-              class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-rose-400/90 hover:text-rose-300 hover:bg-rose-500/15 transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+              class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-rose-400/90 hover:text-rose-300 hover:bg-rose-500/15 transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
             >
               <span>Move to Trash</span>
               <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-rose-400/60 group-hover:text-rose-300/90 tracking-tight">
