@@ -5,6 +5,7 @@ export interface FsEntry {
   isSymlink: boolean
   extension?: string
   size?: number
+  modifiedTime?: number
 }
 
 export interface FileTreeNode extends FsEntry {

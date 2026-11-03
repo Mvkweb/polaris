@@ -15,7 +15,14 @@ import {
   selectedGridEntry,
   setSelectedGridEntry,
   explorerRefreshTrigger,
-  browserSearchFilter
+  browserSearchFilter,
+  showHiddenFiles,
+  sortField,
+  sortDescending,
+  foldersFirst,
+  gridIconSize,
+  gridLabelSize,
+  showThumbnails
 } from '../../store'
 import {
   MonodriveFolderIcon,
@@ -66,9 +73,42 @@ export const FolderView: Component = () => {
 
   const filteredEntries = createMemo(() => {
     const q = browserSearchFilter().trim().toLowerCase()
-    const list = entries()
-    if (!q) return list
-    return list.filter((item) => item.name.toLowerCase().includes(q))
+    const hidden = showHiddenFiles()
+    let list = entries()
+
+    if (!hidden) {
+      list = list.filter((item) => !item.name.startsWith('.'))
+    }
+
+    if (q) {
+      list = list.filter((item) => item.name.toLowerCase().includes(q))
+    }
+
+    const field = sortField()
+    const desc = sortDescending()
+    const ff = foldersFirst()
+
+    return [...list].sort((a, b) => {
+      if (ff) {
+        if (a.isDirectory && !b.isDirectory) return -1
+        if (!a.isDirectory && b.isDirectory) return 1
+      }
+
+      let cmp = 0
+      if (field === 'name') {
+        cmp = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+      } else if (field === 'modified') {
+        cmp = (a.modifiedTime || 0) - (b.modifiedTime || 0)
+      } else if (field === 'size') {
+        cmp = (a.size || 0) - (b.size || 0)
+      } else if (field === 'kind') {
+        const extA = (a.extension || '').toLowerCase()
+        const extB = (b.extension || '').toLowerCase()
+        cmp = extA.localeCompare(extB) || a.name.localeCompare(b.name)
+      }
+
+      return desc ? -cmp : cmp
+    })
   })
 
   const currentPath = () => workspaceRoot() || '/mnt/storage/polaris'
@@ -168,13 +208,25 @@ export const FolderView: Component = () => {
           }
         >
           {/* Responsive Icon Grid */}
-          <div class="grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-4">
+          <div
+            class="grid gap-4"
+            style={{
+              'grid-template-columns': `repeat(auto-fill, minmax(${Math.max(88, gridIconSize() + 24)}px, 1fr))`
+            }}
+          >
             <For each={filteredEntries()}>
               {(entry) => {
                 const isSelected = () => selectedGridEntry() === entry.path
                 const isImage = () => {
                   const ext = (entry.extension || entry.name.split('.').pop() || '').toLowerCase()
                   return !entry.isDirectory && IMAGE_EXTENSIONS.has(ext)
+                }
+
+                const labelSizeClass = () => {
+                  const sz = gridLabelSize()
+                  if (sz === 'Small') return 'text-[10.5px]'
+                  if (sz === 'Large') return 'text-[13px]'
+                  return 'text-[11.5px]'
                 }
 
                 return (
@@ -190,12 +242,18 @@ export const FolderView: Component = () => {
                     }`}
                   >
                     {/* Icon / Image Thumbnail Container */}
-                    <div class="w-16 h-16 flex items-center justify-center mb-1.5 group-hover:scale-[1.03] transition-transform duration-150">
+                    <div
+                      class="flex items-center justify-center mb-1.5 group-hover:scale-[1.03] transition-transform duration-150"
+                      style={{
+                        width: `${gridIconSize()}px`,
+                        height: `${gridIconSize()}px`
+                      }}
+                    >
                       <Show
                         when={entry.isDirectory}
                         fallback={
                           <Show
-                            when={isImage()}
+                            when={showThumbnails() && isImage()}
                             fallback={
                               <MonodriveFileIcon
                                 name={entry.name}
@@ -213,7 +271,7 @@ export const FolderView: Component = () => {
 
                     {/* Filename Label (Centered, 2-line clamp with ellipsis) */}
                     <span
-                      class={`w-full text-center text-[11.5px] leading-tight px-1 break-words line-clamp-2 transition-colors ${
+                      class={`w-full text-center ${labelSizeClass()} leading-tight px-1 break-words line-clamp-2 transition-colors ${
                         isSelected() ? 'text-white font-semibold' : 'text-white/80 group-hover:text-white'
                       }`}
                       title={entry.name}

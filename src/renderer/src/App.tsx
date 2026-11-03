@@ -6,7 +6,7 @@ import FolderView from './components/browser/FolderView'
 import StatusBar from './components/StatusBar'
 import Terminal from './components/terminal/Terminal'
 import QuickOpenModal from './components/modals/QuickOpenModal'
-import SettingsView from './components/settings/SettingsView'
+import SettingsModal from './components/settings/SettingsModal'
 import {
   activeTerminalId,
   addTerminal,
@@ -18,10 +18,10 @@ import {
   terminalSessions,
   toggleTerminal,
   toggleQuickOpen,
-  currentView,
   setCurrentView,
-  closeSettings,
-  toggleSettings,
+  isSettingsModalOpen,
+  closeSettingsModal,
+  toggleSettingsModal,
   activeAccentColor,
   workspaceRoot,
   navigateTo
@@ -34,9 +34,9 @@ const MAX_TERMINAL_HEIGHT_RATIO = 0.75
 const TERMINAL_MOUNT_THRESHOLD = 20
 
 const handleGlobalKeyDown = (e: KeyboardEvent): void => {
-  if (e.key === 'Escape' && currentView() === 'settings') {
+  if (e.key === 'Escape' && isSettingsModalOpen()) {
     e.preventDefault()
-    closeSettings()
+    closeSettingsModal()
     return
   }
 
@@ -53,7 +53,7 @@ const handleGlobalKeyDown = (e: KeyboardEvent): void => {
     setCurrentView('search')
   } else if (e.key === ',') {
     e.preventDefault()
-    toggleSettings()
+    toggleSettingsModal()
   }
 }
 
@@ -135,21 +135,20 @@ const App: Component = () => {
       {/* Quick Open Modal (Ctrl+P / Cmd+P) */}
       <QuickOpenModal />
 
+      {/* Monodrive Floating Settings Modal Sheet (Ctrl+, / Cmd+,) */}
+      <SettingsModal />
+
       {/* Ember-style Sidebar */}
       <Sidebar />
 
       {/* Main Workspace Column */}
       <div class="flex-1 flex flex-col min-w-0 mb-2 mr-4 ml-2.5 mt-2.5 transition-[margin-top] duration-200">
         {/* Top Navigation Bar sitting directly on the window/workspace base above the canvas */}
-        <Show when={currentView() !== 'settings'}>
-          <BrowserTopBar />
-        </Show>
+        <BrowserTopBar />
 
         {/* Main Canvas: Monodrive-Style Folder Browser */}
         <main class="relative z-10 flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden bg-[#0e0e0e] rounded-[20px]">
-          <Show when={currentView() === 'settings'} fallback={<FolderView />}>
-            <SettingsView onClose={closeSettings} />
-          </Show>
+          <FolderView />
         </main>
 
         {/* Terminal Drawer in the dark below the canvas */}

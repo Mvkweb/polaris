@@ -10,24 +10,139 @@ export const [previousView, setPreviousView] = createSignal<
   'files' | 'search' | 'editor' | 'tasks' | 'chat'
 >('files')
 
-export const openSettings = (): void => {
-  if (currentView() !== 'settings') {
-    setPreviousView(currentView() as any)
-    setCurrentView('settings')
+// ── Monodrive Settings & Preferences ─────────────────────────────────────────
+export type SettingsPage = 'General' | 'Window' | 'Appearance' | 'Keyboard' | 'Agents'
+export const SETTINGS_PAGES: SettingsPage[] = [
+  'General',
+  'Window',
+  'Appearance',
+  'Keyboard',
+  'Agents'
+]
+
+export const [isSettingsModalOpen, setIsSettingsModalOpen] = createSignal(false)
+export const [activeSettingsPage, setActiveSettingsPage] = createSignal<SettingsPage>('General')
+
+// General Settings
+export type SortByField = 'name' | 'modified' | 'size' | 'kind'
+export const [showHiddenFiles, setShowHiddenFiles] = createSignal(false)
+export const [sortField, setSortField] = createSignal<SortByField>('name')
+export const [sortDescending, setSortDescending] = createSignal(false)
+export const [foldersFirst, setFoldersFirst] = createSignal(true)
+export const [defaultTerminal, setDefaultTerminal] = createSignal<'Terminal' | 'Ghostty' | 'Alacritty' | 'Kitty'>('Terminal')
+export const [updateTrack, setUpdateTrack] = createSignal<'Stable' | 'Nightly'>('Nightly')
+
+// Window Settings
+export type WindowDefaultSize = 'Reasonable' | 'Almost Full' | 'Last Used'
+export const [windowDefaultSize, setWindowDefaultSize] = createSignal<WindowDefaultSize>('Reasonable')
+export const [viewMode, setViewMode] = createSignal<'List' | 'Grid'>('Grid')
+export const [showPathBar, setShowPathBar] = createSignal(true)
+export const [openFoldersWhileDragging, setOpenFoldersWhileDragging] = createSignal(false)
+export const [gridIconSize, setGridIconSize] = createSignal(72)
+export const [gridLabelSize, setGridLabelSize] = createSignal<'Small' | 'Medium' | 'Large'>('Medium')
+export const [showThumbnails, setShowThumbnails] = createSignal(true)
+export const [suggestSentenceCaseNames, setSuggestSentenceCaseNames] = createSignal(false)
+export const [listRowSize, setListRowSize] = createSignal<'Small' | 'Medium' | 'Large'>('Medium')
+
+// Appearance Settings
+export interface MonodriveAccent {
+  readonly hex: string
+  readonly label: string
+}
+
+export const MONODRIVE_ACCENTS: readonly MonodriveAccent[] = [
+  { hex: '#4da3f5', label: 'Blue' },
+  { hex: '#8b5cf6', label: 'Violet' },
+  { hex: '#ec4899', label: 'Pink' },
+  { hex: '#ef4444', label: 'Red' },
+  { hex: '#f59e0b', label: 'Orange' },
+  { hex: '#10b981', label: 'Green' }
+] as const
+
+export const [appearanceTheme, setAppearanceTheme] = createSignal<'System' | 'Dark' | 'Light'>('Dark')
+export const [selectedAccentColor, setSelectedAccentColor] = createSignal<string>('#4da3f5')
+export const [windowHue, setWindowHue] = createSignal(240)
+export const [windowSaturation, setWindowSaturation] = createSignal(0)
+export const [darkLightness, setDarkLightness] = createSignal(9)
+export const [windowOpacity, setWindowOpacity] = createSignal(95)
+export const [mainPaneGlass, setMainPaneGlass] = createSignal(false)
+export const [workspaceStyle, setWorkspaceStyle] = createSignal<'Card' | 'Boxy'>('Card')
+
+// Agents Settings
+export const [agentsChangeFiles, setAgentsChangeFiles] = createSignal(true)
+export const [selectedHarness, setSelectedHarness] = createSignal<string>('Antigravity')
+
+// Modal Actions
+export const openSettingsModal = (page?: SettingsPage): void => {
+  if (page) setActiveSettingsPage(page)
+  setIsSettingsModalOpen(true)
+}
+
+export const closeSettingsModal = (): void => {
+  setIsSettingsModalOpen(false)
+}
+
+export const toggleSettingsModal = (page?: SettingsPage): void => {
+  if (isSettingsModalOpen()) {
+    closeSettingsModal()
+  } else {
+    openSettingsModal(page)
+  }
+}
+
+export const openSettings = (page?: any): void => {
+  if (typeof page === 'string' && SETTINGS_PAGES.includes(page as SettingsPage)) {
+    openSettingsModal(page as SettingsPage)
+  } else {
+    openSettingsModal()
   }
 }
 
 export const closeSettings = (): void => {
-  if (currentView() === 'settings') {
-    setCurrentView(previousView())
-  }
+  closeSettingsModal()
 }
 
 export const toggleSettings = (): void => {
-  if (currentView() === 'settings') {
-    closeSettings()
-  } else {
-    openSettings()
+  toggleSettingsModal()
+}
+
+export const restorePageDefaults = (page: SettingsPage): void => {
+  switch (page) {
+    case 'General':
+      setShowHiddenFiles(false)
+      setSortField('name')
+      setSortDescending(false)
+      setFoldersFirst(true)
+      setDefaultTerminal('Terminal')
+      setUpdateTrack('Nightly')
+      break
+    case 'Window':
+      setWindowDefaultSize('Reasonable')
+      setViewMode('Grid')
+      setShowPathBar(true)
+      setOpenFoldersWhileDragging(false)
+      setGridIconSize(72)
+      setGridLabelSize('Medium')
+      setShowThumbnails(true)
+      setSuggestSentenceCaseNames(false)
+      setListRowSize('Medium')
+      break
+    case 'Appearance':
+      setAppearanceTheme('Dark')
+      setSelectedAccentColor('#4da3f5')
+      setWindowHue(240)
+      setWindowSaturation(0)
+      setDarkLightness(9)
+      setWindowOpacity(95)
+      setMainPaneGlass(false)
+      setWorkspaceStyle('Card')
+      break
+    case 'Keyboard':
+      break
+    case 'Agents':
+      setAgentsChangeFiles(true)
+      setSelectedHarness('Antigravity')
+      break
   }
 }
 
@@ -161,7 +276,7 @@ export const THEME_ACCENTS: Record<ThemePresetId, string> = {
   sunset: '#F43F5E'
 }
 
-export const activeAccentColor = createMemo(() => THEME_ACCENTS[activeThemeId()] || '#FF66B8')
+export const activeAccentColor = createMemo(() => selectedAccentColor())
 export const [appearanceContrast, setAppearanceContrast] = createSignal<number>(100)
 export const [glassOpacity, setGlassOpacity] = createSignal<number>(65)
 export const [showSunrays, setShowSunrays] = createSignal<boolean>(true)
