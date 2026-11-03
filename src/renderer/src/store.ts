@@ -735,6 +735,27 @@ export const closeFileActionModal = (): void => {
   setFileActionModalState((prev) => (prev.isOpen ? { ...prev, isOpen: false } : prev))
 }
 
+export interface PropertiesModalState {
+  isOpen: boolean
+  targetPath: string
+}
+
+export const [propertiesModalState, setPropertiesModalState] = createSignal<PropertiesModalState>({
+  isOpen: false,
+  targetPath: ''
+})
+
+export const openPropertiesModal = (targetPath: string): void => {
+  setPropertiesModalState({
+    isOpen: true,
+    targetPath
+  })
+}
+
+export const closePropertiesModal = (): void => {
+  setPropertiesModalState((prev) => (prev.isOpen ? { ...prev, isOpen: false } : prev))
+}
+
 export const [explorerRefreshTrigger, setExplorerRefreshTrigger] = createSignal(0)
 export const refreshFileExplorer = (): void => {
   setExplorerRefreshTrigger((prev) => prev + 1)

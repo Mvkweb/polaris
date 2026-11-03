@@ -2,7 +2,7 @@ import { app, shell, BrowserWindow, ipcMain, nativeTheme, nativeImage, Menu } fr
 
 // Bypass native menu construction before app is ready
 Menu.setApplicationMenu(null)
-import { join, resolve, extname } from 'path'
+import { join, resolve, extname, basename } from 'path'
 import { readdir, readFile, writeFile, stat, statfs, mkdir, rename, rm, cp } from 'fs/promises'
 import { execFile, spawn } from 'child_process'
 import { promisify } from 'util'
@@ -239,6 +239,64 @@ app.whenReady().then(() => {
     } catch (err) {
       console.error('Failed to launch ghostty:', err)
       return false
+    }
+  })
+
+  // Check if VS Code / code CLI is installed on host
+  ipcMain.handle('editor:isCodeInstalled', async () => {
+    try {
+      const { stdout } = await execFileAsync('which', ['code'])
+      return Boolean(stdout.trim())
+    } catch {
+      return false
+    }
+  })
+
+  // Open target file or directory in VS Code
+  ipcMain.handle('editor:openCode', async (_, targetPath: string) => {
+    try {
+      const p = targetPath || process.cwd()
+      const child = spawn('code', [p], {
+        detached: true,
+        stdio: 'ignore'
+      })
+      child.unref()
+      return true
+    } catch (err) {
+      console.error('Failed to launch code:', err)
+      return false
+    }
+  })
+
+  // Inspect detailed file and directory metadata / properties
+  ipcMain.handle('fs:getFileProperties', async (_, fullPath: string) => {
+    try {
+      const stats = await stat(fullPath)
+      let itemCount: number | undefined = undefined
+      if (stats.isDirectory()) {
+        try {
+          const entries = await readdir(fullPath)
+          itemCount = entries.length
+        } catch {
+          // ignore directory read error
+        }
+      }
+      return {
+        path: fullPath,
+        name: basename(fullPath),
+        isDirectory: stats.isDirectory(),
+        isFile: stats.isFile(),
+        isSymbolicLink: stats.isSymbolicLink(),
+        size: stats.size,
+        createdTime: stats.birthtimeMs || stats.ctimeMs,
+        modifiedTime: stats.mtimeMs,
+        accessedTime: stats.atimeMs,
+        permissions: (stats.mode & 0o777).toString(8).padStart(4, '0'),
+        itemCount
+      }
+    } catch (err) {
+      console.error('Failed to get file properties:', fullPath, err)
+      throw err
     }
   })
 

@@ -21,13 +21,11 @@ import {
   collapseAllFolders,
   addTerminal,
   setCurrentView,
-  openTabs,
-  saveFile
+  openPropertiesModal
 } from '../../store'
 import { isMac } from '../../shortcuts'
-import { SimpleIconsGitignoredotio } from './SolarIcons'
+import { TerminalTileIcon, VsCodeTileIcon } from './Icons'
 import ghosttyIcon from '../../assets/icons/ghostty.png'
-import terminalIcon from '../../assets/icons/terminal.svg'
 
 const getParentDir = (p: string): string => {
   const normalized = p.replace(/\\/g, '/')
@@ -93,6 +91,7 @@ export const ContextMenu: Component = () => {
   let menuRef: HTMLDivElement | undefined = undefined
   const [coords, setCoords] = createSignal<{ x: number; y: number }>({ x: 0, y: 0 })
   const [hasGhostty, setHasGhostty] = createSignal(false)
+  const [hasCode, setHasCode] = createSignal(false)
 
   const isApple = isMac()
   const modKey = isApple ? 'Cmd' : 'Ctrl'
@@ -106,6 +105,15 @@ export const ContextMenu: Component = () => {
       }
     } catch {
       setHasGhostty(false)
+    }
+
+    try {
+      if (window.api?.isCodeInstalled) {
+        const installed = await window.api.isCodeInstalled()
+        setHasCode(installed)
+      }
+    } catch {
+      setHasCode(false)
     }
   })
 
@@ -122,13 +130,11 @@ export const ContextMenu: Component = () => {
       const { x: rawX, y: rawY, target } = contextMenuState()
       const isItemTarget = Boolean(target?.path && target?.name)
       const isDir = Boolean(target?.isDirectory)
-      const isGitignore = target?.name === '.gitignore'
-      const gitignoreDelta = isGitignore ? 0 : 42
       const estimatedHeight = isItemTarget
         ? isDir
-          ? 530 + gitignoreDelta
-          : 500 + gitignoreDelta
-        : 290
+          ? 510
+          : 470
+        : 310
       const estimatedWidth = 250
       const screenW = window.innerWidth
       const screenH = window.innerHeight
@@ -199,11 +205,11 @@ export const ContextMenu: Component = () => {
     openFileActionModal('newFolder', dir, '')
   }
 
-  const handleRevealInFileManager = (): void => {
+  const handleOpenInCode = async (): Promise<void> => {
     const p = targetPath()
     closeContextMenu()
-    if (window.api?.showItemInFolder) {
-      window.api.showItemInFolder(p)
+    if (window.api?.openCode) {
+      await window.api.openCode(p)
     }
   }
 
@@ -302,49 +308,10 @@ export const ContextMenu: Component = () => {
     navigator.clipboard?.writeText(rel || '.')
   }
 
-  const handleAddToGitignore = async (): Promise<void> => {
-    const root = workspaceRoot()
+  const handleProperties = (): void => {
     const p = targetPath()
-    if (!root || !p || target()?.name === '.gitignore') {
-      closeContextMenu()
-      return
-    }
-
     closeContextMenu()
-
-    const rel = p.startsWith(root) ? p.slice(root.length).replace(/^[/\\]+/, '') : p
-    const isDir = Boolean(target()?.isDirectory)
-    const entry = isDir ? `${rel}/` : rel
-    const gitignorePath = `${root}/.gitignore`
-
-    try {
-      let currentContent = ''
-      if (window.api?.readFile) {
-        try {
-          currentContent = (await window.api.readFile(gitignorePath)) || ''
-        } catch {
-          currentContent = ''
-        }
-      }
-
-      const lines = currentContent.split('\n').map((l) => l.trim())
-      const cleanEntry = rel.replace(/\/+$/, '')
-      const alreadyPresent = lines.some((l) => l === cleanEntry || l === `${cleanEntry}/`)
-
-      if (!alreadyPresent) {
-        const needsNewline = currentContent.length > 0 && !currentContent.endsWith('\n')
-        const updated = `${currentContent}${needsNewline ? '\n' : ''}${entry}\n`
-
-        if (openTabs().some((t) => t.path === gitignorePath)) {
-          await saveFile(gitignorePath, updated)
-        } else if (window.api?.writeFile) {
-          await window.api.writeFile(gitignorePath, updated)
-        }
-        refreshFileExplorer()
-      }
-    } catch (err) {
-      console.error('Failed to update .gitignore:', err)
-    }
+    openPropertiesModal(p)
   }
 
   const handleRename = (): void => {
@@ -422,16 +389,18 @@ export const ContextMenu: Component = () => {
 
               <div class="h-px bg-white/[0.06] my-1.5 mx-1" />
 
-              <button
-                type="button"
-                onClick={handleRevealInFileManager}
-                class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
-              >
-                <span>Reveal in File Manager</span>
-                <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
-                  {modKey}+{altKey}+R
-                </span>
-              </button>
+              <Show when={hasCode()}>
+                <button
+                  type="button"
+                  onClick={handleOpenInCode}
+                  class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+                >
+                  <span class="flex items-center gap-2.5">
+                    <VsCodeTileIcon class="w-4 h-4 shrink-0 shadow-sm" />
+                    <span>Open in VS Code</span>
+                  </span>
+                </button>
+              </Show>
 
               <button
                 type="button"
@@ -439,8 +408,11 @@ export const ContextMenu: Component = () => {
                 class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
               >
                 <span class="flex items-center gap-2.5">
-                  <img src={terminalIcon} alt="" class="w-4 h-4 opacity-75 group-hover:opacity-100 shrink-0" />
+                  <TerminalTileIcon class="w-4 h-4 shrink-0 text-white/90" />
                   <span>Open in Terminal</span>
+                </span>
+                <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
+                  {altKey}+Shift+F4
                 </span>
               </button>
 
@@ -502,6 +474,19 @@ export const ContextMenu: Component = () => {
               >
                 <span>Collapse All</span>
               </button>
+
+              <div class="h-px bg-white/[0.06] my-1.5 mx-1" />
+
+              <button
+                type="button"
+                onClick={handleProperties}
+                class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+              >
+                <span>Properties</span>
+                <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
+                  {altKey}+Enter
+                </span>
+              </button>
             </div>
           }
         >
@@ -533,18 +518,7 @@ export const ContextMenu: Component = () => {
               <div class="h-px bg-white/[0.06] my-1.5 mx-1" />
             </Show>
 
-            {/* Reveal / Open External */}
-            <button
-              type="button"
-              onClick={handleRevealInFileManager}
-              class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
-            >
-              <span>Reveal in File Manager</span>
-              <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
-                {modKey}+{altKey}+R
-              </span>
-            </button>
-
+            {/* Open Actions */}
             <button
               type="button"
               onClick={handleOpenInDefaultApp}
@@ -553,13 +527,26 @@ export const ContextMenu: Component = () => {
               <span>{isDirectory() ? 'Open Folder' : 'Open in Default App'}</span>
             </button>
 
+            <Show when={hasCode()}>
+              <button
+                type="button"
+                onClick={handleOpenInCode}
+                class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+              >
+                <span class="flex items-center gap-2.5">
+                  <VsCodeTileIcon class="w-4 h-4 shrink-0 shadow-sm" />
+                  <span>Open in VS Code</span>
+                </span>
+              </button>
+            </Show>
+
             <button
               type="button"
               onClick={handleOpenInTerminal}
               class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
             >
               <span class="flex items-center gap-2.5">
-                <img src={terminalIcon} alt="" class="w-4 h-4 opacity-75 group-hover:opacity-100 shrink-0" />
+                <TerminalTileIcon class="w-4 h-4 shrink-0 text-white/90" />
                 <span>Open in Terminal</span>
               </span>
             </button>
@@ -666,22 +653,6 @@ export const ContextMenu: Component = () => {
               </span>
             </button>
 
-            {/* Git Operations */}
-            <Show when={target()?.name !== '.gitignore'}>
-              <div class="h-px bg-white/[0.06] my-1.5 mx-1" />
-
-              <button
-                type="button"
-                onClick={handleAddToGitignore}
-                class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-rose-400/90 hover:text-rose-300 hover:bg-rose-500/15 transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
-              >
-                <span class="flex items-center gap-2.5">
-                  <SimpleIconsGitignoredotio class="w-4 h-4 shrink-0 text-rose-400/80 group-hover:text-rose-300 transition-colors" />
-                  <span>Add to .gitignore</span>
-                </span>
-              </button>
-            </Show>
-
             <div class="h-px bg-white/[0.06] my-1.5 mx-1" />
 
             {/* Rename & Trash */}
@@ -704,6 +675,20 @@ export const ContextMenu: Component = () => {
               <span>Move to Trash</span>
               <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-rose-400/60 group-hover:text-rose-300/90 tracking-tight">
                 Del
+              </span>
+            </button>
+
+            <div class="h-px bg-white/[0.06] my-1.5 mx-1" />
+
+            {/* Properties */}
+            <button
+              type="button"
+              onClick={handleProperties}
+              class="w-full h-[32px] px-3 flex items-center justify-between rounded-[8px] text-[13px] font-semibold text-white/90 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+            >
+              <span>Properties</span>
+              <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
+                {altKey}+Enter
               </span>
             </button>
           </div>

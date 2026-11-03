@@ -1,4 +1,4 @@
-import type { Component } from 'solid-js'
+import type { Component, JSX } from 'solid-js'
 
 export const PanelLeftIcon: Component<{ class?: string }> = (props) => (
   <svg viewBox="0 0 24 24" fill="none" class={props.class ?? 'w-4 h-4'}>
@@ -159,6 +159,71 @@ export const FileBadgeIcon: Component<{ ext: string; name: string }> = (props) =
     <svg viewBox="0 0 24 24" fill="none" class="w-3.5 h-3.5 text-zinc-400">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.6" />
       <polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="1.6" />
+    </svg>
+  )
+}
+
+export const TerminalTileIcon: Component<{ class?: string }> = (props) => (
+  <svg
+    viewBox="0 0 16 16"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    class={props.class || 'w-4 h-4'}
+  >
+    <rect
+      x="0.5"
+      y="0.5"
+      width="15"
+      height="15"
+      rx="3.5"
+      fill="#18181b"
+      stroke="rgba(255, 255, 255, 0.16)"
+    />
+    <path
+      d="M4.5 5L7.75 8L4.5 11"
+      stroke="currentColor"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <path
+      d="M9 11H11.5"
+      stroke="currentColor"
+      stroke-width="1.5"
+      stroke-linecap="round"
+    />
+  </svg>
+)
+
+export const VsCodeTileIcon: Component<{ class?: string }> = (props) => (
+  <svg
+    viewBox="0 0 16 16"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    class={props.class || 'w-4 h-4'}
+  >
+    <path
+      d="M14.5 1.7L11.2 0.1C10.8 -0.1 10.4 0 10.1 0.3L0.2 9.5C-0.1 9.8 -0.1 10.2 0.2 10.5L1.1 11.3C1.3 11.5 1.7 11.5 1.9 11.3L14 2.1C14.4 1.8 15 2.1 15 2.6V2.6C15 2.2 14.8 1.9 14.5 1.7Z"
+      fill="#007ACC"
+    />
+    <path
+      d="M14.5 14.3L11.2 15.9C10.8 16.1 10.4 16 10.1 15.7L0.2 6.5C-0.1 6.2 -0.1 5.8 0.2 5.5L1.1 4.7C1.3 4.5 1.7 4.5 1.9 4.7L14 13.9C14.4 14.2 15 13.9 15 13.4V13.4C15 13.8 14.8 14.1 14.5 14.3Z"
+      fill="#0098FF"
+    />
+    <path
+      d="M11.2 15.9C10.8 16.1 10.4 16 10.1 15.7C10.5 16.1 11.1 15.8 11.1 15.3V0.7C11.1 0.2 10.5 -0.1 10.1 0.3C10.4 0 10.8 -0.1 11.2 0.1L14.5 1.7C14.8 1.9 15 2.2 15 2.6V13.4C15 13.8 14.8 14.1 14.5 14.3L11.2 15.9Z"
+      fill="#1F9CF0"
+    />
+  </svg>
+)
+
+export function DinkieIconsCode(props: JSX.IntrinsicElements['svg']) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 12 12" {...props}>
+      <path
+        fill="currentColor"
+        d="M6 5H5v3h1Zm0 0h1V2H6ZM0 7h1V6H0Zm1 1h1V7H1Zm1 1h1V8H2Zm2 2h1V8H4ZM1 6h1V5H1Zm1-1h1V4H2Zm6 4h1V8H8Zm1-1h1V7H9Zm0-2h1V5H9Zm1 1h1V6h-1ZM8 5h1V4H8Zm0 0"
+      />
     </svg>
   )
 }

@@ -23,7 +23,8 @@ import {
   gridIconSize,
   gridLabelSize,
   showThumbnails,
-  openContextMenu
+  openContextMenu,
+  openPropertiesModal
 } from '../../store'
 import {
   MonodriveFolderIcon,
@@ -162,7 +163,11 @@ export const FolderView: Component = () => {
       const prevIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1
       setSelectedGridEntry(items[prevIndex].path)
     } else if (e.key === 'Enter') {
-      if (currentIndex >= 0) {
+      if (e.altKey) {
+        e.preventDefault()
+        const target = currentIndex >= 0 ? items[currentIndex].path : currentPath()
+        if (target) openPropertiesModal(target)
+      } else if (currentIndex >= 0) {
         e.preventDefault()
         handleItemDoubleClick(items[currentIndex])
       }

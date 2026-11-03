@@ -72,6 +72,20 @@ export interface SystemDrive {
   freeSpace: string
 }
 
+export interface FileProperties {
+  path: string
+  name: string
+  isDirectory: boolean
+  isFile: boolean
+  isSymbolicLink: boolean
+  size: number
+  createdTime: number
+  modifiedTime: number
+  accessedTime: number
+  permissions: string
+  itemCount?: number
+}
+
 export interface CustomAPI {
   getAppVersion: () => Promise<string>
   getPlatform: () => Promise<string>
@@ -89,6 +103,9 @@ export interface CustomAPI {
   openPath: (fullPath: string) => Promise<boolean>
   isGhosttyInstalled: () => Promise<boolean>
   openGhostty: (dirPath?: string) => Promise<boolean>
+  isCodeInstalled: () => Promise<boolean>
+  openCode: (targetPath: string) => Promise<boolean>
+  getFileProperties: (fullPath: string) => Promise<FileProperties>
   readImage: (filePath: string) => Promise<ImageFileData>
   indexWorkspace: (rootPath?: string) => Promise<{ indexed_count: number; elapsed_ms: number }>
   searchFiles: (query: string) => Promise<SearchResult[]>

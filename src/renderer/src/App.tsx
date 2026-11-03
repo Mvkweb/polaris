@@ -9,6 +9,7 @@ import QuickOpenModal from './components/modals/QuickOpenModal'
 import SettingsModal from './components/settings/SettingsModal'
 import ContextMenu from './components/ui/ContextMenu'
 import FileActionModal from './components/file-tree/FileActionModal'
+import PropertiesModal from './components/modals/PropertiesModal'
 import {
   activeTerminalId,
   addTerminal,
@@ -143,6 +144,7 @@ const App: Component = () => {
       {/* Global Context Menu & Modals */}
       <ContextMenu />
       <FileActionModal />
+      <PropertiesModal />
 
       {/* Ember-style Sidebar */}
       <Sidebar />

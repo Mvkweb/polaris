@@ -49,6 +49,20 @@ export interface FileNode {
   last_modified: number
 }
 
+export interface FileProperties {
+  path: string
+  name: string
+  isDirectory: boolean
+  isFile: boolean
+  isSymbolicLink: boolean
+  size: number
+  createdTime: number
+  modifiedTime: number
+  accessedTime: number
+  permissions: string
+  itemCount?: number
+}
+
 export interface SearchResult {
   name: string
   path: string
