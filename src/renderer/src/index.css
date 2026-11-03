@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-app: #0c0a0d;
+    --bg-sidebar: #131116;
+    --bg-card: #18151c;
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-active: rgba(255, 255, 255, 0.16);
+    --text-primary: #ece8ee;
+    --text-secondary: #9f97a5;
+    --text-muted: #6b6372;
+    --accent-primary: #a855f7;
+  }
+
+  body {
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+    user-select: none;
+    -webkit-user-select: none;
+  }
+}
+
+/* Custom Linux/Electron dark scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}

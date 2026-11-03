@@ -1,0 +1,15 @@
+{
+  "rules": {
+    "no-unused-vars": "error",
+    "no-console": "off",
+    "eqeqeq": "error"
+  },
+  "ignorePatterns": [
+    "out",
+    "dist",
+    "node_modules",
+    "core",
+    "references",
+    ".docs"
+  ]
+}

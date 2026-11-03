@@ -1,0 +1,11 @@
+.{
+    .name = .polaris_core,
+    .version = "0.1.0",
+    .fingerprint = 0x9117b681781c837c,
+    .minimum_zig_version = "0.17.0",
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}

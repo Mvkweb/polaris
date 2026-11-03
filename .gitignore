@@ -1,0 +1,11 @@
+node_modules
+out
+dist
+references
+.zig-cache
+zig-out
+core/.zig-cache
+core/zig-out
+*.log
+.DS_Store
+*.local

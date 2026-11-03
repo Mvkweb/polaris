@@ -1,0 +1,659 @@
+import {
+  Component,
+  createEffect,
+  createMemo,
+  createSignal,
+  onCleanup,
+  onMount,
+  Show
+} from 'solid-js'
+import {
+  contextMenuState,
+  closeContextMenu,
+  workspaceRoot,
+  fileClipboard,
+  setFileClipboard,
+  openFileActionModal,
+  startInlineRename,
+  closeEditorTab,
+  renameOpenFile,
+  refreshFileExplorer,
+  collapseAllFolders,
+  addTerminal,
+  setCurrentView,
+  openTabs,
+  saveFile
+} from '../../store'
+import { isMac } from '../../shortcuts'
+import { SimpleIconsGitignoredotio } from './SolarIcons'
+
+const getParentDir = (p: string): string => {
+  const normalized = p.replace(/\\/g, '/')
+  const lastSlash = normalized.lastIndexOf('/')
+  return lastSlash > 0 ? normalized.substring(0, lastSlash) : normalized
+}
+
+const handleKeyDown = (e: KeyboardEvent): void => {
+  if (!contextMenuState().isOpen) return
+  if (e.key === 'Escape') {
+    e.preventDefault()
+    closeContextMenu()
+  }
+}
+
+const handleFindInFolder = (): void => {
+  closeContextMenu()
+  setCurrentView('search')
+}
+
+const handleRefresh = (): void => {
+  closeContextMenu()
+  refreshFileExplorer()
+}
+
+const handleCollapseAll = (): void => {
+  closeContextMenu()
+  collapseAllFolders()
+}
+
+const VIEWPORT_MARGIN = 24
+
+const calculateMenuPosition = (
+  rawX: number,
+  rawY: number,
+  menuWidth: number,
+  menuHeight: number,
+  screenW: number,
+  screenH: number
+): { x: number; y: number } => {
+  // Cursor aligns naturally a bit above the middle of the card (~33% down)
+  const anchorY = Math.round(menuHeight * 0.33)
+
+  let x = rawX + 6
+  if (x + menuWidth > screenW - VIEWPORT_MARGIN) {
+    x = Math.max(VIEWPORT_MARGIN, screenW - menuWidth - VIEWPORT_MARGIN)
+  }
+  if (x < VIEWPORT_MARGIN) {
+    x = VIEWPORT_MARGIN
+  }
+
+  let y = rawY - anchorY
+  if (y + menuHeight > screenH - VIEWPORT_MARGIN) {
+    y = Math.max(VIEWPORT_MARGIN, screenH - menuHeight - VIEWPORT_MARGIN)
+  }
+  if (y < VIEWPORT_MARGIN) {
+    y = VIEWPORT_MARGIN
+  }
+
+  return { x, y }
+}
+
+export const ContextMenu: Component = () => {
+  let menuRef: HTMLDivElement | undefined = undefined
+  const [coords, setCoords] = createSignal<{ x: number; y: number }>({ x: 0, y: 0 })
+
+  const isApple = isMac()
+  const modKey = isApple ? 'Cmd' : 'Ctrl'
+  const altKey = isApple ? 'Opt' : 'Alt'
+
+  const transformOrigin = (): string => {
+    const rawX = contextMenuState().x
+    const rawY = contextMenuState().y
+    const relX = Math.max(0, Math.min(260, rawX - coords().x))
+    const relY = Math.max(0, Math.min(480, rawY - coords().y))
+    return `${relX}px ${relY}px`
+  }
+
+  createEffect(() => {
+    if (contextMenuState().isOpen) {
+      const { x: rawX, y: rawY, target } = contextMenuState()
+      const isItemTarget = Boolean(target?.path && target?.name)
+      const isDir = Boolean(target?.isDirectory)
+      const isGitignore = target?.name === '.gitignore'
+      const gitignoreDelta = isGitignore ? 0 : 39
+      const estimatedHeight = isItemTarget
+        ? isDir
+          ? 474 + gitignoreDelta
+          : 444 + gitignoreDelta
+        : 240
+      const estimatedWidth = 230
+      const screenW = window.innerWidth
+      const screenH = window.innerHeight
+
+      const initial = calculateMenuPosition(
+        rawX,
+        rawY,
+        estimatedWidth,
+        estimatedHeight,
+        screenW,
+        screenH
+      )
+      setCoords(initial)
+
+      // Precise unscaled measurement in next frame to adjust for dynamic item height
+      requestAnimationFrame(() => {
+        if (!menuRef) return
+        const actualWidth = menuRef.offsetWidth || estimatedWidth
+        const actualHeight = menuRef.offsetHeight || estimatedHeight
+        const adjusted = calculateMenuPosition(
+          rawX,
+          rawY,
+          actualWidth,
+          actualHeight,
+          screenW,
+          screenH
+        )
+        setCoords(adjusted)
+      })
+    }
+  })
+
+  // Close when clicking outside
+  const handlePointerDown = (e: PointerEvent): void => {
+    if (!contextMenuState().isOpen) return
+    if (menuRef && !menuRef.contains(e.target as Node)) {
+      closeContextMenu()
+    }
+  }
+
+  onMount(() => {
+    window.addEventListener('pointerdown', handlePointerDown, true)
+    window.addEventListener('keydown', handleKeyDown, true)
+    window.addEventListener('resize', closeContextMenu)
+  })
+
+  onCleanup(() => {
+    window.removeEventListener('pointerdown', handlePointerDown, true)
+    window.removeEventListener('keydown', handleKeyDown, true)
+    window.removeEventListener('resize', closeContextMenu)
+  })
+
+  const target = createMemo(() => contextMenuState().target)
+  const isItem = createMemo(() => Boolean(target()?.path && target()?.name))
+  const isDirectory = createMemo(() => Boolean(target()?.isDirectory))
+  const targetPath = createMemo(() => target()?.path || workspaceRoot())
+  const targetDir = createMemo(() => (isDirectory() ? targetPath() : getParentDir(targetPath())))
+
+  // ── Actions ──
+  const handleNewFile = (): void => {
+    const dir = targetDir()
+    closeContextMenu()
+    openFileActionModal('newFile', dir, '')
+  }
+
+  const handleNewFolder = (): void => {
+    const dir = targetDir()
+    closeContextMenu()
+    openFileActionModal('newFolder', dir, '')
+  }
+
+  const handleRevealInFileManager = (): void => {
+    const p = targetPath()
+    closeContextMenu()
+    if (window.api?.showItemInFolder) {
+      window.api.showItemInFolder(p)
+    }
+  }
+
+  const handleOpenInDefaultApp = (): void => {
+    const p = targetPath()
+    closeContextMenu()
+    if (window.api?.openPath) {
+      window.api.openPath(p)
+    }
+  }
+
+  const handleOpenInTerminal = (): void => {
+    const dir = targetDir()
+    closeContextMenu()
+    addTerminal(dir)
+  }
+
+  const handleCut = (): void => {
+    const p = targetPath()
+    closeContextMenu()
+    setFileClipboard({ path: p, action: 'cut' })
+  }
+
+  const handleCopy = (): void => {
+    const p = targetPath()
+    closeContextMenu()
+    setFileClipboard({ path: p, action: 'copy' })
+  }
+
+  const handleDuplicate = async (): Promise<void> => {
+    const p = targetPath()
+    closeContextMenu()
+    const dir = getParentDir(p)
+    const baseName = target()?.name || 'file'
+    const dotIdx = baseName.lastIndexOf('.')
+    const nameNoExt = dotIdx > 0 ? baseName.slice(0, dotIdx) : baseName
+    const ext = dotIdx > 0 ? baseName.slice(dotIdx) : ''
+    const newName = `${nameNoExt} copy${ext}`
+    const dest = `${dir}/${newName}`
+
+    if (window.api?.copyPath) {
+      await window.api.copyPath(p, dest)
+      refreshFileExplorer()
+    }
+  }
+
+  const handlePaste = async (): Promise<void> => {
+    const clip = fileClipboard()
+    if (!clip) return
+    const p = targetPath()
+    const destDir = isDirectory() ? p : getParentDir(p)
+    const src = clip.path
+    const srcName =
+      src
+        .replace(/[/\\]+$/, '')
+        .split(/[/\\]/)
+        .pop() || 'item'
+    const dest = `${destDir}/${srcName}`
+
+    closeContextMenu()
+
+    if (clip.action === 'cut') {
+      if (window.api?.renamePath) {
+        await window.api.renamePath(src, dest)
+        renameOpenFile(src, dest, srcName)
+        setFileClipboard(null)
+        refreshFileExplorer()
+      }
+    } else if (clip.action === 'copy') {
+      if (window.api?.copyPath) {
+        await window.api.copyPath(src, dest)
+        refreshFileExplorer()
+      }
+    }
+  }
+
+  const handleCopyPath = (): void => {
+    const p = targetPath()
+    closeContextMenu()
+    navigator.clipboard?.writeText(p)
+  }
+
+  const handleCopyRelativePath = (): void => {
+    const p = targetPath()
+    const root = workspaceRoot()
+    closeContextMenu()
+    const rel = root && p.startsWith(root) ? p.slice(root.length).replace(/^[/\\]/, '') : p
+    navigator.clipboard?.writeText(rel || '.')
+  }
+
+  const handleAddToGitignore = async (): Promise<void> => {
+    const root = workspaceRoot()
+    const p = targetPath()
+    if (!root || !p || target()?.name === '.gitignore') {
+      closeContextMenu()
+      return
+    }
+
+    closeContextMenu()
+
+    const rel = p.startsWith(root) ? p.slice(root.length).replace(/^[/\\]+/, '') : p
+    const isDir = Boolean(target()?.isDirectory)
+    const entry = isDir ? `${rel}/` : rel
+    const gitignorePath = `${root}/.gitignore`
+
+    try {
+      let currentContent = ''
+      if (window.api?.readFile) {
+        try {
+          currentContent = (await window.api.readFile(gitignorePath)) || ''
+        } catch {
+          currentContent = ''
+        }
+      }
+
+      const lines = currentContent.split('\n').map((l) => l.trim())
+      const cleanEntry = rel.replace(/\/+$/, '')
+      const alreadyPresent = lines.some((l) => l === cleanEntry || l === `${cleanEntry}/`)
+
+      if (!alreadyPresent) {
+        const needsNewline = currentContent.length > 0 && !currentContent.endsWith('\n')
+        const updated = `${currentContent}${needsNewline ? '\n' : ''}${entry}\n`
+
+        if (openTabs().some((t) => t.path === gitignorePath)) {
+          await saveFile(gitignorePath, updated)
+        } else if (window.api?.writeFile) {
+          await window.api.writeFile(gitignorePath, updated)
+        }
+        refreshFileExplorer()
+      }
+    } catch (err) {
+      console.error('Failed to update .gitignore:', err)
+    }
+  }
+
+  const handleRename = (): void => {
+    const p = targetPath()
+    const name = target()?.name || ''
+    closeContextMenu()
+    if (p && name) {
+      startInlineRename(p, name)
+    }
+  }
+
+  const handleTrash = async (): Promise<void> => {
+    const p = targetPath()
+    closeContextMenu()
+    if (window.api?.trashPath) {
+      const ok = await window.api.trashPath(p)
+      if (ok) {
+        closeEditorTab(p)
+        refreshFileExplorer()
+      }
+    }
+  }
+
+  return (
+    <Show when={contextMenuState().isOpen}>
+      <style>{`
+        @keyframes contextMenuIn {
+          from {
+            opacity: 0;
+            transform: scale(0.96);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+      `}</style>
+
+      <div
+        ref={(el) => (menuRef = el)}
+        class="fixed z-[100] min-w-[215px] max-w-[280px] max-h-[calc(100vh-48px)] overflow-y-auto no-scrollbar bg-[#0c0c0e]/98 backdrop-blur-2xl rounded-xl p-1.5 select-none shadow-[0_0_0_1px_rgba(255,255,255,0.09),inset_0_1px_0_0_rgba(255,255,255,0.08),0_8px_24px_-4px_rgba(0,0,0,0.8),0_2px_6px_rgba(0,0,0,0.5)] outline-none animate-[contextMenuIn_120ms_cubic-bezier(0.16,1,0.3,1)] font-sans antialiased"
+        style={{
+          left: `${coords().x}px`,
+          top: `${coords().y}px`,
+          'transform-origin': transformOrigin()
+        }}
+      >
+        {/* ── Item Context Menu (File or Directory) ── */}
+        <Show
+          when={isItem()}
+          fallback={
+            <div class="flex flex-col gap-0.5">
+              <button
+                type="button"
+                onClick={handleNewFile}
+                class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+              >
+                <span>New File</span>
+                <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
+                  {modKey}+N
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleNewFolder}
+                class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+              >
+                <span>New Folder</span>
+                <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
+                  {modKey}+{altKey}+N
+                </span>
+              </button>
+
+              <div class="h-px bg-white/[0.06] my-1 mx-1" />
+
+              <button
+                type="button"
+                onClick={handleRevealInFileManager}
+                class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+              >
+                <span>Reveal in File Manager</span>
+                <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
+                  {modKey}+{altKey}+R
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleOpenInTerminal}
+                class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+              >
+                <span>Open in Terminal</span>
+              </button>
+
+              <div class="h-px bg-white/[0.06] my-1 mx-1" />
+
+              <button
+                type="button"
+                onClick={handlePaste}
+                disabled={!fileClipboard()}
+                class={`w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold transition-colors outline-none group tracking-[-0.01em] ${
+                  fileClipboard()
+                    ? 'text-white/85 hover:text-white hover:bg-white/[0.08] cursor-pointer'
+                    : 'text-white/25 cursor-not-allowed'
+                }`}
+              >
+                <span>Paste</span>
+                <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
+                  {modKey}+V
+                </span>
+              </button>
+
+              <div class="h-px bg-white/[0.06] my-1 mx-1" />
+
+              <button
+                type="button"
+                onClick={handleCopyPath}
+                class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+              >
+                <span>Copy Path</span>
+              </button>
+
+              <div class="h-px bg-white/[0.06] my-1 mx-1" />
+
+              <button
+                type="button"
+                onClick={handleRefresh}
+                class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+              >
+                <span>Refresh Explorer</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCollapseAll}
+                class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+              >
+                <span>Collapse All</span>
+              </button>
+            </div>
+          }
+        >
+          <div class="flex flex-col gap-0.5">
+            {/* New File / Folder */}
+            <button
+              type="button"
+              onClick={handleNewFile}
+              class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+            >
+              <span>New File</span>
+              <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
+                {modKey}+N
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleNewFolder}
+              class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+            >
+              <span>New Folder</span>
+              <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
+                {modKey}+{altKey}+N
+              </span>
+            </button>
+
+            <div class="h-px bg-white/[0.06] my-1 mx-1" />
+
+            {/* Reveal / Open External */}
+            <button
+              type="button"
+              onClick={handleRevealInFileManager}
+              class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+            >
+              <span>Reveal in File Manager</span>
+              <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
+                {modKey}+{altKey}+R
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleOpenInDefaultApp}
+              class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+            >
+              <span>Open in Default App</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleOpenInTerminal}
+              class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+            >
+              <span>Open in Terminal</span>
+            </button>
+
+            <Show when={isDirectory()}>
+              <button
+                type="button"
+                onClick={handleFindInFolder}
+                class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+              >
+                <span>Find in Folder...</span>
+              </button>
+            </Show>
+
+            <div class="h-px bg-white/[0.06] my-1 mx-1" />
+
+            {/* Clipboard Operations */}
+            <button
+              type="button"
+              onClick={handleCut}
+              class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+            >
+              <span>Cut</span>
+              <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
+                {modKey}+X
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCopy}
+              class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+            >
+              <span>Copy</span>
+              <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
+                {modKey}+C
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDuplicate}
+              class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+            >
+              <span>Duplicate</span>
+              <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
+                {modKey}+D
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handlePaste}
+              disabled={!fileClipboard()}
+              class={`w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold transition-colors outline-none group tracking-[-0.01em] ${
+                fileClipboard()
+                  ? 'text-white/85 hover:text-white hover:bg-white/[0.08] cursor-pointer'
+                  : 'text-white/25 cursor-not-allowed'
+              }`}
+            >
+              <span>Paste</span>
+              <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
+                {modKey}+V
+              </span>
+            </button>
+
+            <div class="h-px bg-white/[0.06] my-1 mx-1" />
+
+            {/* Path Copying */}
+            <button
+              type="button"
+              onClick={handleCopyPath}
+              class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+            >
+              <span>Copy Path</span>
+              <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
+                {modKey}+{altKey}+C
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCopyRelativePath}
+              class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+            >
+              <span>Copy Relative Path</span>
+              <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
+                {modKey}+Shift+C
+              </span>
+            </button>
+
+            {/* Git Operations */}
+            <Show when={target()?.name !== '.gitignore'}>
+              <div class="h-px bg-white/[0.06] my-1 mx-1" />
+
+              <button
+                type="button"
+                onClick={handleAddToGitignore}
+                class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-rose-400/90 hover:text-rose-300 hover:bg-rose-500/15 transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+              >
+                <span class="flex items-center gap-2">
+                  <SimpleIconsGitignoredotio class="w-3.5 h-3.5 shrink-0 text-rose-400/80 group-hover:text-rose-300 transition-colors" />
+                  <span>Add to .gitignore</span>
+                </span>
+              </button>
+            </Show>
+
+            <div class="h-px bg-white/[0.06] my-1 mx-1" />
+
+            {/* Rename & Trash */}
+            <button
+              type="button"
+              onClick={handleRename}
+              class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+            >
+              <span>Rename</span>
+              <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
+                F2
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleTrash}
+              class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-rose-400/90 hover:text-rose-300 hover:bg-rose-500/15 transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+            >
+              <span>Move to Trash</span>
+              <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-rose-400/60 group-hover:text-rose-300/90 tracking-tight">
+                Del
+              </span>
+            </button>
+          </div>
+        </Show>
+      </div>
+    </Show>
+  )
+}
+
+export default ContextMenu

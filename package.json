@@ -1,0 +1,46 @@
+{
+  "name": "polaris",
+  "version": "0.1.0",
+  "description": "Ultra-lightweight high-performance file explorer and workspace tool built with SolidJS, Electron, and Zig 0.17",
+  "main": "./out/main/index.js",
+  "author": "Polaris Team",
+  "scripts": {
+    "dev": "bun run core:build:dev && electron-vite dev",
+    "core:build": "cd core && zig build -Doptimize=fast",
+    "core:build:dev": "cd core && zig build -Doptimize=safe",
+    "core:test": "cd core && zig build test",
+    "build": "bun run core:build && npm run typecheck && electron-vite build",
+    "start": "electron-vite preview",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
+    "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "check": "oxlint && npm run typecheck"
+  },
+  "dependencies": {
+    "@electron-toolkit/preload": "^3.0.2",
+    "@electron-toolkit/utils": "^4.0.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "clsx": "^2.1.1",
+    "node-pty": "^1.1.0",
+    "solid-js": "^1.9.17",
+    "solid-thinking-orbs": "^0.2.2",
+    "tailwind-merge": "^3.0.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/node": "^24.19.2",
+    "electron": "^44.7.2",
+    "electron-vite": "^6.0.0",
+    "oxlint": "^1.89.0",
+    "prettier": "^3.9.10",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.4",
+    "vite-plugin-solid": "^2.11.14"
+  }
+}
