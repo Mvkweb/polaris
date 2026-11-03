@@ -46,9 +46,9 @@ export const AgentsPage: Component = () => {
           description="Native Zig 0.17 high-throughput core engine status."
           isLast
         >
-          <div class="flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11.5px] font-medium">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Connected (VmRSS ~2 MB)
+          <div class="flex items-center gap-2 text-[12px] text-[#a0a0a0]">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
+            <span>Connected (VmRSS ~2 MB)</span>
           </div>
         </SettingRow>
       </SettingGroup>
@@ -57,16 +57,16 @@ export const AgentsPage: Component = () => {
         title="Local MCP Server"
         description="Works with any agent that runs MCP servers over stdio. Each agent session starts its own."
       >
-        <div class="p-3.5 flex flex-col gap-3">
-          <div class="text-[12px] text-white/70">
+        <div class="p-4 flex flex-col gap-2.5">
+          <div class="text-[12px] text-[#808080]">
             Run the Polaris MCP protocol server directly in any harness:
           </div>
-          <div class="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/[0.08] font-mono text-[12px] text-white/90 select-all">
+          <div class="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-[#101010] font-mono text-[12px] text-[#e0e0e0] select-all">
             <span>polaris mcp</span>
             <button
               type="button"
               onClick={handleCopyCommand}
-              class="h-6 px-2.5 rounded-md bg-white/[0.08] hover:bg-white/[0.14] text-[11px] font-sans font-medium text-white transition-colors cursor-pointer"
+              class="h-[24px] px-3 rounded-full bg-[#242424] hover:bg-[#2c2c2c] text-[11px] font-sans font-medium text-[#d4d4d4] hover:text-white transition-colors cursor-pointer shadow-sm"
             >
               {copied() ? 'Copied!' : 'Copy'}
             </button>
@@ -75,7 +75,7 @@ export const AgentsPage: Component = () => {
       </SettingGroup>
 
       <SettingGroup title="Supported Harnesses">
-        <div class="p-3.5 flex flex-wrap gap-2">
+        <div class="p-4 flex flex-wrap gap-2">
           <For each={harnesses}>
             {(item) => {
               const isSelected = () => selectedHarness() === item.id
@@ -83,13 +83,17 @@ export const AgentsPage: Component = () => {
                 <button
                   type="button"
                   onClick={() => setSelectedHarness(item.id)}
-                  class={`h-[30px] px-3.5 rounded-full text-[12px] flex items-center gap-2 border transition-all cursor-pointer ${
+                  class={`h-[28px] px-3.5 rounded-full text-[12px] flex items-center gap-2 transition-all cursor-pointer ${
                     isSelected()
-                      ? 'bg-white/[0.14] border-white/20 text-white font-medium shadow-sm'
-                      : 'border-white/[0.06] text-white/60 hover:text-white hover:bg-white/[0.06]'
+                      ? 'bg-[#282828] text-white font-medium shadow-sm'
+                      : 'bg-[#121212] text-[#707070] hover:text-[#d4d4d4] hover:bg-[#1a1a1a]'
                   }`}
                 >
-                  <span class="w-2 h-2 rounded-full bg-[var(--accent,#4da3f5)]" />
+                  <span
+                    class={`w-2 h-2 rounded-full transition-colors ${
+                      isSelected() ? 'bg-[var(--accent,#3b82f6)]' : 'bg-[#404040]'
+                    }`}
+                  />
                   {item.name}
                 </button>
               )

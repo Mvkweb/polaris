@@ -123,13 +123,13 @@ export const GeneralPage: Component = () => {
         >
           <div class="flex items-center gap-3">
             {updateStatus() && (
-              <span class="text-[12px] text-white/50">{updateStatus()}</span>
+              <span class="text-[12px] text-[#787878]">{updateStatus()}</span>
             )}
             <button
               type="button"
               disabled={checkingUpdate()}
               onClick={handleCheckUpdate}
-              class="h-[26px] px-3 rounded-full bg-white/[0.08] hover:bg-white/[0.14] text-white text-[12px] font-medium transition-colors cursor-pointer disabled:opacity-50"
+              class="h-[26px] px-3.5 rounded-full bg-[#242424] hover:bg-[#2c2c2c] text-[#e0e0e0] hover:text-white text-[12px] font-medium transition-colors cursor-pointer disabled:opacity-40 shadow-sm"
             >
               {checkingUpdate() ? 'Checking…' : 'Check for Updates'}
             </button>

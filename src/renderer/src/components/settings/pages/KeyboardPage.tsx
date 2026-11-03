@@ -70,7 +70,7 @@ export const KeyboardPage: Component = () => {
               <div class="flex items-center gap-1">
                 <For each={shortcut.keys}>
                   {(k) => (
-                    <kbd class="px-2 py-0.5 min-w-6 text-center rounded-md bg-white/[0.08] text-[11px] font-mono text-white/90 border border-white/[0.08] shadow-sm">
+                    <kbd class="px-2 py-0.5 min-w-6 text-center rounded-md bg-[#242424] text-[11px] font-mono text-[#dcdcdc] shadow-[0_1px_2px_rgba(0,0,0,0.4)]">
                       {k}
                     </kbd>
                   )}
@@ -92,7 +92,7 @@ export const KeyboardPage: Component = () => {
               <div class="flex items-center gap-1">
                 <For each={shortcut.keys}>
                   {(k) => (
-                    <kbd class="px-2 py-0.5 min-w-6 text-center rounded-md bg-white/[0.08] text-[11px] font-mono text-white/90 border border-white/[0.08] shadow-sm">
+                    <kbd class="px-2 py-0.5 min-w-6 text-center rounded-md bg-[#242424] text-[11px] font-mono text-[#dcdcdc] shadow-[0_1px_2px_rgba(0,0,0,0.4)]">
                       {k}
                     </kbd>
                   )}

@@ -60,23 +60,23 @@ export const SettingsModal: Component = () => {
   return (
     <Show when={isSettingsModalOpen()}>
       <div
-        class="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150 select-none"
+        class="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm select-none"
         onClick={(e) => {
           if (e.target === e.currentTarget) {
             closeSettingsModal()
           }
         }}
       >
-        {/* Floating Sheet Card */}
+        {/* Floating Sheet Card: Quiet, solid, non-wireframe surface */}
         <div
-          class="relative w-full max-w-[880px] h-[600px] max-h-[90vh] bg-[#111111]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl flex overflow-hidden text-[#ececec]"
+          class="relative w-full max-w-[880px] h-[600px] max-h-[90vh] bg-[#131313] rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.75)] flex overflow-hidden text-[#ebebeb]"
           role="dialog"
           aria-modal="true"
           aria-label="Settings"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Left Navigation Sidebar */}
-          <aside class="w-[200px] shrink-0 h-full flex flex-col gap-1 p-2 pt-3 border-r border-white/[0.06] select-none bg-white/[0.01]">
+          <aside class="w-[200px] shrink-0 h-full flex flex-col gap-1 p-3 bg-[#101010] select-none">
             {navItems.map((item) => {
               const isActive = () => activeSettingsPage() === item.id
               return (
@@ -85,17 +85,17 @@ export const SettingsModal: Component = () => {
                   role="tab"
                   aria-selected={isActive()}
                   onClick={() => setActiveSettingsPage(item.id)}
-                  class={`h-8 px-2.5 rounded-lg flex items-center gap-2.5 text-[13px] font-normal transition-colors cursor-pointer text-left focus:outline-none ${
+                  class={`h-8 px-3 rounded-lg flex items-center gap-2.5 text-[13px] font-normal transition-colors cursor-pointer text-left focus:outline-none ${
                     isActive()
-                      ? 'bg-white/[0.14] text-white font-medium shadow-sm'
-                      : 'text-white/65 hover:bg-white/[0.08] hover:text-white'
+                      ? 'bg-[#242424] text-[#ffffff] font-medium shadow-sm'
+                      : 'text-[#7d7d7d] hover:bg-[#171717] hover:text-[#d1d1d1]'
                   }`}
                 >
                   <img
                     src={item.icon}
                     alt=""
                     class={`w-4 h-4 transition-opacity ${
-                      isActive() ? 'opacity-100 brightness-110' : 'opacity-55'
+                      isActive() ? 'opacity-100' : 'opacity-45'
                     }`}
                   />
                   <span>{item.label}</span>
@@ -105,21 +105,21 @@ export const SettingsModal: Component = () => {
           </aside>
 
           {/* Right Content Panel */}
-          <section class="flex-1 min-w-0 flex flex-col h-full overflow-hidden bg-transparent">
+          <section class="flex-1 min-w-0 flex flex-col h-full overflow-hidden bg-[#131313]">
             {/* Header Bar */}
-            <header class="h-11 shrink-0 px-4 flex items-center gap-2 border-b border-white/[0.06] text-[13px]">
-              <span class="pl-1 text-white/50">Settings</span>
-              <span class="text-white/30">/</span>
-              <span class="flex-1 font-medium text-white">{activeSettingsPage()}</span>
+            <header class="h-11 shrink-0 px-6 flex items-center gap-2 text-[13px]">
+              <span class="text-[#666666]">Settings</span>
+              <span class="text-[#404040]">/</span>
+              <span class="flex-1 font-medium text-[#f0f0f0]">{activeSettingsPage()}</span>
 
               {/* Restore Defaults */}
               <button
                 type="button"
                 onClick={handleRestoreDefaults}
-                class="h-7 px-2.5 rounded-lg text-[12px] text-white/60 hover:text-white hover:bg-white/[0.08] flex items-center gap-1.5 transition-colors cursor-pointer focus:outline-none"
+                class="h-7 px-3 rounded-full text-[12px] text-[#7d7d7d] hover:text-[#e0e0e0] hover:bg-[#1a1a1a] flex items-center gap-1.5 transition-colors cursor-pointer focus:outline-none"
                 title="Restore default settings for this page"
               >
-                <img src={rotateCcwIcon} alt="" class="w-3.5 h-3.5 opacity-60" />
+                <img src={rotateCcwIcon} alt="" class="w-3.5 h-3.5 opacity-55" />
                 <span>Restore Defaults</span>
               </button>
 
@@ -127,15 +127,15 @@ export const SettingsModal: Component = () => {
               <button
                 type="button"
                 onClick={closeSettingsModal}
-                class="w-7 h-7 rounded-lg text-white/60 hover:text-white hover:bg-white/[0.08] flex items-center justify-center transition-colors cursor-pointer focus:outline-none"
+                class="w-7 h-7 rounded-full text-[#7d7d7d] hover:text-[#e0e0e0] hover:bg-[#1a1a1a] flex items-center justify-center transition-colors cursor-pointer focus:outline-none"
                 aria-label="Close"
               >
-                <img src={cancelIcon} alt="" class="w-3.5 h-3.5 opacity-70" />
+                <img src={cancelIcon} alt="" class="w-3.5 h-3.5 opacity-60" />
               </button>
             </header>
 
             {/* Scrollable Page Body */}
-            <div class="flex-1 min-h-0 overflow-y-auto px-6 py-6 flex justify-center">
+            <div class="flex-1 min-h-0 overflow-y-auto px-6 py-5 flex justify-center">
               <div class="w-full max-w-[620px]">
                 <Switch>
                   <Match when={activeSettingsPage() === 'General'}>
