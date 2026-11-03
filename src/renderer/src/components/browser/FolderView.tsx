@@ -22,7 +22,8 @@ import {
   foldersFirst,
   gridIconSize,
   gridLabelSize,
-  showThumbnails
+  showThumbnails,
+  openContextMenu
 } from '../../store'
 import {
   MonodriveFolderIcon,
@@ -182,7 +183,26 @@ export const FolderView: Component = () => {
   return (
     <div class="flex-1 flex flex-col h-full w-full select-none overflow-hidden bg-transparent text-white">
       {/* ── Monodrive Central Icon Grid Canvas ── */}
-      <main class="flex-1 overflow-y-auto px-6 py-5 outline-none" tabIndex={0}>
+      <main
+        class="flex-1 overflow-y-auto px-6 py-5 outline-none"
+        tabIndex={0}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            setSelectedGridEntry(null)
+          }
+        }}
+        onContextMenu={(e) => {
+          const isItem = (e.target as HTMLElement).closest('[data-grid-item="true"]')
+          if (!isItem) {
+            e.preventDefault()
+            openContextMenu(e.clientX, e.clientY, {
+              name: '',
+              path: currentPath(),
+              isDirectory: true
+            })
+          }
+        }}
+      >
         <Show
           when={!isLoading() && filteredEntries().length > 0}
           fallback={
@@ -231,10 +251,21 @@ export const FolderView: Component = () => {
 
                 return (
                   <div
+                    data-grid-item="true"
                     role="button"
                     tabIndex={0}
                     onClick={() => handleItemClick(entry)}
                     onDblClick={() => handleItemDoubleClick(entry)}
+                    onContextMenu={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleItemClick(entry)
+                      openContextMenu(e.clientX, e.clientY, {
+                        name: entry.name,
+                        path: entry.path,
+                        isDirectory: entry.isDirectory
+                      })
+                    }}
                     class={`group relative flex flex-col items-center pt-2 pb-2.5 px-1.5 rounded-xl transition-all duration-150 cursor-pointer select-none outline-none ${
                       isSelected()
                         ? 'bg-white/[0.12] ring-1 ring-white/20 shadow-sm'

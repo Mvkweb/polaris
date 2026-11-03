@@ -4,7 +4,7 @@ import { app, shell, BrowserWindow, ipcMain, nativeTheme, nativeImage, Menu } fr
 Menu.setApplicationMenu(null)
 import { join, resolve, extname } from 'path'
 import { readdir, readFile, writeFile, stat, statfs, mkdir, rename, rm, cp } from 'fs/promises'
-import { execFile } from 'child_process'
+import { execFile, spawn } from 'child_process'
 import { promisify } from 'util'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 
@@ -214,6 +214,32 @@ app.whenReady().then(() => {
       return false
     }
     return true
+  })
+
+  // Check if Ghostty terminal is installed on the host system
+  ipcMain.handle('terminal:isGhosttyInstalled', async () => {
+    try {
+      const { stdout } = await execFileAsync('which', ['ghostty'])
+      return Boolean(stdout.trim())
+    } catch {
+      return false
+    }
+  })
+
+  // Open native Ghostty window in target directory
+  ipcMain.handle('terminal:openGhostty', async (_, targetDir?: string) => {
+    try {
+      const dir = targetDir || process.cwd()
+      const child = spawn('ghostty', ['+new-window', `--working-directory=${dir}`], {
+        detached: true,
+        stdio: 'ignore'
+      })
+      child.unref()
+      return true
+    } catch (err) {
+      console.error('Failed to launch ghostty:', err)
+      return false
+    }
   })
 
   // Read image files (PNG, JPG, SVG, ICO, ICNS, WEBP, GIF, BMP, AVIF)

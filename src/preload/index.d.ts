@@ -87,6 +87,8 @@ export interface CustomAPI {
   copyPath: (srcPath: string, destPath: string) => Promise<boolean>
   showItemInFolder: (fullPath: string) => Promise<boolean>
   openPath: (fullPath: string) => Promise<boolean>
+  isGhosttyInstalled: () => Promise<boolean>
+  openGhostty: (dirPath?: string) => Promise<boolean>
   readImage: (filePath: string) => Promise<ImageFileData>
   indexWorkspace: (rootPath?: string) => Promise<{ indexed_count: number; elapsed_ms: number }>
   searchFiles: (query: string) => Promise<SearchResult[]>

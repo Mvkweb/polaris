@@ -51,8 +51,7 @@ import {
 import type { FileNode, ChatSessionSummary, GitCommit, SystemDrive } from '../types'
 import FileTree from './file-tree/FileTree'
 import SearchPanel from './search/SearchPanel'
-import ContextMenu from './ui/ContextMenu'
-import FileActionModal from './file-tree/FileActionModal'
+
 import { formatShortcut, isMac, isModKey, shortcutKeys } from '../shortcuts'
 
 interface AtlasPlaceItem {
@@ -1571,9 +1570,7 @@ const Sidebar: Component = () => {
         </div>
       </Show>
 
-      {/* Context Menu & File Action Dialog */}
-      <ContextMenu />
-      <FileActionModal />
+      {/* Animation Styles */}
 
       <style>{`
         @keyframes fadeIn {

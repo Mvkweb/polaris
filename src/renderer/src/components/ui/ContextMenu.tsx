@@ -26,6 +26,7 @@ import {
 } from '../../store'
 import { isMac } from '../../shortcuts'
 import { SimpleIconsGitignoredotio } from './SolarIcons'
+import ghosttyIcon from '../../assets/icons/ghostty.png'
 
 const getParentDir = (p: string): string => {
   const normalized = p.replace(/\\/g, '/')
@@ -66,7 +67,6 @@ const calculateMenuPosition = (
   screenW: number,
   screenH: number
 ): { x: number; y: number } => {
-  // Cursor aligns naturally a bit above the middle of the card (~33% down)
   const anchorY = Math.round(menuHeight * 0.33)
 
   let x = rawX + 6
@@ -91,10 +91,22 @@ const calculateMenuPosition = (
 export const ContextMenu: Component = () => {
   let menuRef: HTMLDivElement | undefined = undefined
   const [coords, setCoords] = createSignal<{ x: number; y: number }>({ x: 0, y: 0 })
+  const [hasGhostty, setHasGhostty] = createSignal(false)
 
   const isApple = isMac()
   const modKey = isApple ? 'Cmd' : 'Ctrl'
   const altKey = isApple ? 'Opt' : 'Alt'
+
+  onMount(async () => {
+    try {
+      if (window.api?.isGhosttyInstalled) {
+        const installed = await window.api.isGhosttyInstalled()
+        setHasGhostty(installed)
+      }
+    } catch {
+      setHasGhostty(false)
+    }
+  })
 
   const transformOrigin = (): string => {
     const rawX = contextMenuState().x
@@ -113,9 +125,9 @@ export const ContextMenu: Component = () => {
       const gitignoreDelta = isGitignore ? 0 : 39
       const estimatedHeight = isItemTarget
         ? isDir
-          ? 474 + gitignoreDelta
-          : 444 + gitignoreDelta
-        : 240
+          ? 500 + gitignoreDelta
+          : 470 + gitignoreDelta
+        : 260
       const estimatedWidth = 230
       const screenW = window.innerWidth
       const screenH = window.innerHeight
@@ -130,7 +142,6 @@ export const ContextMenu: Component = () => {
       )
       setCoords(initial)
 
-      // Precise unscaled measurement in next frame to adjust for dynamic item height
       requestAnimationFrame(() => {
         if (!menuRef) return
         const actualWidth = menuRef.offsetWidth || estimatedWidth
@@ -207,6 +218,14 @@ export const ContextMenu: Component = () => {
     const dir = targetDir()
     closeContextMenu()
     addTerminal(dir)
+  }
+
+  const handleOpenGhostty = async (): Promise<void> => {
+    const dir = targetDir()
+    closeContextMenu()
+    if (window.api?.openGhostty) {
+      await window.api.openGhostty(dir)
+    }
   }
 
   const handleCut = (): void => {
@@ -363,9 +382,10 @@ export const ContextMenu: Component = () => {
         }
       `}</style>
 
+      {/* Ember-style Pitch-Dark Outlined Context Menu Card */}
       <div
         ref={(el) => (menuRef = el)}
-        class="fixed z-[100] min-w-[215px] max-w-[280px] max-h-[calc(100vh-48px)] overflow-y-auto no-scrollbar bg-[#0c0c0e]/98 backdrop-blur-2xl rounded-xl p-1.5 select-none shadow-[0_0_0_1px_rgba(255,255,255,0.09),inset_0_1px_0_0_rgba(255,255,255,0.08),0_8px_24px_-4px_rgba(0,0,0,0.8),0_2px_6px_rgba(0,0,0,0.5)] outline-none animate-[contextMenuIn_120ms_cubic-bezier(0.16,1,0.3,1)] font-sans antialiased"
+        class="fixed z-[100] min-w-[220px] max-w-[280px] max-h-[calc(100vh-48px)] overflow-y-auto no-scrollbar bg-[#0c0c0e]/98 backdrop-blur-2xl rounded-xl p-1.5 select-none shadow-[0_0_0_1px_rgba(255,255,255,0.09),inset_0_1px_0_0_rgba(255,255,255,0.08),0_8px_24px_-4px_rgba(0,0,0,0.8),0_2px_6px_rgba(0,0,0,0.5)] outline-none animate-[contextMenuIn_120ms_cubic-bezier(0.16,1,0.3,1)] font-sans antialiased"
         style={{
           left: `${coords().x}px`,
           top: `${coords().y}px`,
@@ -420,6 +440,19 @@ export const ContextMenu: Component = () => {
                 <span>Open in Terminal</span>
               </button>
 
+              <Show when={hasGhostty()}>
+                <button
+                  type="button"
+                  onClick={handleOpenGhostty}
+                  class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+                >
+                  <span class="flex items-center gap-2">
+                    <img src={ghosttyIcon} alt="" class="w-3.5 h-3.5 rounded-sm shrink-0" />
+                    <span>Open Ghostty Here</span>
+                  </span>
+                </button>
+              </Show>
+
               <div class="h-px bg-white/[0.06] my-1 mx-1" />
 
               <button
@@ -469,30 +502,32 @@ export const ContextMenu: Component = () => {
           }
         >
           <div class="flex flex-col gap-0.5">
-            {/* New File / Folder */}
-            <button
-              type="button"
-              onClick={handleNewFile}
-              class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
-            >
-              <span>New File</span>
-              <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
-                {modKey}+N
-              </span>
-            </button>
+            {/* Folder-specific New File / Folder */}
+            <Show when={isDirectory()}>
+              <button
+                type="button"
+                onClick={handleNewFile}
+                class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+              >
+                <span>New File</span>
+                <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
+                  {modKey}+N
+                </span>
+              </button>
 
-            <button
-              type="button"
-              onClick={handleNewFolder}
-              class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
-            >
-              <span>New Folder</span>
-              <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
-                {modKey}+{altKey}+N
-              </span>
-            </button>
+              <button
+                type="button"
+                onClick={handleNewFolder}
+                class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+              >
+                <span>New Folder</span>
+                <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
+                  {modKey}+{altKey}+N
+                </span>
+              </button>
 
-            <div class="h-px bg-white/[0.06] my-1 mx-1" />
+              <div class="h-px bg-white/[0.06] my-1 mx-1" />
+            </Show>
 
             {/* Reveal / Open External */}
             <button
@@ -511,7 +546,7 @@ export const ContextMenu: Component = () => {
               onClick={handleOpenInDefaultApp}
               class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
             >
-              <span>Open in Default App</span>
+              <span>{isDirectory() ? 'Open Folder' : 'Open in Default App'}</span>
             </button>
 
             <button
@@ -521,6 +556,19 @@ export const ContextMenu: Component = () => {
             >
               <span>Open in Terminal</span>
             </button>
+
+            <Show when={hasGhostty()}>
+              <button
+                type="button"
+                onClick={handleOpenGhostty}
+                class="w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold text-white/85 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer outline-none group tracking-[-0.01em]"
+              >
+                <span class="flex items-center gap-2">
+                  <img src={ghosttyIcon} alt="" class="w-3.5 h-3.5 rounded-sm shrink-0" />
+                  <span>Open Ghostty Here</span>
+                </span>
+              </button>
+            </Show>
 
             <Show when={isDirectory()}>
               <button
@@ -568,21 +616,23 @@ export const ContextMenu: Component = () => {
               </span>
             </button>
 
-            <button
-              type="button"
-              onClick={handlePaste}
-              disabled={!fileClipboard()}
-              class={`w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold transition-colors outline-none group tracking-[-0.01em] ${
-                fileClipboard()
-                  ? 'text-white/85 hover:text-white hover:bg-white/[0.08] cursor-pointer'
-                  : 'text-white/25 cursor-not-allowed'
-              }`}
-            >
-              <span>Paste</span>
-              <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
-                {modKey}+V
-              </span>
-            </button>
+            <Show when={isDirectory()}>
+              <button
+                type="button"
+                onClick={handlePaste}
+                disabled={!fileClipboard()}
+                class={`w-full h-[28px] px-2.5 flex items-center justify-between rounded-[7px] text-[13px] font-semibold transition-colors outline-none group tracking-[-0.01em] ${
+                  fileClipboard()
+                    ? 'text-white/85 hover:text-white hover:bg-white/[0.08] cursor-pointer'
+                    : 'text-white/25 cursor-not-allowed'
+                }`}
+              >
+                <span>Paste</span>
+                <span class="ml-auto pl-4 font-sans text-[12px] font-medium text-white/45 group-hover:text-white/75 tracking-tight">
+                  {modKey}+V
+                </span>
+              </button>
+            </Show>
 
             <div class="h-px bg-white/[0.06] my-1 mx-1" />
 

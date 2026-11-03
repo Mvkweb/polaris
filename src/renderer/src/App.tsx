@@ -7,6 +7,8 @@ import StatusBar from './components/StatusBar'
 import Terminal from './components/terminal/Terminal'
 import QuickOpenModal from './components/modals/QuickOpenModal'
 import SettingsModal from './components/settings/SettingsModal'
+import ContextMenu from './components/ui/ContextMenu'
+import FileActionModal from './components/file-tree/FileActionModal'
 import {
   activeTerminalId,
   addTerminal,
@@ -137,6 +139,10 @@ const App: Component = () => {
 
       {/* Monodrive Floating Settings Modal Sheet (Ctrl+, / Cmd+,) */}
       <SettingsModal />
+
+      {/* Global Context Menu & Modals */}
+      <ContextMenu />
+      <FileActionModal />
 
       {/* Ember-style Sidebar */}
       <Sidebar />
