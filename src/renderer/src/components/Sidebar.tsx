@@ -8,7 +8,8 @@ import {
   createEffect,
   createMemo
 } from 'solid-js'
-import { AnimatedGradient } from 'solid-thinking-orbs'
+import { AnimatedGradient } from './dithercn/animated-gradient'
+import { DitherButton } from './dithercn/dither-button'
 import {
   setCurrentNote,
   currentView,
@@ -834,25 +835,18 @@ const Sidebar: Component = () => {
           }}
         >
           <div class="w-[260px] h-full flex flex-col text-white relative">
-            {/* Subtle Top AnimatedGradient Banner */}
-            <div class="absolute top-0 left-0 right-0 h-[110px] pointer-events-none select-none overflow-hidden opacity-45 [mask-image:linear-gradient(to_bottom,black_20%,transparent_100%)]">
+            {/* Subtle Top Dithercn AnimatedGradient Banner */}
+            <div class="absolute top-0 left-0 right-0 h-[68px] pointer-events-none select-none overflow-hidden opacity-35 [mask-image:linear-gradient(to_bottom,black_15%,transparent_100%)]">
               <AnimatedGradient
-                config={{
-                  preset: 'custom',
-                  shape: 'Checks',
-                  color1: '#050505',
-                  color2: activeAccentColor(),
-                  color3: '#050505',
-                  speed: 51,
-                  swirl: 37,
-                  swirlIterations: 8,
-                  distortion: 4,
-                  softness: 100,
-                  rotation: 0,
-                  proportion: 33,
-                  shapeSize: 0
-                }}
-                theme="dark"
+                shape="Checks"
+                color1="--dither-paper"
+                color2={activeAccentColor()}
+                color3="--dither-ink"
+                speed={6}
+                swirl={18}
+                distortion={5}
+                softness={85}
+                scale={28}
                 class="w-full h-full"
               />
             </div>
@@ -1284,13 +1278,16 @@ const Sidebar: Component = () => {
                             ? `No commits matching "${searchQuery().trim()}".`
                             : 'No Git commits found.'}
                         </p>
-                        <button
-                          type="button"
-                          onClick={refreshGitData}
-                          class="mt-2 text-[12px] text-white/60 hover:text-white underline cursor-pointer"
-                        >
-                          Check again
-                        </button>
+                        <div class="mt-2 flex justify-center">
+                          <DitherButton
+                            variant="outline"
+                            color="ink"
+                            size="sm"
+                            onClick={refreshGitData}
+                          >
+                            Check again
+                          </DitherButton>
+                        </div>
                       </div>
                     }
                   >
@@ -1336,14 +1333,16 @@ const Sidebar: Component = () => {
                       <p class="text-[11.5px] leading-relaxed max-w-[200px]">
                         Start a new conversation to brainstorm, draft, or code.
                       </p>
-                      <button
-                        type="button"
+                      <DitherButton
+                        variant="filled"
+                        color="ink"
+                        size="sm"
                         onClick={handleNewChatGlobal}
-                        class="mt-2 px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] text-white/80 hover:text-white text-[12px] font-medium transition-all cursor-pointer flex items-center gap-1.5"
+                        class="mt-2 gap-1.5"
                       >
                         <PlusIcon class="w-3.5 h-3.5" />
                         <span>Start Chat</span>
-                      </button>
+                      </DitherButton>
                     </div>
                   </Show>
 

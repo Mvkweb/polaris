@@ -14,6 +14,7 @@ import {
   browserSearchFilter,
   setBrowserSearchFilter
 } from '../../store'
+import { fillStyle } from '@/lib/dither'
 
 /* ── Monodrive Exact Hugeicons SVGs ── */
 const ChevronLeftIcon: Component<{ class?: string }> = (props) => (
@@ -101,6 +102,15 @@ export const BrowserTopBar: Component = () => {
   })
 
   const hasMultipleTabs = () => browserTabs().length > 1
+
+  const ditherTrackStyle = createMemo(() =>
+    fillStyle('gradient', {
+      color: 'ink',
+      cell: 2,
+      edge: 'bottom',
+      length: 8
+    })
+  )
 
   return (
     <header class="shrink-0 h-9 px-2 mb-2 flex items-center justify-between bg-transparent select-none">
@@ -205,18 +215,29 @@ export const BrowserTopBar: Component = () => {
         </div>
       </div>
 
-      {/* ── Right: Minimal Transparent Glass Search Field ── */}
-      <div class="relative flex items-center">
+      {/* ── Right: Minimal Dithered Transparent Glass Search Field ── */}
+      <div class="group relative flex items-center w-36 focus-within:w-48 transition-all duration-200 rounded-full overflow-hidden isolate">
+        {/* Subtle dither background glass */}
+        <div
+          aria-hidden="true"
+          class="pointer-events-none absolute inset-0 rounded-full bg-white/[0.04] group-hover:bg-white/[0.07] group-focus-within:bg-white/[0.09] transition-colors -z-10"
+        />
+        {/* Authentic Dither Track along bottom */}
+        <div
+          aria-hidden="true"
+          class="pointer-events-none absolute inset-x-2.5 bottom-0 h-[2px] opacity-25 group-hover:opacity-60 group-focus-within:h-[3px] group-focus-within:opacity-100 transition-all duration-200 rounded-b-full overflow-hidden"
+          style={ditherTrackStyle()}
+        />
+        <div class="absolute left-2.5 pointer-events-none text-white/35 group-focus-within:text-[var(--dither-ink)] transition-colors">
+          <SearchIcon class="w-3 h-3" />
+        </div>
         <input
           type="text"
           placeholder="Search..."
           value={browserSearchFilter()}
           onInput={(e) => setBrowserSearchFilter(e.currentTarget.value)}
-          class="w-36 focus:w-48 h-7 pl-7 pr-2.5 bg-white/[0.04] hover:bg-white/[0.07] focus:bg-white/[0.08] rounded-full text-[12px] text-white placeholder:text-white/30 border border-transparent focus:border-white/10 outline-none transition-all duration-200"
+          class="w-full h-7 pl-7 pr-6 bg-transparent rounded-full text-[12px] text-white placeholder:text-white/30 border border-transparent group-focus-within:border-white/10 outline-none transition-all duration-200"
         />
-        <div class="absolute left-2.5 pointer-events-none text-white/35">
-          <SearchIcon class="w-3 h-3" />
-        </div>
         <Show when={browserSearchFilter()}>
           <button
             type="button"

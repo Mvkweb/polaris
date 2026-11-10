@@ -2,6 +2,8 @@ import { Component, createEffect, createSignal, onCleanup, Show } from 'solid-js
 import { propertiesModalState, closePropertiesModal } from '../../store'
 import { FileIcon } from '../file-tree/FileIcon'
 import type { FileProperties } from '../../types'
+import { DitherCard } from '../dithercn/dither-card'
+import { DitherButton } from '../dithercn/dither-button'
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B'
@@ -138,7 +140,14 @@ export const PropertiesModal: Component = () => {
           if (e.target === e.currentTarget) closePropertiesModal()
         }}
       >
-        <div class="w-[480px] max-w-[92vw] bg-[#0c0c0e]/98 backdrop-blur-2xl rounded-2xl p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.09),inset_0_1px_0_0_rgba(255,255,255,0.08),0_24px_48px_-12px_rgba(0,0,0,0.9)] flex flex-col gap-5 text-white/90 font-sans">
+        <DitherCard
+          glow="top-left"
+          reach={280}
+          strength={0.4}
+          color="ink"
+          rim
+          class="w-[480px] max-w-[92vw] bg-[#0c0c0e]/98 backdrop-blur-2xl rounded-2xl p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.09),inset_0_1px_0_0_rgba(255,255,255,0.08),0_24px_48px_-12px_rgba(0,0,0,0.9)] flex flex-col gap-5 text-white/90 font-sans"
+        >
           {/* Header */}
           <div class="flex items-start justify-between gap-3">
             <div class="flex items-center gap-3.5 min-w-0">
@@ -251,23 +260,25 @@ export const PropertiesModal: Component = () => {
 
           {/* Footer Actions */}
           <div class="flex items-center justify-between pt-1">
-            <button
-              type="button"
+            <DitherButton
+              variant="outline"
+              color="ink"
+              size="sm"
               onClick={openInDefaultApp}
-              class="h-[32px] px-3.5 rounded-[8px] text-[12px] font-medium bg-white/[0.05] hover:bg-white/[0.1] text-white/80 hover:text-white transition-colors cursor-pointer"
             >
               Open in Default App
-            </button>
+            </DitherButton>
 
-            <button
-              type="button"
+            <DitherButton
+              variant="filled"
+              color="ink"
+              size="sm"
               onClick={closePropertiesModal}
-              class="h-[32px] px-4 rounded-[8px] text-[12px] font-medium bg-white/[0.12] hover:bg-white/[0.18] text-white transition-colors cursor-pointer"
             >
               Done
-            </button>
+            </DitherButton>
           </div>
-        </div>
+        </DitherCard>
       </div>
     </Show>
   )

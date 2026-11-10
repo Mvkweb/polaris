@@ -6,6 +6,8 @@ import {
   renameOpenFile,
   refreshFileExplorer
 } from '../../store'
+import { DitherCard } from '../dithercn/dither-card'
+import { DitherButton } from '../dithercn/dither-button'
 
 const INVALID_CHARS_REGEX = /[<>:"/\\|?*]/
 
@@ -135,12 +137,17 @@ export const FileActionModal: Component = () => {
           if (e.target === e.currentTarget) closeFileActionModal()
         }}
       >
-        {/* Modal Card matching ProjectsSettings confirm modal */}
-        <div
+        {/* Modal DitherCard */}
+        <DitherCard
+          glow="top-left"
+          reach={240}
+          strength={0.4}
+          color="ink"
+          rim
           role="dialog"
           aria-modal="true"
           aria-label={title()}
-          class="confirm-card relative w-[380px] max-w-[92vw] overflow-hidden rounded-2xl bg-[#090909] p-5 shadow-[0_32px_80px_rgba(0,0,0,0.85)] flex flex-col outline-none"
+          class="confirm-card relative w-[380px] max-w-[92vw] overflow-hidden rounded-2xl bg-[#0d0b10] p-5 shadow-[0_32px_80px_rgba(0,0,0,0.85)] border border-white/[0.08] flex flex-col outline-none"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -184,30 +191,26 @@ export const FileActionModal: Component = () => {
 
           {/* Footer Actions */}
           <div class="flex items-center justify-end gap-2 mt-5">
-            <button
-              type="button"
+            <DitherButton
+              variant="outline"
+              color="ink"
+              size="sm"
               onClick={closeFileActionModal}
-              class="h-8 px-3.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.09] text-white/70 hover:text-white text-[12.5px] font-medium transition-colors outline-none cursor-pointer"
             >
               Cancel
-            </button>
-            <button
-              type="button"
+            </DitherButton>
+            <DitherButton
+              variant="filled"
+              color="ink"
+              size="sm"
               onClick={handleSubmit}
               disabled={isSubmitting()}
-              class="h-8 px-3.5 rounded-lg bg-white/[0.1] hover:bg-white/[0.15] text-white font-medium text-[12.5px] transition-colors outline-none cursor-pointer disabled:opacity-40 flex items-center justify-center gap-1.5"
+              loading={isSubmitting()}
             >
-              <Show
-                when={!isSubmitting()}
-                fallback={
-                  <span class="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                }
-              >
-                <span>{actionLabel()}</span>
-              </Show>
-            </button>
+              <span>{actionLabel()}</span>
+            </DitherButton>
           </div>
-        </div>
+        </DitherCard>
       </div>
 
       <style>{`
