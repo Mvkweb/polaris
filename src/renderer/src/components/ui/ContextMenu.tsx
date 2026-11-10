@@ -26,7 +26,6 @@ import {
 import { isMac } from '../../shortcuts'
 import { TerminalTileIcon, VsCodeTileIcon } from './Icons'
 import ghosttyIcon from '../../assets/icons/ghostty.png'
-import { DitherCard } from '../dithercn/dither-card'
 
 const getParentDir = (p: string): string => {
   const normalized = p.replace(/\\/g, '/')
@@ -352,34 +351,36 @@ export const ContextMenu: Component = () => {
         .context-menu-item {
           position: relative;
           isolation: isolate;
+          transition: background-color 100ms ease, color 100ms ease;
+        }
+        .context-menu-item:hover {
+          background-color: rgba(255, 255, 255, 0.08);
         }
         .context-menu-item:hover::before {
           content: '';
           position: absolute;
           inset: 0;
           border-radius: 8px;
-          background-color: var(--dither-ink);
-          -webkit-mask-image: var(--dither-pat-50);
-          mask-image: var(--dither-pat-50);
+          background-color: rgba(255, 255, 255, 0.12);
+          -webkit-mask-image: var(--dither-pat-25);
+          mask-image: var(--dither-pat-25);
           -webkit-mask-repeat: repeat;
           mask-repeat: repeat;
           -webkit-mask-size: 8px 8px;
           mask-size: 8px 8px;
-          opacity: 0.38;
           pointer-events: none;
           z-index: 0;
         }
+        .context-menu-item > * {
+          position: relative;
+          z-index: 1;
+        }
       `}</style>
 
-      {/* Authentic DitherCard Context Menu */}
-      <DitherCard
+      {/* Authentic Dithercn OLED Dropdown Menu Card */}
+      <div
         ref={(el) => (menuRef = el)}
-        glow="top-left"
-        reach={200}
-        strength={0.5}
-        color="ink"
-        rim
-        class="fixed z-[100] min-w-[245px] max-w-[300px] max-h-[calc(100vh-48px)] overflow-y-auto no-scrollbar bg-[#0c0c0e]/98 backdrop-blur-2xl rounded-2xl p-2 select-none shadow-[0_0_0_1px_rgba(255,255,255,0.09),0_12px_32px_-4px_rgba(0,0,0,0.85)] outline-none animate-[contextMenuIn_120ms_cubic-bezier(0.16,1,0.3,1)] font-sans antialiased border border-white/[0.08]"
+        class="fixed z-[100] min-w-[250px] max-w-[310px] max-h-[calc(100vh-48px)] overflow-y-auto no-scrollbar bg-[#09090b]/98 backdrop-blur-2xl rounded-xl p-1.5 select-none shadow-[0_16px_36px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.08)] outline-none animate-[contextMenuIn_120ms_cubic-bezier(0.16,1,0.3,1)] font-sans antialiased border border-white/[0.08]"
         style={{
           left: `${coords().x}px`,
           top: `${coords().y}px`,
@@ -391,6 +392,9 @@ export const ContextMenu: Component = () => {
           when={isItem()}
           fallback={
             <div class="flex flex-col gap-0.5">
+              <div class="px-2.5 pt-1 pb-1 text-[10px] font-mono uppercase tracking-wider text-white/40 select-none">
+                Workspace Actions
+              </div>
               <button
                 type="button"
                 onClick={handleNewFile}
@@ -517,6 +521,9 @@ export const ContextMenu: Component = () => {
           }
         >
           <div class="flex flex-col gap-0.5">
+            <div class="px-2.5 pt-1 pb-1 text-[10px] font-mono uppercase tracking-wider text-white/40 select-none">
+              {isDirectory() ? 'Directory Actions' : 'File Operations'}
+            </div>
             {/* Folder-specific New File / Folder */}
             <Show when={isDirectory()}>
               <button
@@ -719,7 +726,7 @@ export const ContextMenu: Component = () => {
             </button>
           </div>
         </Show>
-      </DitherCard>
+      </div>
     </Show>
   )
 }

@@ -16,8 +16,8 @@
     --background: var(--bg-app);
     --foreground: var(--text-primary);
     --card: var(--bg-card);
-    --dither-ink: var(--primary, #a855f7);
-    --dither-paper: var(--background, #0c0a0d);
+    --dither-ink: var(--primary);
+    --dither-paper: var(--background);
     --dither-cell: 3px;
     --dither-color-blue: oklch(0.56 0.18 248);
     --dither-color-purple: oklch(0.53 0.22 302);

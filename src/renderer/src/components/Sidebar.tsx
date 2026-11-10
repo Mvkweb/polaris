@@ -10,6 +10,7 @@ import {
 } from 'solid-js'
 import { AnimatedGradient } from './dithercn/animated-gradient'
 import { DitherButton } from './dithercn/dither-button'
+import { ProgressBar } from './dithercn/progress-bar'
 import {
   setCurrentNote,
   currentView,
@@ -828,7 +829,7 @@ const Sidebar: Component = () => {
         onMouseLeave={() => setIsHovered(false)}
       >
         <aside
-          class="absolute left-0 top-0 bottom-0 w-[260px] bg-[#080808] border-r border-white/[0.06] flex flex-col overflow-hidden z-20 will-change-transform select-none"
+          class="absolute left-0 top-0 bottom-0 w-[260px] bg-[#050505] border-r border-white/[0.06] flex flex-col overflow-hidden z-20 will-change-transform select-none"
           style={{
             transform: isVisible() ? 'translate3d(0,0,0)' : 'translate3d(-100%,0,0)',
             transition: 'transform 350ms cubic-bezier(0.16, 1, 0.3, 1)'
@@ -836,15 +837,15 @@ const Sidebar: Component = () => {
         >
           <div class="w-[260px] h-full flex flex-col text-white relative">
             {/* Subtle Top Dithercn AnimatedGradient Banner */}
-            <div class="absolute top-0 left-0 right-0 h-[68px] pointer-events-none select-none overflow-hidden opacity-35 [mask-image:linear-gradient(to_bottom,black_15%,transparent_100%)]">
+            <div class="absolute top-0 left-0 right-0 h-[46px] pointer-events-none select-none overflow-hidden opacity-25 [mask-image:linear-gradient(to_bottom,black_10%,transparent_100%)]">
               <AnimatedGradient
                 shape="Checks"
                 color1="--dither-paper"
                 color2={activeAccentColor()}
                 color3="--dither-ink"
-                speed={6}
-                swirl={18}
-                distortion={5}
+                speed={1.5}
+                swirl={12}
+                distortion={3}
                 softness={85}
                 scale={28}
                 class="w-full h-full"
@@ -1219,15 +1220,18 @@ const Sidebar: Component = () => {
                                   </Show>
                                 </div>
 
-                                {/* Dithered Capacity Bar */}
-                                <div class="w-full h-[4px] bg-white/[0.06] rounded-full overflow-hidden mt-2">
-                                  <div
-                                    class={`h-full rounded-full transition-all duration-300 ease-out dither-capacity-bar ${
-                                      isExpanded() ? 'opacity-90' : 'opacity-50'
-                                    }`}
-                                    style={{
-                                      width: `${Math.min(100, Math.max(3, drive.usedPercent))}%`
-                                    }}
+                                {/* Authentic Dithercn ProgressBar */}
+                                <div class="w-full mt-2">
+                                  <ProgressBar
+                                    label={drive.name || drive.model || drive.mountPoint}
+                                    value={Math.min(100, Math.max(0, Math.round(drive.usedPercent || 0)))}
+                                    max={100}
+                                    size="sm"
+                                    fill="gradient"
+                                    bloom="low"
+                                    color="blue"
+                                    hideLabel
+                                    class="w-full"
                                   />
                                 </div>
 
@@ -1357,7 +1361,7 @@ const Sidebar: Component = () => {
                             setCurrentView('chat')
                           }}
                           class={`group relative w-full cursor-pointer overflow-hidden rounded-md transition-colors px-2.5 py-2 flex flex-col gap-1 ${
-                            isActive() ? 'bg-[#0c0c0c]' : 'bg-transparent hover:bg-[#080808]'
+                            isActive() ? 'bg-white/[0.08]' : 'bg-transparent hover:bg-white/[0.04]'
                           }`}
                         >
                           <SessionCardBody

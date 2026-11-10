@@ -155,7 +155,7 @@ const App: Component = () => {
         <BrowserTopBar />
 
         {/* Main Canvas: Monodrive-Style Folder Browser */}
-        <main class="relative z-10 flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden bg-[#0e0e0e] rounded-[20px]">
+        <main class="relative z-10 flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden bg-[#0a0a0a] rounded-[20px]">
           <FolderView />
         </main>
 

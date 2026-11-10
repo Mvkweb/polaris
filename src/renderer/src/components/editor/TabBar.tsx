@@ -41,7 +41,7 @@ const TAB_HEIGHT = BAR_HEIGHT - TOP_GAP // tabs sit flush on the editor edge
 const TAB_RADIUS = 9
 
 // ── Colors ───────────────────────────────────────────────────────────────────
-const EDITOR_BG = '#0e0e0e' // MUST match the editor canvas color
+const EDITOR_BG = '#0a0a0a' // MUST match the editor canvas color
 
 // ── Goo filter (same math as liquid-gooey's GooFilterPrimitives) ─────────────
 const BLUR = 6 // bigger = deeper fillets between tab and editor
