@@ -3,7 +3,6 @@ import type { Component } from 'solid-js'
 import Sidebar from './components/Sidebar'
 import BrowserTopBar from './components/browser/BrowserTopBar'
 import FolderView from './components/browser/FolderView'
-import CommitDiffView from './components/browser/CommitDiffView'
 import StatusBar from './components/StatusBar'
 import Terminal from './components/terminal/Terminal'
 import QuickOpenModal from './components/modals/QuickOpenModal'
@@ -22,16 +21,13 @@ import {
   terminalSessions,
   toggleTerminal,
   toggleQuickOpen,
-  currentView,
   setCurrentView,
   isSettingsModalOpen,
   closeSettingsModal,
   toggleSettingsModal,
   activeAccentColor,
   workspaceRoot,
-  navigateTo,
-  selectedCommitHash,
-  setSelectedCommitHash
+  navigateTo
 } from './store'
 import { isModKey } from './shortcuts'
 
@@ -158,17 +154,9 @@ const App: Component = () => {
         {/* Top Navigation Bar sitting directly on the window/workspace base above the canvas */}
         <BrowserTopBar />
 
-        {/* Main Canvas: Monodrive-Style Folder Browser or DitherDiff Viewer */}
+        {/* Main Canvas: Monodrive-Style Folder Browser */}
         <main class="relative z-10 flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden bg-[#0e0e0e] rounded-[20px]">
-          <Show
-            when={currentView() === 'tasks' && selectedCommitHash()}
-            fallback={<FolderView />}
-          >
-            <CommitDiffView
-              hash={selectedCommitHash()!}
-              onBack={() => setSelectedCommitHash(null)}
-            />
-          </Show>
+          <FolderView />
         </main>
 
         {/* Terminal Drawer in the dark below the canvas */}

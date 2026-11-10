@@ -168,7 +168,7 @@ export const BrowserTopBar: Component = () => {
                 </Show>
 
                 {/* Active Tab Pill */}
-                <div class="px-3.5 py-1 rounded-full bg-white/[0.12] text-white text-[13px] font-medium shadow-sm flex items-center gap-1.5">
+                <div class="px-3.5 py-1 rounded-full dither-selected text-white text-[13px] font-medium shadow-sm flex items-center gap-1.5">
                   <span>{browserTabs()[0]?.name || 'folder'}</span>
                 </div>
               </>
@@ -184,8 +184,8 @@ export const BrowserTopBar: Component = () => {
                     onClick={() => switchTab(tab.id)}
                     class={`group px-3 py-1 rounded-full text-[13px] font-medium transition-all cursor-pointer flex items-center gap-2 ${
                       isActive()
-                        ? 'bg-white/[0.12] text-white shadow-sm'
-                        : 'text-white/45 hover:text-white/80 hover:bg-white/[0.05]'
+                        ? 'dither-selected text-white shadow-sm'
+                        : 'text-white/45 dither-hover hover:text-white/80'
                     }`}
                   >
                     <span>{tab.name}</span>

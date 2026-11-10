@@ -88,3 +88,71 @@
   --color-dither-red: var(--dither-color-red);
   --color-dither-grey: var(--dither-color-grey);
 }
+
+/* ── dithercn Core Pattern Utilities ── */
+:root {
+  --dither-pat-25: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%204%204%22%20shape-rendering%3D%22crispEdges%22%3E%3Cpath%20d%3D%22M0%200h1v1h-1zM2%200h1v1h-1zM0%202h1v1h-1zM2%202h1v1h-1z%22%2F%3E%3C%2Fsvg%3E");
+  --dither-pat-50: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%204%204%22%20shape-rendering%3D%22crispEdges%22%3E%3Cpath%20d%3D%22M0%200h1v1h-1zM2%200h1v1h-1zM1%201h1v1h-1zM3%201h1v1h-1zM0%202h1v1h-1zM2%202h1v1h-1zM1%203h1v1h-1zM3%203h1v1h-1z%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.dither-selected {
+  position: relative;
+  isolation: isolate;
+}
+.dither-selected::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: var(--dither-ink);
+  -webkit-mask-image: var(--dither-pat-50);
+  mask-image: var(--dither-pat-50);
+  -webkit-mask-repeat: repeat;
+  mask-repeat: repeat;
+  -webkit-mask-size: 8px 8px;
+  mask-size: 8px 8px;
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: 0;
+}
+.dither-selected::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid var(--dither-ink);
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.dither-hover {
+  position: relative;
+  isolation: isolate;
+}
+.dither-hover:hover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: var(--dither-ink);
+  -webkit-mask-image: var(--dither-pat-25);
+  mask-image: var(--dither-pat-25);
+  -webkit-mask-repeat: repeat;
+  mask-repeat: repeat;
+  -webkit-mask-size: 8px 8px;
+  mask-size: 8px 8px;
+  opacity: 0.28;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dither-capacity-bar {
+  background-color: var(--dither-ink);
+  -webkit-mask-image: var(--dither-pat-50);
+  mask-image: var(--dither-pat-50);
+  -webkit-mask-repeat: repeat;
+  mask-repeat: repeat;
+  -webkit-mask-size: 6px 6px;
+  mask-size: 6px 6px;
+}

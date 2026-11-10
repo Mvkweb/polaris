@@ -273,8 +273,8 @@ export const FolderView: Component = () => {
                     }}
                     class={`group relative flex flex-col items-center pt-2 pb-2.5 px-1.5 rounded-xl transition-all duration-150 cursor-pointer select-none outline-none ${
                       isSelected()
-                        ? 'bg-white/[0.12] ring-1 ring-white/20 shadow-sm'
-                        : 'hover:bg-white/[0.04]'
+                        ? 'dither-selected shadow-sm'
+                        : 'dither-hover'
                     }`}
                   >
                     {/* Icon / Image Thumbnail Container */}

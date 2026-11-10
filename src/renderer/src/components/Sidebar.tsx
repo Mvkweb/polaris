@@ -1131,8 +1131,8 @@ const Sidebar: Component = () => {
                                 onClick={() => handleSelectPlace(place)}
                                 class={`group flex items-center gap-2.5 px-2.5 h-8 rounded-md text-[13px] font-medium transition-colors duration-150 cursor-pointer select-none ${
                                   isSelected()
-                                    ? 'bg-[#0e0e0e] text-white'
-                                    : 'text-white/60 hover:bg-white/[0.03] hover:text-white/90'
+                                    ? 'dither-selected text-white'
+                                    : 'text-white/60 dither-hover hover:text-white/90'
                                 }`}
                               >
                                 <place.icon
@@ -1188,8 +1188,8 @@ const Sidebar: Component = () => {
                                 }}
                                 class={`group rounded-md cursor-pointer outline-none transition-colors duration-150 select-none px-2.5 py-2 ${
                                   isExpanded()
-                                    ? 'bg-[#0e0e0e] text-white/95'
-                                    : 'bg-transparent hover:bg-white/[0.03] text-white/60'
+                                    ? 'dither-selected text-white/95'
+                                    : 'bg-transparent dither-hover text-white/60'
                                 }`}
                               >
                                 {/* Top Row: Hard Drive Icon + Drive Name + Free Space */}
@@ -1219,11 +1219,11 @@ const Sidebar: Component = () => {
                                   </Show>
                                 </div>
 
-                                {/* Sleek Understated Capacity Bar (No Glow, No Outlines) */}
-                                <div class="w-full h-[3px] bg-white/[0.06] rounded-full overflow-hidden mt-2">
+                                {/* Dithered Capacity Bar */}
+                                <div class="w-full h-[4px] bg-white/[0.06] rounded-full overflow-hidden mt-2">
                                   <div
-                                    class={`h-full rounded-full transition-all duration-300 ease-out ${
-                                      isExpanded() ? 'bg-white/65' : 'bg-white/30'
+                                    class={`h-full rounded-full transition-all duration-300 ease-out dither-capacity-bar ${
+                                      isExpanded() ? 'opacity-90' : 'opacity-50'
                                     }`}
                                     style={{
                                       width: `${Math.min(100, Math.max(3, drive.usedPercent))}%`
