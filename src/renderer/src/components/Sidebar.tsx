@@ -836,18 +836,18 @@ const Sidebar: Component = () => {
           }}
         >
           <div class="w-[260px] h-full flex flex-col text-white relative">
-            {/* Subtle Top Dithercn AnimatedGradient Banner */}
-            <div class="absolute top-0 left-0 right-0 h-[46px] pointer-events-none select-none overflow-hidden opacity-25 [mask-image:linear-gradient(to_bottom,black_10%,transparent_100%)]">
+            {/* Dithercn AnimatedGradient Banner — Mist-style accent glow */}
+            <div class="absolute top-0 left-0 right-0 h-[120px] pointer-events-none select-none overflow-hidden opacity-50 [mask-image:linear-gradient(to_bottom,black_30%,transparent_100%)]">
               <AnimatedGradient
-                shape="Checks"
-                color1="--dither-paper"
+                preset="Mist"
+                color1="#050505"
                 color2={activeAccentColor()}
-                color3="--dither-ink"
-                speed={1.5}
-                swirl={12}
-                distortion={3}
-                softness={85}
-                scale={28}
+                color3="#050505"
+                speed={8}
+                softness={100}
+                distortion={4}
+                swirl={55}
+                scale={0.5}
                 class="w-full h-full"
               />
             </div>
