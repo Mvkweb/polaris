@@ -351,12 +351,14 @@ export const ContextMenu: Component = () => {
         .context-menu-item {
           position: relative;
           isolation: isolate;
-          transition: background-color 100ms ease, color 100ms ease;
+          border: none !important;
+          outline: none !important;
+          transition: background-color 140ms ease, color 140ms ease;
         }
         .context-menu-item:hover {
-          background-color: rgba(255, 255, 255, 0.08);
+          background-color: rgba(255, 255, 255, 0.055);
         }
-        .context-menu-item:hover::before {
+        .context-menu-item::before {
           content: '';
           position: absolute;
           inset: 0;
@@ -366,10 +368,15 @@ export const ContextMenu: Component = () => {
           mask-image: var(--dither-pat-25);
           -webkit-mask-repeat: repeat;
           mask-repeat: repeat;
-          -webkit-mask-size: 8px 8px;
-          mask-size: 8px 8px;
+          -webkit-mask-size: 4px 4px;
+          mask-size: 4px 4px;
+          opacity: 0;
+          transition: opacity 140ms ease;
           pointer-events: none;
           z-index: 0;
+        }
+        .context-menu-item:hover::before {
+          opacity: 1;
         }
         .context-menu-item > * {
           position: relative;
