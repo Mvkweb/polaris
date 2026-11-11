@@ -743,6 +743,14 @@ export const DitherTabsTrigger = (props: DitherTabsTriggerProps) => {
   const hoverStyle = createMemo<JSX.CSSProperties>(() => ({
     ...fillStyle("dotted", { cell: look.cell(), color: look.color() }),
     "--dcn-tabs-bar": `${look.cell() * BAR_CELLS}px`,
+    ...(look.variant() === "pill"
+      ? {
+          "mask-image":
+            "linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.35) 30%, black 70%, black 100%)",
+          "-webkit-mask-image":
+            "linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.35) 30%, black 70%, black 100%)",
+        }
+      : {}),
   }));
 
   return (
@@ -767,7 +775,7 @@ export const DitherTabsTrigger = (props: DitherTabsTriggerProps) => {
         aria-hidden="true"
         class={cn(
           "pointer-events-none absolute -z-10 opacity-0 transition-opacity duration-200 ease-(--ease-out) motion-reduce:transition-none",
-          "group-hover/tab:opacity-40 group-data-[selected]/tab:opacity-0 group-data-[selected]/tab:duration-0",
+          "group-hover/tab:opacity-60 group-data-[selected]/tab:opacity-0 group-data-[selected]/tab:duration-0",
           HOVER[look.variant()]
         )}
         style={hoverStyle()}
