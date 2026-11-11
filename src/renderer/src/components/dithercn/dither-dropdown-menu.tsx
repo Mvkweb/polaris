@@ -723,9 +723,10 @@ export const DitherDropdownMenuSeparator = (
 
   return (
     <DropdownMenuPrimitive.Separator
+      as="div"
       data-slot="dither-dropdown-menu-separator"
       class={cn(
-        "my-1 -mx-1 h-px bg-white/[0.04]",
+        "my-1 -mx-1 h-px border-0 border-none bg-white/[0.04]",
         local.class
       )}
       {...others}
