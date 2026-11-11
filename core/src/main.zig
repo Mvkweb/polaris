@@ -3,6 +3,7 @@ pub const protocol = @import("protocol.zig");
 pub const indexer = @import("indexer.zig");
 pub const matcher = @import("matcher.zig");
 pub const text_search = @import("text_search.zig");
+pub const storage = @import("storage.zig");
 
 fn compareSearchResults(_: void, a: protocol.SearchResult, b: protocol.SearchResult) bool {
     return a.score > b.score;
@@ -206,6 +207,26 @@ pub fn main(init: std.process.Init) !void {
                 .elapsed_ms = elapsed_ms,
             });
             try stdout.flush();
+        } else if (std.mem.eql(u8, req.method, "storage_breakdown")) {
+            var target_path: []const u8 = "/";
+            if (req.params) |p| {
+                if (p == .object) {
+                    if (p.object.get("path")) |pt| {
+                        if (pt == .string and pt.string.len > 0) {
+                            target_path = pt.string;
+                        }
+                    }
+                }
+            }
+
+            const breakdown = storage.calculateStorageBreakdown(scratch, io, target_path) catch |err| {
+                try protocol.writeError(stdout, req.id, @errorName(err));
+                try stdout.flush();
+                continue;
+            };
+
+            try protocol.writeResponse(stdout, req.id, breakdown);
+            try stdout.flush();
         } else if (std.mem.eql(u8, req.method, "exit") or std.mem.eql(u8, req.method, "shutdown")) {
             try protocol.writeResponse(stdout, req.id, protocol.PongResult{ .status = "exiting" });
             try stdout.flush();
@@ -222,4 +243,5 @@ test "main module builds and imports correctly" {
     _ = indexer;
     _ = matcher;
     _ = text_search;
+    _ = storage;
 }

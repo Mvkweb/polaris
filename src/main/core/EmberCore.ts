@@ -31,6 +31,24 @@ export interface TextSearchOptions {
   maxResults?: number
 }
 
+export interface StorageItem {
+  id: string
+  label: string
+  value: number
+  color: string
+  fill?: string
+  detail: string
+  isFree?: boolean
+}
+
+export interface StorageBreakdownResult {
+  target: string
+  capacity_gb: number
+  used_gb: number
+  free_gb: number
+  items: StorageItem[]
+}
+
 interface PendingRequest {
   resolve: (value: any) => void
   reject: (reason: any) => void
@@ -234,6 +252,10 @@ export class EmberCoreClient {
       },
       15000
     )
+  }
+
+  public getStorageBreakdown(path: string): Promise<StorageBreakdownResult> {
+    return this.request('storage_breakdown', { path }, 30000)
   }
 
   public stop(): void {

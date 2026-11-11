@@ -90,6 +90,7 @@ export interface CustomAPI {
   getAppVersion: () => Promise<string>
   getPlatform: () => Promise<string>
   getSystemDrives: () => Promise<SystemDrive[]>
+  getStorageBreakdown: (targetPath?: string) => Promise<any>
   getWorkspaceRoot: () => Promise<string>
   getCoreStatus: () => Promise<{ available: boolean; running: boolean }>
   readDirectory: (dirPath?: string) => Promise<FsEntry[]>

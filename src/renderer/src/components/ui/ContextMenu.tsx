@@ -19,7 +19,10 @@ import {
   collapseAllFolders,
   addTerminal,
   setCurrentView,
-  openPropertiesModal
+  openPropertiesModal,
+  openStorageMapModal,
+  openNewTab,
+  navigateTo
 } from '../../store'
 import { isMac } from '../../shortcuts'
 import { TerminalTileIcon, VsCodeTileIcon } from './Icons'
@@ -70,10 +73,40 @@ export const ContextMenu: Component = () => {
   })
 
   const target = createMemo(() => contextMenuState().target)
+  const isDrive = createMemo(() => Boolean(target()?.isDrive))
+  const drive = createMemo(() => target()?.drive)
   const isItem = createMemo(() => Boolean(target()?.path && target()?.name))
   const isDirectory = createMemo(() => Boolean(target()?.isDirectory))
   const targetPath = createMemo(() => target()?.path || workspaceRoot())
   const targetDir = createMemo(() => (isDirectory() ? targetPath() : getParentDir(targetPath())))
+
+  // ── Drive Actions ──
+  const handleOpenDrive = (): void => {
+    const p = targetPath()
+    closeContextMenu()
+    navigateTo(p)
+  }
+
+  const handleOpenDriveNewTab = (): void => {
+    const p = targetPath()
+    closeContextMenu()
+    openNewTab(p)
+  }
+
+  const handleOpenDriveTerminal = (): void => {
+    const p = targetPath()
+    closeContextMenu()
+    addTerminal(p)
+  }
+
+  const handleOpenStorageMap = (): void => {
+    const p = targetPath()
+    const name = drive()?.name || target()?.name || 'Drive'
+    const x = contextMenuState().x
+    const y = contextMenuState().y
+    closeContextMenu()
+    openStorageMapModal(p, name, x, y)
+  }
 
   // ── Actions ──
   const handleNewFile = (): void => {
@@ -252,8 +285,11 @@ export const ContextMenu: Component = () => {
       />
       <DitherDropdownMenuContent class="min-w-[250px] max-w-[310px] max-h-[calc(100vh-48px)] overflow-y-auto no-scrollbar border-0 shadow-[0_4px_16px_rgba(0,0,0,0.45)] bg-[#050506]">
         <Show
-          when={isItem()}
+          when={isDrive()}
           fallback={
+            <Show
+              when={isItem()}
+              fallback={
             <DitherDropdownMenuGroup>
               <DitherDropdownMenuLabel>Workspace Actions</DitherDropdownMenuLabel>
               <DitherDropdownMenuItem variant="dither" onSelect={handleNewFile}>
@@ -433,6 +469,94 @@ export const ContextMenu: Component = () => {
             <DitherDropdownMenuItem variant="dither" onSelect={handleProperties}>
               <span>Properties</span>
               <DitherDropdownMenuShortcut>{altKey}+Enter</DitherDropdownMenuShortcut>
+            </DitherDropdownMenuItem>
+          </DitherDropdownMenuGroup>
+        </Show>
+          }
+        >
+          <DitherDropdownMenuGroup>
+            <DitherDropdownMenuLabel>{drive()?.name || 'Device Operations'}</DitherDropdownMenuLabel>
+
+            <DitherDropdownMenuItem variant="dither" onSelect={handleOpenDrive}>
+              <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-white/80 shrink-0" stroke="currentColor" stroke-width="1.8">
+                <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <span>Open</span>
+            </DitherDropdownMenuItem>
+
+            <DitherDropdownMenuItem variant="dither" onSelect={handleOpenDriveNewTab}>
+              <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-white/80 shrink-0" stroke="currentColor" stroke-width="1.8">
+                <path d="M19 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6M12 3h9v9M21 3l-10 10" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <span>Open in New Tab</span>
+              <DitherDropdownMenuShortcut>{modKey}+T</DitherDropdownMenuShortcut>
+            </DitherDropdownMenuItem>
+
+            <DitherDropdownMenuItem variant="dither" onSelect={handleOpenDriveNewTab}>
+              <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-white/80 shrink-0" stroke="currentColor" stroke-width="1.8">
+                <rect x="3" y="3" width="18" height="18" rx="2" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M3 9h18M9 21V9" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <span>Open in New Window</span>
+            </DitherDropdownMenuItem>
+
+            <DitherDropdownMenuItem variant="dither" onSelect={handleOpenDriveNewTab}>
+              <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-white/80 shrink-0" stroke="currentColor" stroke-width="1.8">
+                <rect x="3" y="3" width="18" height="18" rx="2" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M12 3v18" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <span>Open in Split View</span>
+            </DitherDropdownMenuItem>
+
+            <DitherDropdownMenuItem variant="dither" onSelect={handleOpenDriveTerminal}>
+              <TerminalTileIcon class="w-4 h-4 shrink-0 text-white/90" />
+              <span>Open in Terminal</span>
+              <DitherDropdownMenuShortcut>{altKey}+Shift+F4</DitherDropdownMenuShortcut>
+            </DitherDropdownMenuItem>
+
+            <DitherDropdownMenuSeparator />
+
+            <DitherDropdownMenuItem variant="dither" onSelect={handleOpenStorageMap} class="text-sky-300 group-hover:text-sky-200">
+              <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-sky-400 shrink-0" stroke="currentColor" stroke-width="1.8">
+                <rect x="3" y="3" width="7" height="9" rx="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <rect x="14" y="3" width="7" height="5" rx="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <rect x="14" y="12" width="7" height="9" rx="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <rect x="3" y="16" width="7" height="5" rx="1.5" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <span class="font-medium">Inspect Storage Map</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 ml-auto">Zig</span>
+            </DitherDropdownMenuItem>
+
+            <DitherDropdownMenuSeparator />
+
+            <DitherDropdownMenuItem variant="dither" onSelect={() => closeContextMenu()} class="text-rose-400/90 group-hover:text-rose-300">
+              <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-rose-400 shrink-0" stroke="currentColor" stroke-width="1.8">
+                <path d="M12 3l8 12H4l8-12zM4 19h16" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <span>Unmount</span>
+            </DitherDropdownMenuItem>
+
+            <DitherDropdownMenuItem variant="dither" onSelect={() => closeContextMenu()}>
+              <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-white/60 shrink-0" stroke="currentColor" stroke-width="1.8">
+                <path d="M18.36 6.64a9 9 0 11-12.73 0M12 2v10" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <span>Eject & Power Off</span>
+            </DitherDropdownMenuItem>
+
+            <DitherDropdownMenuSeparator />
+
+            <DitherDropdownMenuItem variant="dither" onSelect={() => closeContextMenu()}>
+              <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-white/60 shrink-0" stroke="currentColor" stroke-width="1.8">
+                <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24M1 1l22 22" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <span>Hide from Sidebar</span>
+            </DitherDropdownMenuItem>
+
+            <DitherDropdownMenuItem variant="dither" onSelect={() => closeContextMenu()}>
+              <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-white/60 shrink-0" stroke="currentColor" stroke-width="1.8">
+                <path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <span>Manage Places & Devices...</span>
             </DitherDropdownMenuItem>
           </DitherDropdownMenuGroup>
         </Show>

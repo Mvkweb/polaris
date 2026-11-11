@@ -1,5 +1,5 @@
 import { createMemo, createSignal } from 'solid-js'
-import type { ChatSessionSummary, FileNode, EditorTab, GitCommit, GitStatus } from './types'
+import type { ChatSessionSummary, FileNode, EditorTab, GitCommit, GitStatus, SystemDrive } from './types'
 
 export const [currentNote, setCurrentNote] = createSignal('Welcome')
 export const [currentFolder, setCurrentFolder] = createSignal('')
@@ -671,6 +671,8 @@ export interface ContextMenuTarget {
   path?: string
   isDirectory?: boolean
   name?: string
+  isDrive?: boolean
+  drive?: SystemDrive
 }
 
 export interface ContextMenuState {
@@ -754,6 +756,38 @@ export const openPropertiesModal = (targetPath: string): void => {
 
 export const closePropertiesModal = (): void => {
   setPropertiesModalState((prev) => (prev.isOpen ? { ...prev, isOpen: false } : prev))
+}
+
+export interface StorageMapModalState {
+  isOpen: boolean
+  targetPath: string
+  driveName?: string
+  x?: number
+  y?: number
+}
+
+export const [storageMapModalState, setStorageMapModalState] = createSignal<StorageMapModalState>({
+  isOpen: false,
+  targetPath: '/'
+})
+
+export const openStorageMapModal = (
+  targetPath: string,
+  driveName?: string,
+  x?: number,
+  y?: number
+): void => {
+  setStorageMapModalState({
+    isOpen: true,
+    targetPath,
+    driveName,
+    x,
+    y
+  })
+}
+
+export const closeStorageMapModal = (): void => {
+  setStorageMapModalState((prev) => (prev.isOpen ? { ...prev, isOpen: false } : prev))
 }
 
 export const [explorerRefreshTrigger, setExplorerRefreshTrigger] = createSignal(0)

@@ -672,6 +672,18 @@ app.whenReady().then(() => {
     }
   })
 
+  ipcMain.handle('system:getStorageBreakdown', async (_, targetPath: string) => {
+    const p = targetPath || '/'
+    if (emberCore.isAvailable()) {
+      try {
+        return await emberCore.getStorageBreakdown(p)
+      } catch (err) {
+        console.warn('[EmberCore] getStorageBreakdown error:', err)
+      }
+    }
+    return null
+  })
+
   createWindow()
 
   app.on('activate', function () {

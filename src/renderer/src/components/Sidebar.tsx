@@ -1175,6 +1175,16 @@ const Sidebar: Component = () => {
                                 role="button"
                                 tabIndex={0}
                                 onClick={() => handleSelectDrive(drive.mountPoint)}
+                                onContextMenu={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  openContextMenu(e.clientX, e.clientY, {
+                                    path: drive.mountPoint,
+                                    name: drive.name,
+                                    isDrive: true,
+                                    drive
+                                  })
+                                }}
                                 onMouseEnter={() => setHoveredDriveMount(drive.mountPoint)}
                                 onMouseLeave={() =>
                                   setHoveredDriveMount((curr) =>

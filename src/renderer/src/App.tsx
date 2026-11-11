@@ -10,6 +10,7 @@ import SettingsModal from './components/settings/SettingsModal'
 import ContextMenu from './components/ui/ContextMenu'
 import FileActionModal from './components/file-tree/FileActionModal'
 import PropertiesModal from './components/modals/PropertiesModal'
+import { StorageMapModal } from './components/modals/StorageMapModal'
 import {
   activeTerminalId,
   addTerminal,
@@ -145,6 +146,7 @@ const App: Component = () => {
       <ContextMenu />
       <FileActionModal />
       <PropertiesModal />
+      <StorageMapModal />
 
       {/* Ember-style Sidebar */}
       <Sidebar />
