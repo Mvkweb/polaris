@@ -1132,8 +1132,8 @@ const Sidebar: Component = () => {
                                 onClick={() => handleSelectPlace(place)}
                                 class={`group flex items-center gap-2.5 px-2.5 h-8 rounded-md text-[13px] font-medium transition-colors duration-150 cursor-pointer select-none ${
                                   isSelected()
-                                    ? 'dither-selected text-white'
-                                    : 'text-white/60 dither-hover hover:text-white/90'
+                                    ? 'bg-white/[0.08] text-white'
+                                    : 'text-white/60 hover:bg-white/[0.04] hover:text-white/90'
                                 }`}
                               >
                                 <place.icon
@@ -1189,8 +1189,8 @@ const Sidebar: Component = () => {
                                 }}
                                 class={`group rounded-md cursor-pointer outline-none transition-colors duration-150 select-none px-2.5 py-2 ${
                                   isExpanded()
-                                    ? 'dither-selected text-white/95'
-                                    : 'bg-transparent dither-hover text-white/60'
+                                    ? 'bg-white/[0.08] text-white/95'
+                                    : 'bg-transparent hover:bg-white/[0.04] text-white/60'
                                 }`}
                               >
                                 {/* Top Row: Hard Drive Icon + Drive Name + Free Space */}
