@@ -317,10 +317,10 @@ const MENU_STYLES = [
 ].join("");
 
 const CONTAINER_CLASSES: Record<DitherMenuContainerVariant, string> = {
-  card: "rounded-2xl bg-background text-foreground shadow-2xl",
-  glow: "rounded-2xl bg-background text-foreground shadow-2xl overflow-hidden",
-  pixel: "rounded-[4px] bg-background text-foreground shadow-2xl",
-  solid: "rounded-2xl bg-[#09090b] text-foreground shadow-2xl",
+  card: "rounded-2xl bg-background text-foreground shadow-md",
+  glow: "rounded-2xl bg-background text-foreground shadow-md overflow-hidden",
+  pixel: "rounded-[4px] bg-background text-foreground shadow-md",
+  solid: "rounded-2xl bg-[#09090b] text-foreground shadow-md",
 };
 
 export const DitherDropdownMenuContent = (

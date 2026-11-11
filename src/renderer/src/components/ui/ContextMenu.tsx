@@ -250,7 +250,7 @@ export const ContextMenu: Component = () => {
           top: `${contextMenuState().y}px`
         }}
       />
-      <DitherDropdownMenuContent class="min-w-[250px] max-w-[310px] max-h-[calc(100vh-48px)] overflow-y-auto no-scrollbar border-0 shadow-[0_16px_40px_rgba(0,0,0,0.95)] bg-[#050506]">
+      <DitherDropdownMenuContent class="min-w-[250px] max-w-[310px] max-h-[calc(100vh-48px)] overflow-y-auto no-scrollbar border-0 shadow-[0_4px_16px_rgba(0,0,0,0.45)] bg-[#050506]">
         <Show
           when={isItem()}
           fallback={
