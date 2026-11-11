@@ -135,7 +135,7 @@ const App: Component = () => {
   onCleanup(() => window.removeEventListener('keydown', handleGlobalKeyDown))
 
   return (
-    <div class="flex h-screen w-screen overflow-hidden bg-[#050505] text-[#ececec] font-['Inter',sans-serif] selection:bg-[var(--accent)]/15 selection:text-white">
+    <div class="flex h-screen w-screen overflow-hidden bg-[#050505] text-[#ececec] font-sans selection:bg-[var(--accent)]/15 selection:text-white">
       {/* Quick Open Modal (Ctrl+P / Cmd+P) */}
       <QuickOpenModal />
 

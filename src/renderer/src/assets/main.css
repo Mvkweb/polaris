@@ -1,7 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import '@fontsource/space-grotesk/index.css';
 @import 'tailwindcss';
 
 @theme {
+  --font-sans: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --color-background: #000000;
   --color-foreground: #ececec;
 
@@ -35,12 +36,15 @@
     padding: 0;
     overflow: hidden;
     font-family:
-      'Inter',
+      'Space Grotesk',
       -apple-system,
       BlinkMacSystemFont,
       'Segoe UI',
       Roboto,
       sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
   /* Globally suppress default Chromium orange/gold focus rings */
