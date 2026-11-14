@@ -257,7 +257,7 @@ export class EmberCoreClient {
   }
 
   public getStorageBreakdown(path: string): Promise<StorageBreakdownResult> {
-    return this.request('storage_breakdown', { path }, 30000)
+    return this.request('storage_breakdown', { path }, 60000)
   }
 
   public stop(): void {
