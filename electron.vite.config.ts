@@ -13,6 +13,9 @@ export default defineConfig({
         '@': resolve('src/renderer/src')
       }
     },
-    plugins: [tailwindcss(), solid()]
+    plugins: [tailwindcss(), solid()],
+    server: {
+      host: '127.0.0.1'
+    }
   }
 })
