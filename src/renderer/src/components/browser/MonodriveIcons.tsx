@@ -1,4 +1,44 @@
-import { Component, Show, createSignal } from 'solid-js'
+import { Component, Show, createSignal, createEffect } from 'solid-js'
+
+/* ── Global Monodrive SVG Gradient Definitions (rendered once to avoid DOM duplicate defs) ── */
+export const MonodriveIconDefs: Component = () => (
+  <svg class="sr-only" aria-hidden="true" width="0" height="0">
+    <defs>
+      {/* Back Tab & Body Gradient */}
+      <linearGradient id="monoBack" x1="38" y1="4" x2="38" y2="52" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stop-color="#4AB3F8" />
+        <stop offset="100%" stop-color="#1976D2" />
+      </linearGradient>
+
+      {/* Front Flap Main Gradient (Apple Sky-Blue) */}
+      <linearGradient id="monoFront" x1="38" y1="18" x2="38" y2="60" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stop-color="#64CEFF" />
+        <stop offset="25%" stop-color="#45AFF8" />
+        <stop offset="85%" stop-color="#1C7EE0" />
+        <stop offset="100%" stop-color="#1466BE" />
+      </linearGradient>
+
+      {/* Top Rim Highlight */}
+      <linearGradient id="monoRim" x1="4" y1="18" x2="72" y2="18" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.6" />
+        <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.3" />
+        <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.1" />
+      </linearGradient>
+
+      {/* Paper sheet subtle gradient */}
+      <linearGradient id="docPaper" x1="32" y1="2" x2="32" y2="74" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stop-color="#FFFFFF" />
+        <stop offset="100%" stop-color="#EDF1F5" />
+      </linearGradient>
+
+      {/* Dog-ear fold gradient */}
+      <linearGradient id="docFold" x1="44" y1="2" x2="60" y2="18" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stop-color="#D5DBE1" />
+        <stop offset="100%" stop-color="#A8B4C0" />
+      </linearGradient>
+    </defs>
+  </svg>
+)
 
 /* ── Authentic Monodrive macOS 3D Sky-Blue Folder Icon ── */
 export const MonodriveFolderIcon: Component<{ class?: string }> = (props) => {
@@ -7,31 +47,8 @@ export const MonodriveFolderIcon: Component<{ class?: string }> = (props) => {
       viewBox="0 0 76 64"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      class={props.class ?? 'w-16 h-14 drop-shadow-[0_5px_8px_rgba(0,0,0,0.4)]'}
+      class={props.class ?? 'w-16 h-14'}
     >
-      <defs>
-        {/* Back Tab & Body Gradient */}
-        <linearGradient id="monoBack" x1="38" y1="4" x2="38" y2="52" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stop-color="#4AB3F8" />
-          <stop offset="100%" stop-color="#1976D2" />
-        </linearGradient>
-
-        {/* Front Flap Main Gradient (Apple Sky-Blue) */}
-        <linearGradient id="monoFront" x1="38" y1="18" x2="38" y2="60" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stop-color="#64CEFF" />
-          <stop offset="25%" stop-color="#45AFF8" />
-          <stop offset="85%" stop-color="#1C7EE0" />
-          <stop offset="100%" stop-color="#1466BE" />
-        </linearGradient>
-
-        {/* Top Rim Highlight */}
-        <linearGradient id="monoRim" x1="4" y1="18" x2="72" y2="18" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.6" />
-          <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.3" />
-          <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.1" />
-        </linearGradient>
-      </defs>
-
       {/* Back tab and body */}
       <path
         d="M6 11C6 8.23858 8.23858 6 11 6H28.5C31 6 33.2 7.3 34.3 9.4L36.6 13.5H65C67.7614 13.5 70 15.7386 70 18.5V48C70 50.7614 67.7614 53 65 53H11C8.23858 53 6 50.7614 6 48V11Z"
@@ -104,22 +121,8 @@ export const MonodriveFileIcon: Component<{
       viewBox="0 0 64 78"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      class={props.class ?? 'w-14 h-16 drop-shadow-[0_4px_6px_rgba(0,0,0,0.35)]'}
+      class={props.class ?? 'w-14 h-16'}
     >
-      <defs>
-        {/* Paper sheet subtle gradient */}
-        <linearGradient id="docPaper" x1="32" y1="2" x2="32" y2="74" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stop-color="#FFFFFF" />
-          <stop offset="100%" stop-color="#EDF1F5" />
-        </linearGradient>
-
-        {/* Dog-ear fold gradient */}
-        <linearGradient id="docFold" x1="44" y1="2" x2="60" y2="18" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stop-color="#D5DBE1" />
-          <stop offset="100%" stop-color="#A8B4C0" />
-        </linearGradient>
-      </defs>
-
       {/* Main Document Body */}
       <path
         d="M8 8C8 5.23858 10.2386 3 13 3H43L60 20V69C60 71.7614 57.7614 74 55 74H13C10.2386 74 8 71.7614 8 69V8Z"
@@ -181,14 +184,23 @@ export const MonodriveFileIcon: Component<{
   )
 }
 
-/* ── Image Thumbnail with Native URL and Fallback ── */
+/* ── Image Thumbnail with Native Protocol and Fallback ── */
 export const ImageThumbnail: Component<{
   path: string
   name: string
   class?: string
 }> = (props) => {
   const [loadError, setLoadError] = createSignal(false)
-  const imgSrc = () => `file://${encodeURI(props.path)}`
+
+  // Reset error state whenever path changes
+  createEffect((prevPath) => {
+    if (prevPath !== props.path) {
+      setLoadError(false)
+    }
+    return props.path
+  })
+
+  const imgSrc = () => `polaris-media://${encodeURI(props.path)}`
 
   return (
     <Show
@@ -202,7 +214,7 @@ export const ImageThumbnail: Component<{
           loading="lazy"
           decoding="async"
           onError={() => setLoadError(true)}
-          class="w-14 h-14 object-cover rounded-xl shadow-md border border-white/10"
+          class="w-14 h-14 object-cover rounded-xl border border-white/10"
         />
       </div>
     </Show>

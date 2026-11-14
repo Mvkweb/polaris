@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, nativeTheme, nativeImage, Menu } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, nativeTheme, nativeImage, Menu, protocol } from 'electron'
 
 // Bypass native menu construction before app is ready
 Menu.setApplicationMenu(null)
@@ -7,6 +7,21 @@ import { readdir, readFile, writeFile, stat, statfs, mkdir, rename, rm, cp } fro
 import { execFile, spawn } from 'child_process'
 import { promisify } from 'util'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+
+// Register privileged custom schemes before app is ready
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'polaris-media',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      stream: true,
+      bypassCSP: true
+    }
+  }
+])
 
 const execFileAsync = promisify(execFile)
 
@@ -29,9 +44,11 @@ import { emberCore } from './core/EmberCore'
 
 // Force Chromium and GTK into dark mode globally to prevent light native widget/scrollbar flashes on Linux
 app.commandLine.appendSwitch('force-dark-mode')
-// Disable Vulkan to prevent Wayland Ozone/Vulkan GPU initialization warnings
-app.commandLine.appendSwitch('disable-vulkan')
-app.commandLine.appendSwitch('disable-features', 'Vulkan')
+
+// Linux: leave ozone/GL selection to Electron. Since Electron 38, --ozone-platform defaults to "auto"
+// (native Wayland when available, X11 fallback otherwise). Hardcoding "wayland" breaks X11 sessions,
+// and an unknown --use-gl value makes Chromium exit its GPU process ("gl=none,angle=none") before
+// the first frame, leaving the window invisible.
 nativeTheme.themeSource = 'dark'
 
 function createWindow(): void {
@@ -47,7 +64,8 @@ function createWindow(): void {
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      webSecurity: !is.dev
     }
   })
 
@@ -70,6 +88,41 @@ function createWindow(): void {
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('dev.ember.ide')
   nativeTheme.themeSource = 'dark'
+
+  // Serve local media files securely in both development and production via Node fs
+  protocol.handle('polaris-media', async (request) => {
+    try {
+      const url = new URL(request.url)
+      // Custom standard schemes parse the first path component as host (e.g. polaris-media:///mnt/data -> host="mnt", path="/data")
+      const raw = url.host ? `/${url.host}${url.pathname}` : url.pathname
+      let decodedPath = decodeURIComponent(raw)
+      if (process.platform === 'win32') {
+        decodedPath = decodedPath.replace(/^\/+/, '')
+      }
+      const data = await readFile(decodedPath)
+      const ext = extname(decodedPath).toLowerCase().replace(/^\./, '')
+      const mimeTypes: Record<string, string> = {
+        png: 'image/png',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        gif: 'image/gif',
+        webp: 'image/webp',
+        svg: 'image/svg+xml',
+        bmp: 'image/bmp',
+        ico: 'image/x-icon'
+      }
+      const contentType = mimeTypes[ext] || 'application/octet-stream'
+      return new Response(data, {
+        status: 200,
+        headers: {
+          'Content-Type': contentType,
+          'Cache-Control': 'public, max-age=86400'
+        }
+      })
+    } catch {
+      return new Response(null, { status: 404 })
+    }
+  })
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
@@ -114,11 +167,12 @@ app.whenReady().then(() => {
             : extname(entry.name).toLowerCase().replace(/^\./, '')
         }))
 
-      // Folders on top, both sorted alphabetically (case-insensitive)
+      // Folders on top, both sorted alphabetically (case-insensitive) using fast cached collator
+      const dirCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
       mapped.sort((a, b) => {
         if (a.isDirectory && !b.isDirectory) return -1
         if (!a.isDirectory && b.isDirectory) return 1
-        return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+        return dirCollator.compare(a.name, b.name)
       })
 
       return mapped
@@ -645,30 +699,8 @@ app.whenReady().then(() => {
       return drives
     } catch (err) {
       console.warn('system:getDrives error:', err)
-      return [
-        {
-          id: 'root',
-          name: 'SSDPR-CL100-240GB',
-          model: 'SSDPR-CL100-240-',
-          mountPoint: '/',
-          size: '223.1G',
-          usedPercent: 88,
-          bytesFree: 28878520320,
-          bytesTotal: 239518404608,
-          freeSpace: '26.9 GB free'
-        },
-        {
-          id: 'storage',
-          name: 'Storage',
-          model: 'ADATA SU650',
-          mountPoint: '/mnt/storage',
-          size: '375G',
-          usedPercent: 43,
-          bytesFree: 227954262016,
-          bytesTotal: 397284474880,
-          freeSpace: '212.3 GB free'
-        }
-      ]
+      // Never invent drives: the sidebar can show an empty state instead.
+      return []
     }
   })
 

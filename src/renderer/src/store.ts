@@ -1,4 +1,4 @@
-import { createMemo, createSignal } from 'solid-js'
+import { batch, createMemo, createSignal } from 'solid-js'
 import type { ChatSessionSummary, FileNode, EditorTab, GitCommit, GitStatus, SystemDrive } from './types'
 
 export const [currentNote, setCurrentNote] = createSignal('Welcome')
@@ -469,34 +469,36 @@ export const navigateTo = (newPath: string): void => {
   if (!newPath) return
   const current = workspaceRoot()
 
-  // Always update active tab name & path
-  const activeId = activeTabId()
-  const name = newPath.split(/[/\\]/).filter(Boolean).pop() || '/'
-  setBrowserTabs((prev) =>
-    prev.map((tab) => (tab.id === activeId ? { ...tab, path: newPath, name } : tab))
-  )
+  batch(() => {
+    // Always update active tab name & path
+    const activeId = activeTabId()
+    const name = newPath.split(/[/\\]/).filter(Boolean).pop() || '/'
+    setBrowserTabs((prev) =>
+      prev.map((tab) => (tab.id === activeId ? { ...tab, path: newPath, name } : tab))
+    )
 
-  if (current === newPath) return
+    if (current === newPath) return
 
-  const history = navHistory()
-  const idx = historyIndex()
+    const history = navHistory()
+    const idx = historyIndex()
 
-  const updatedHistory = [...history.slice(0, idx + 1), newPath]
-  setNavHistory(updatedHistory)
-  setHistoryIndex(updatedHistory.length - 1)
-  setWorkspaceRoot(newPath)
-  setSelectedGridEntry(null)
-  refreshFileExplorer()
+    const updatedHistory = [...history.slice(0, idx + 1), newPath]
+    setNavHistory(updatedHistory)
+    setHistoryIndex(updatedHistory.length - 1)
+    setWorkspaceRoot(newPath)
+    setSelectedGridEntry(null)
+  })
 }
 
 export const navigateBack = (): void => {
   const idx = historyIndex()
   if (idx > 0) {
     const prevPath = navHistory()[idx - 1]
-    setHistoryIndex(idx - 1)
-    setWorkspaceRoot(prevPath)
-    setSelectedGridEntry(null)
-    refreshFileExplorer()
+    batch(() => {
+      setHistoryIndex(idx - 1)
+      setWorkspaceRoot(prevPath)
+      setSelectedGridEntry(null)
+    })
   }
 }
 
@@ -505,10 +507,11 @@ export const navigateForward = (): void => {
   const idx = historyIndex()
   if (idx < history.length - 1) {
     const nextPath = history[idx + 1]
-    setHistoryIndex(idx + 1)
-    setWorkspaceRoot(nextPath)
-    setSelectedGridEntry(null)
-    refreshFileExplorer()
+    batch(() => {
+      setHistoryIndex(idx + 1)
+      setWorkspaceRoot(nextPath)
+      setSelectedGridEntry(null)
+    })
   }
 }
 

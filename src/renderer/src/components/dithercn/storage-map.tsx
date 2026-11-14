@@ -41,6 +41,8 @@ export interface StorageMapItem {
   detail?: string;
   /** Whether this tile represents unallocated / available space. Automatically gets a hatched fill and dashed border. */
   isFree?: boolean;
+  /** True when the scan budget cut this bucket short, so `value` is a floor. Rendered with a `~` prefix. */
+  partial?: boolean;
 }
 
 export interface StorageMapRect {
@@ -304,9 +306,12 @@ function DitherSwatch(props: DitherSwatchProps) {
   const c = () => props.color ?? "ink";
   const clr = () => props.cell ?? 3;
   const m = () => props.matrix ?? "bayer4";
-  const fillVariant = () => (props.isFree ? "hatched" : (props.fill ?? "gradient"));
+  const fillVariant = () => (props.isFree ? "solid" : (props.fill ?? "gradient"));
 
   const swatchStyle = createMemo(() => {
+    if (props.isFree) {
+      return {};
+    }
     const v = fillVariant();
     if (v === "solid") {
       return {
@@ -406,7 +411,7 @@ export function StorageMap(props: StorageMapProps) {
       ...item,
       id: item.id ?? `item-${idx}`,
       color: item.color ?? SERIES_COLORS[idx % SERIES_COLORS.length] ?? "ink",
-      fill: item.fill ?? (item.isFree ? "hatched" : "gradient"),
+      fill: item.fill ?? (item.isFree ? "solid" : "gradient"),
     }));
   });
 
@@ -576,13 +581,29 @@ export function StorageMap(props: StorageMapProps) {
     );
   });
 
-  // Format numbers nicely
-  const formatVal = (v: number) => {
-    if (v >= 1000) {
-      return (v / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 });
+  // Format numbers and handle unit scaling (e.g. GB -> TB for >= 1000)
+  const formatVal = (v: number) => v.toLocaleString(undefined, { maximumFractionDigits: 1 });
+
+  const formatValWithUnit = (v: number) => {
+    const baseUnit = (local.unit ?? " GB").trim();
+    if (baseUnit === "GB" && v >= 1000) {
+      return {
+        val: (v / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 }),
+        unit: " TB",
+      };
     }
-    return v.toLocaleString(undefined, { maximumFractionDigits: 1 });
+    return {
+      val: formatVal(v),
+      unit: local.unit ?? " GB",
+    };
   };
+
+  // A partial bucket is a floor, not an exact size, so it reads as "~12.3".
+  const valueLabel = (item: { currentValue: number; partial?: boolean }): string =>
+    `${item.partial ? "~" : ""}${formatValWithUnit(item.currentValue).val}`;
+
+  const itemUnit = (item: { currentValue: number }): string =>
+    formatValWithUnit(item.currentValue).unit;
 
   return (
     <div
@@ -642,10 +663,8 @@ export function StorageMap(props: StorageMapProps) {
             // Fill style using dithercn style kit: reacts live to cell slider
             const tileFillStyle = createMemo(() => {
               if (isFree()) {
-                return fillStyle("hatched", {
-                  color: item.color,
-                  cell: cell(),
-                });
+                // Free space: empty dark tile, no dither texture
+                return {};
               }
               return fillStyle(item.fill ?? "gradient", {
                 color: item.color,
@@ -684,10 +703,9 @@ export function StorageMap(props: StorageMapProps) {
                 class={cn(
                   "absolute overflow-hidden rounded-[6px] transition-[opacity,filter,box-shadow] duration-150 ease-out",
                   isFree()
-                    ? "border border-dashed border-white/20"
-                    : "border-0",
-                  isHovered() && "z-20 ring-1 ring-inset ring-white/30 shadow-lg",
-                  !isFree() && "bg-[#09090b]"
+                    ? "border border-dashed border-white/20 bg-black/40"
+                    : "border-0 bg-[#09090b]",
+                  isHovered() && "z-20 ring-1 ring-inset ring-white/30 shadow-lg"
                 )}
                 style={{
                   left: `calc(${rect().x}% + ${gap / 2}px)`,
@@ -701,7 +719,7 @@ export function StorageMap(props: StorageMapProps) {
                 onPointerLeave={() => local.interactive && setHoveredIdx(null)}
                 tabIndex={local.interactive ? 0 : undefined}
                 role="group"
-                aria-label={`${item.label}: ${formatVal(item.currentValue)}${local.unit}`}
+                aria-label={`${item.label}: ${valueLabel(item)}${local.unit}`}
               >
                 {/* Dither Texture Fill Layer */}
                 <div
@@ -746,9 +764,9 @@ export function StorageMap(props: StorageMapProps) {
                           )}
                           style={{ color: cssColor(item.color) }}
                         >
-                          {formatVal(item.currentValue)}
+                          {valueLabel(item)}
                           <span class="text-[9px] font-normal text-white/40 ml-0.5">
-                            {local.unit}
+                            {itemUnit(item)}
                           </span>
                         </span>
                       </div>
@@ -767,9 +785,9 @@ export function StorageMap(props: StorageMapProps) {
                         class="font-mono text-xs font-semibold"
                         style={{ color: cssColor(item.color) }}
                       >
-                        {formatVal(item.currentValue)}
+                        {valueLabel(item)}
                         <span class="text-[10px] font-normal text-muted-foreground ml-0.5">
-                          {local.unit}
+                          {itemUnit(item)}
                         </span>
                       </div>
                     </div>
@@ -834,7 +852,7 @@ export function StorageMap(props: StorageMapProps) {
                   class="font-mono font-semibold"
                   style={{ color: cssColor(item.color) }}
                 >
-                  {formatVal(item.currentValue)}
+                  {valueLabel(item)}
                   {local.unit}
                 </span>
                 <span class="text-[10px] text-muted-foreground font-sans">
@@ -917,7 +935,7 @@ export function StorageMap(props: StorageMapProps) {
                     <span>
                       <strong class="font-medium text-foreground">{it.label}</strong>:{" "}
                       <span class="font-mono font-semibold" style={{ color: cssColor(it.color) }}>
-                        {formatVal(it.currentValue)}{local.unit}
+                        {valueLabel(it)}{local.unit}
                       </span>{" "}
                       ({share}% of total){it.detail ? ` · ${it.detail}` : ""}
                     </span>

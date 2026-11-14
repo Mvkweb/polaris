@@ -503,7 +503,6 @@ export const FileTree: Component<FileTreeProps> = (props) => {
         setRootFolderTitle(folderName)
 
         if (window.api?.readDirectory) {
-          window.api?.indexWorkspace?.(root).catch(console.error)
           const entries = await window.api.readDirectory(root)
           setRootEntries(entries)
         }

@@ -187,6 +187,8 @@ export interface FillStyleOptions {
   edge?: FillEdge;
   /** Gradient only: length of the fade in cells. Default 24. */
   length?: number;
+  /** Gradient only: total length of the tile in cells. Default `length`. */
+  extent?: number;
   /** Gradient only: coverage at the edge. Default 1. */
   from?: number;
   /** Gradient only: coverage past the fade. Default 0.0625 (one cell in 16). */
@@ -214,6 +216,7 @@ export const fillStyle = (
     cell = "var(--dither-cell)",
     edge = "bottom",
     length = 24,
+    extent,
     from = 1,
     to = 0.0625,
     matrix = "bayer4",
@@ -237,7 +240,7 @@ export const fillStyle = (
   }
   // A ramp along the edge, unioned with the plain floor level. Bayer sets
   // nest, so the union is exact where both are anchored to the same edge.
-  const ramp = ditherRamp({ edge, from, length, matrix, to });
+  const ramp = ditherRamp({ edge, extent, from, length, matrix, to });
   const { size } = getThresholdMap(matrix);
   const image = `${svgUrl(ramp.width, ramp.height, ramp.path)}, ${ditherMask(to, { matrix })}`;
   const size2 = `${times(cell, ramp.width)} ${times(cell, ramp.height)}, ${times(cell, size)}`;

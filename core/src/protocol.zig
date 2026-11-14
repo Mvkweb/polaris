@@ -66,5 +66,5 @@ test "parseRequest and writeResponse" {
     var w = std.Io.Writer.fixed(&buf);
     try writeResponse(&w, req.id, PongResult{});
     const output = w.buffered();
-    try std.testing.expect(std.mem.indexOf(u8, output, "\"pong\"") != null);
+    try std.testing.expect(std.mem.find(u8, output, "\"pong\"") != null);
 }

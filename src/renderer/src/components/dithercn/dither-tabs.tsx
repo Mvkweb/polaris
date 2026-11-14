@@ -719,7 +719,7 @@ export type DitherTabsTriggerProps = JSX.ButtonHTMLAttributes<HTMLButtonElement>
 
 const TRIGGER = {
   pill: cn(
-    "h-8 rounded-[8px] px-3.5",
+    "h-8 rounded-[8px] px-3.5 overflow-hidden",
     "data-[selected]:text-white",
     "group-data-pending/dither-tabs:data-[selected]:bg-(--dcn-tabs-ink)"
   ),
@@ -740,10 +740,30 @@ const HOVER = {
 
 export const DitherTabsTrigger = (props: DitherTabsTriggerProps) => {
   const look = useTabsLook("DitherTabsTrigger");
-  const hoverStyle = createMemo<JSX.CSSProperties>(() => ({
-    ...fillStyle("dotted", { cell: look.cell(), color: look.color() }),
-    "--dcn-tabs-bar": `${look.cell() * BAR_CELLS}px`,
-  }));
+  const hoverStyle = createMemo<JSX.CSSProperties>(() => {
+    if (look.variant() === "pill") {
+      const cellPx = look.cell();
+      const extentCells = Math.max(8, Math.round(32 / (cellPx || 2)));
+      const fadeCells = Math.max(6, Math.round(extentCells * 0.85));
+      return {
+        ...fillStyle("gradient", {
+          edge: "bottom",
+          length: fadeCells,
+          extent: extentCells,
+          from: 0.52,
+          to: 0,
+          matrix: look.matrix(),
+          cell: cellPx,
+          color: look.color(),
+        }),
+        "--dcn-tabs-bar": `${cellPx * BAR_CELLS}px`,
+      };
+    }
+    return {
+      ...fillStyle("dotted", { cell: look.cell(), color: look.color() }),
+      "--dcn-tabs-bar": `${look.cell() * BAR_CELLS}px`,
+    };
+  });
 
   return (
     <TabsPrimitive.Trigger
@@ -767,7 +787,7 @@ export const DitherTabsTrigger = (props: DitherTabsTriggerProps) => {
         aria-hidden="true"
         class={cn(
           "pointer-events-none absolute -z-10 opacity-0 transition-opacity duration-200 ease-(--ease-out) motion-reduce:transition-none",
-          "group-hover/tab:opacity-40 group-data-[selected]/tab:opacity-0 group-data-[selected]/tab:duration-0",
+          "group-hover/tab:opacity-60 group-data-[selected]/tab:opacity-0 group-data-[selected]/tab:duration-0",
           HOVER[look.variant()]
         )}
         style={hoverStyle()}

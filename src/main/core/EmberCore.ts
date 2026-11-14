@@ -39,6 +39,8 @@ export interface StorageItem {
   fill?: string
   detail: string
   isFree?: boolean
+  /** True when the scan budget cut this bucket short, so `value` is a floor. */
+  partial?: boolean
 }
 
 export interface StorageBreakdownResult {

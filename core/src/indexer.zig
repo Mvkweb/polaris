@@ -105,7 +105,7 @@ pub const WorkspaceIndex = struct {
             const rel_path = if (rel_dir.len == 0)
                 try alloc.dupe(u8, entry.name)
             else
-                try std.fmt.allocPrint(alloc, "{s}/{s}", .{ rel_dir, entry.name });
+                try alloc.print("{s}/{s}", .{ rel_dir, entry.name });
 
             // Normalize any backslashes to forward slashes for cross-platform UI consistency
             for (rel_path) |*b| {

@@ -2,11 +2,13 @@ import {
   Component,
   createEffect,
   createSignal,
+  on,
   onCleanup,
   onMount,
   Show
 } from 'solid-js'
 import { storageMapModalState, closeStorageMapModal } from '../../store'
+import { Loader } from '../dithercn/loader'
 import { StorageMap, type StorageMapItem } from '../dithercn/storage-map'
 
 interface BreakdownData {
@@ -17,10 +19,50 @@ interface BreakdownData {
   items: StorageMapItem[]
 }
 
+/** How long the loader takes to fade once the scan finishes. */
+const LOADER_FADE_MS = 150
+
+/**
+ * Dev-only override for trying other fade speeds without editing this
+ * file: `window.__polarisLoaderFadeMs = 150` in the devtools console
+ * (`delete window.__polarisLoaderFadeMs` to go back to the default).
+ */
+const loaderFadeMs = (): number => {
+  if (!import.meta.env.DEV) return LOADER_FADE_MS
+  const custom = (window as unknown as { __polarisLoaderFadeMs?: number })
+    .__polarisLoaderFadeMs
+  return typeof custom === 'number' && custom >= 0 ? custom : LOADER_FADE_MS
+}
+
 export const StorageMapModal: Component = () => {
   const [data, setData] = createSignal<BreakdownData | null>(null)
   const [loading, setLoading] = createSignal(false)
+  const [error, setError] = createSignal<string | null>(null)
+  const [driveStats, setDriveStats] = createSignal<{
+    used: number
+    free: number
+    capacity: number
+  } | null>(null)
   const [popupPos, setPopupPos] = createSignal({ left: 300, top: 120 })
+  // The loader stays mounted while it fades out, then unmounts.
+  const [loaderMounted, setLoaderMounted] = createSignal(false)
+  const [loaderLeaving, setLoaderLeaving] = createSignal(false)
+
+  createEffect(
+    on(loading, (isLoading) => {
+      if (isLoading) {
+        setLoaderMounted(true)
+        setLoaderLeaving(false)
+        return
+      }
+      setLoaderLeaving(true)
+      const timer = setTimeout(() => {
+        setLoaderMounted(false)
+        setLoaderLeaving(false)
+      }, loaderFadeMs())
+      onCleanup(() => clearTimeout(timer))
+    })
+  )
 
   let cardRef: HTMLDivElement | undefined
 
@@ -51,6 +93,8 @@ export const StorageMapModal: Component = () => {
     const state = storageMapModalState()
     if (!state.isOpen) {
       setData(null)
+      setError(null)
+      setDriveStats(null)
       return
     }
 
@@ -74,55 +118,45 @@ export const StorageMapModal: Component = () => {
 
     const fetchBreakdown = async (): Promise<void> => {
       setLoading(true)
+      setError(null)
+      setDriveStats(null)
+      // Fetch storage breakdown directly from EmberCore native sidecar
+
       try {
-        if (window.api?.getStorageBreakdown) {
-          const res = await window.api.getStorageBreakdown(state.targetPath)
-          if (res && res.items && res.items.length > 0) {
-            setData(res)
-            return
-          }
+        const res = await window.api?.getStorageBreakdown?.(state.targetPath)
+        if (res && res.items?.length) {
+          setData(res)
+          return
         }
-
-        // Resilient fallback using system drive statistics
-        if (window.api?.getSystemDrives) {
-          const drives = await window.api.getSystemDrives()
-          const matched = drives.find(
-            (d) => d.mountPoint === state.targetPath || state.targetPath.startsWith(d.mountPoint)
-          ) || drives[0]
-
-          if (matched && matched.bytesTotal > 0) {
-            const gb = 1024 * 1024 * 1024
-            const cap = Math.round((matched.bytesTotal / gb) * 10) / 10
-            const free = Math.round((matched.bytesFree / gb) * 10) / 10
-            const used = Math.round(Math.max(0, cap - free) * 10) / 10
-            const isStorage = state.targetPath.includes('storage')
-
-            setData({
-              target: matched.mountPoint,
-              capacity_gb: cap,
-              used_gb: used,
-              free_gb: free,
-              items: isStorage
-                ? [
-                    { id: 'apps', label: 'Games & Apps', value: Math.round(used * 0.49 * 10) / 10, color: 'blue', fill: 'gradient', detail: 'Steam, Heroic & binaries' },
-                    { id: 'dev', label: 'Developer', value: Math.round(used * 0.49 * 10) / 10, color: 'green', fill: 'gradient', detail: 'Polaris, Dither & repos' },
-                    { id: 'vms', label: 'Systems & VMs', value: Math.round(used * 0.02 * 10) / 10, color: 'purple', fill: 'gradient', detail: 'Virtual images & containers' },
-                    { id: 'free', label: 'Free', value: free, color: 'zinc', fill: 'hatched', detail: 'Available space', isFree: true }
-                  ]
-                : [
-                    { id: 'apps', label: 'Applications', value: Math.round(used * 0.35 * 10) / 10, color: 'blue', fill: 'gradient', detail: 'Binaries & Flatpaks' },
-                    { id: 'os', label: 'Operating System', value: Math.round(used * 0.45 * 10) / 10, color: 'purple', fill: 'gradient', detail: 'Kernel, /usr & libs' },
-                    { id: 'dev', label: 'Developer', value: Math.round(used * 0.15 * 10) / 10, color: 'green', fill: 'gradient', detail: 'Code, repos & packages' },
-                    { id: 'docs', label: 'Documents', value: Math.round(used * 0.05 * 10) / 10, color: 'amber', fill: 'gradient', detail: 'Documents & files' },
-                    { id: 'free', label: 'Free', value: free, color: 'zinc', fill: 'hatched', detail: 'Available space', isFree: true }
-                  ]
-            })
-          }
-        }
-      } catch (err: any) {
+        setError('Breakdown unavailable')
+      } catch (err) {
         console.error('Storage breakdown error:', err)
+        setError('Breakdown unavailable')
       } finally {
         setLoading(false)
+      }
+
+      // Only when the scan failed: show the real used/free numbers from
+      // statfs. Categories are never guessed.
+      try {
+        const drives = await window.api?.getSystemDrives?.()
+        const matched = drives?.find(
+          (d) =>
+            d.mountPoint === state.targetPath ||
+            state.targetPath.startsWith(d.mountPoint)
+        )
+        if (matched && matched.bytesTotal > 0) {
+          const gb = 1024 * 1024 * 1024
+          const capacity = matched.bytesTotal / gb
+          const free = matched.bytesFree / gb
+          setDriveStats({
+            used: Math.round(Math.max(0, capacity - free) * 10) / 10,
+            free: Math.round(free * 10) / 10,
+            capacity: Math.round(capacity * 10) / 10
+          })
+        }
+      } catch (err) {
+        console.error('Drive stats error:', err)
       }
     }
 
@@ -140,32 +174,81 @@ export const StorageMapModal: Component = () => {
           top: `${popupPos().top}px`
         }}
       >
-        {/* Content */}
-        <Show when={loading()}>
-          <div class="h-48 flex flex-col items-center justify-center gap-2 text-white/40 font-mono text-xs">
-            <div class="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-            <span>Scanning filesystem...</span>
-          </div>
-        </Show>
+        {/* Content: fixed frame so the loader and treemap share one height */}
+        <div class="relative h-64 sm:h-72">
+          <Show when={!loading() ? data() : null}>
+            {(res) => (
+              <StorageMap
+                target={res().target}
+                capacity={res().capacity_gb}
+                unit=" GB"
+                items={res().items}
+                duration={800}
+                spotlight="blur"
+                blurRadius={2}
+                bloom="low"
+                animate={true}
+                interactive={true}
+                header={false}
+                footer={false}
+                class="border-0 bg-transparent p-0 shadow-none"
+              />
+            )}
+          </Show>
 
-        <Show when={!loading() ? data() : null}>
-          {(res) => (
-            <StorageMap
-              target={res().target}
-              capacity={res().capacity_gb}
-              unit=" GB"
-              items={res().items}
-              spotlight="blur"
-              blurRadius={2}
-              bloom="low"
-              animate={true}
-              interactive={true}
-              header={false}
-              footer={false}
-              class="border-0 bg-transparent p-0 shadow-none"
-            />
-          )}
-        </Show>
+          {/* Honest failure state: real used/free only, no guessed categories */}
+          <Show when={!loading() && error()}>
+            <div class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 px-6 text-center">
+              <span class="text-sm text-white/90">{error()}</span>
+              <Show when={driveStats()}>
+                {(stats) => (
+                  <div class="w-full max-w-[280px]">
+                    <div class="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                      <div
+                        class="h-full bg-sky-400"
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            Math.round(
+                              (stats().used / Math.max(1, stats().capacity)) * 100
+                            )
+                          )}%`
+                        }}
+                      />
+                    </div>
+                    <div class="mt-1.5 font-mono text-[11px] text-white/50">
+                      {stats().used} GB used · {stats().free} GB free
+                    </div>
+                  </div>
+                )}
+              </Show>
+              <span class="text-[11px] text-white/35">
+                The scan failed or returned no data. Nothing is guessed.
+              </span>
+            </div>
+          </Show>
+
+          <Show when={loaderMounted()}>
+            <div
+              class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#050506] transition-opacity ease-out motion-reduce:transition-none"
+              style={{
+                opacity: loaderLeaving() ? 0 : 1,
+                'transition-duration': `${loaderFadeMs()}ms`,
+                'pointer-events': loaderLeaving() ? 'none' : 'auto'
+              }}
+            >
+              <Loader
+                variant="pulse"
+                size="lg"
+                color="blue"
+                bloom="low"
+                label="Scanning filesystem"
+              />
+              <span class="mt-3 text-sm font-medium text-white/90">Scanning filesystem</span>
+              <span class="mt-1 text-xs text-white/40">Mapping storage allocations</span>
+            </div>
+          </Show>
+        </div>
       </div>
     </Show>
   )

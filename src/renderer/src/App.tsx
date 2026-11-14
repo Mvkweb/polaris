@@ -11,6 +11,7 @@ import ContextMenu from './components/ui/ContextMenu'
 import FileActionModal from './components/file-tree/FileActionModal'
 import PropertiesModal from './components/modals/PropertiesModal'
 import { StorageMapModal } from './components/modals/StorageMapModal'
+import { MonodriveIconDefs } from './components/browser/MonodriveIcons'
 import {
   activeTerminalId,
   addTerminal,
@@ -136,6 +137,9 @@ const App: Component = () => {
 
   return (
     <div class="flex h-screen w-screen overflow-hidden bg-[#050505] text-[#ececec] font-sans selection:bg-[var(--accent)]/15 selection:text-white">
+      {/* Global SVG Gradients for high-performance folder/file icons */}
+      <MonodriveIconDefs />
+
       {/* Quick Open Modal (Ctrl+P / Cmd+P) */}
       <QuickOpenModal />
 

@@ -51,7 +51,7 @@ Before claiming task completion or creating a commit, always ensure `bun run che
 - Call `Menu.setApplicationMenu(null)` before `app.whenReady()` to avoid native menu initialization overhead.
 - Follow SolidJS reactivity rules: never destructure props, keep getters intact, use `<Show>` and `<For>` instead of ternary/map expressions, derive with `createMemo`.
 - Adhere to Zig 0.17 APIs (`std.Io`, `SafeAllocator`, `@backingInt`, `@fromBackingInt`, `@splat`).
-- Run `bun run check` and verify type safety.
+- When a UI state is too fast or hard to reach by hand (loaders, progress, errors, transitions), use a dev-only test hook instead of slowing production code — never ship artificial delays in release builds.
 
 ### ASK FIRST
 - Adding new npm dependencies or external packages.

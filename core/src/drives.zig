@@ -57,14 +57,14 @@ pub fn detectDrives(allocator: std.mem.Allocator, io: std.Io) ![]const protocol.
             const rest = mount["/mnt/".len..];
             const slash_idx = std.mem.findScalar(u8, rest, '/');
             const seg = if (slash_idx) |idx| rest[0..idx] else rest;
-            if (seg.len == 0 or std.mem.indexOf(u8, seg, ".") != null) continue;
+            if (seg.len == 0 or std.mem.findScalar(u8, seg, '.') != null) continue;
             clean_mount = try std.Io.Dir.path.join(allocator, &.{ "/mnt", seg });
             clean_name = try allocator.dupe(u8, seg);
         } else if (std.mem.startsWith(u8, mount, "/media/")) {
             const rest = mount["/media/".len..];
             const slash_idx = std.mem.findScalar(u8, rest, '/');
             const seg = if (slash_idx) |idx| rest[0..idx] else rest;
-            if (seg.len == 0 or std.mem.indexOf(u8, seg, ".") != null) continue;
+            if (seg.len == 0 or std.mem.findScalar(u8, seg, '.') != null) continue;
             clean_mount = try std.Io.Dir.path.join(allocator, &.{ "/media", seg });
             clean_name = try allocator.dupe(u8, seg);
         } else {
