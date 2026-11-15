@@ -51,6 +51,7 @@ import {
 } from '../../store'
 import { ditherSyntaxTheme } from './theme'
 import { smoothCursorExtension } from './smoothCursor'
+import { zedGuidesExtension, createZedFoldGutterDOM } from './zedGuides'
 import { detectLanguage } from './languages'
 
 interface CodeEditorProps {
@@ -160,7 +161,9 @@ export const CodeEditor: Component<CodeEditorProps> = (props) => {
           highlightActiveLineGutter(),
           highlightSpecialChars(),
           history(),
-          foldGutter(),
+          foldGutter({
+            markerDOM: createZedFoldGutterDOM
+          }),
           drawSelection(),
           dropCursor(),
           EditorState.allowMultipleSelections.of(true),
@@ -185,6 +188,7 @@ export const CodeEditor: Component<CodeEditorProps> = (props) => {
           langInfo.extension(),
           ditherSyntaxTheme,
           smoothCursorExtension,
+          zedGuidesExtension,
           cursorListener,
           EditorView.domEventHandlers({
             dragstart: (e) => {

@@ -90,26 +90,33 @@ export const ditherTheme = EditorView.theme(
     },
     '.cm-gutters': {
       backgroundColor: '#0a0a0a',
-      color: '#475569',
-      borderRight: '1px solid rgba(255, 255, 255, 0.06)',
-      paddingRight: '4px',
+      color: 'rgba(255, 255, 255, 0.28)',
+      borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+      paddingRight: '2px',
       userSelect: 'none'
     },
     '.cm-lineNumbers .cm-gutterElement': {
-      padding: '0 12px 0 16px',
-      minWidth: '44px',
+      padding: '0 8px 0 16px',
+      minWidth: '40px',
       textAlign: 'right',
-      fontSize: '11.5px',
+      fontSize: '12px',
       fontFamily: 'inherit',
-      color: '#475569'
+      color: 'rgba(255, 255, 255, 0.28)',
+      transition: 'color 120ms ease'
     },
     '.cm-activeLineGutter': {
       backgroundColor: 'transparent',
-      color: '#e2e8f0 !important',
-      fontWeight: '600'
+      color: '#ffffff !important',
+      fontWeight: '500'
     },
     '.cm-foldGutter': {
-      paddingRight: '6px'
+      minWidth: '16px'
+    },
+    '.cm-foldGutter .cm-gutterElement': {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '0 4px'
     },
     '.cm-foldPlaceholder': {
       backgroundColor: 'rgba(56, 189, 248, 0.12)',
