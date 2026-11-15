@@ -22,7 +22,8 @@ import {
   openPropertiesModal,
   openStorageMapModal,
   openNewTab,
-  navigateTo
+  navigateTo,
+  openFileInEditor
 } from '../../store'
 import { isMac } from '../../shortcuts'
 import { TerminalTileIcon, VsCodeTileIcon } from './Icons'
@@ -127,6 +128,13 @@ export const ContextMenu: Component = () => {
     if (window.api?.openCode) {
       await window.api.openCode(p)
     }
+  }
+
+  const handleOpenInEditor = (): void => {
+    const p = targetPath()
+    const name = target()?.name || 'file'
+    closeContextMenu()
+    openFileInEditor(p, name)
   }
 
   const handleOpenInDefaultApp = (): void => {
@@ -377,6 +385,12 @@ export const ContextMenu: Component = () => {
               </DitherDropdownMenuItem>
 
               <DitherDropdownMenuSeparator />
+            </Show>
+
+            <Show when={!isDirectory()}>
+              <DitherDropdownMenuItem variant="dither" onSelect={handleOpenInEditor}>
+                <span>Open in Editor</span>
+              </DitherDropdownMenuItem>
             </Show>
 
             <DitherDropdownMenuItem variant="dither" onSelect={handleOpenInDefaultApp}>

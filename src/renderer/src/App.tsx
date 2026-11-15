@@ -12,6 +12,7 @@ import FileActionModal from './components/file-tree/FileActionModal'
 import PropertiesModal from './components/modals/PropertiesModal'
 import { StorageMapModal } from './components/modals/StorageMapModal'
 import { MonodriveIconDefs } from './components/browser/MonodriveIcons'
+import EditorPane from './components/editor/EditorPane'
 import {
   activeTerminalId,
   addTerminal,
@@ -23,6 +24,7 @@ import {
   terminalSessions,
   toggleTerminal,
   toggleQuickOpen,
+  currentView,
   setCurrentView,
   isSettingsModalOpen,
   closeSettingsModal,
@@ -160,9 +162,11 @@ const App: Component = () => {
         {/* Top Navigation Bar sitting directly on the window/workspace base above the canvas */}
         <BrowserTopBar />
 
-        {/* Main Canvas: Monodrive-Style Folder Browser */}
+        {/* Main Canvas: Monodrive-Style Folder Browser & Code Editor */}
         <main class="relative z-10 flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden bg-[#0a0a0a] rounded-[20px]">
-          <FolderView />
+          <Show when={currentView() === 'editor'} fallback={<FolderView />}>
+            <EditorPane />
+          </Show>
         </main>
 
         {/* Terminal Drawer in the dark below the canvas */}

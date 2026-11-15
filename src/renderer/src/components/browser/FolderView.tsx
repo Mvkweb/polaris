@@ -25,7 +25,8 @@ import {
   gridLabelSize,
   showThumbnails,
   openContextMenu,
-  openPropertiesModal
+  openPropertiesModal,
+  openFileInEditor
 } from '../../store'
 import {
   MonodriveFolderIcon,
@@ -259,9 +260,7 @@ export const FolderView: Component = () => {
     if (entry.isDirectory) {
       navigateTo(entry.path)
     } else {
-      if (window.api?.openPath) {
-        await window.api.openPath(entry.path)
-      }
+      openFileInEditor(entry.path, entry.name)
     }
   }
 

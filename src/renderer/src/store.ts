@@ -567,6 +567,7 @@ export const openFileInEditor = (path: string, name: string): void => {
   })
   setActiveTabPath(path)
   setSelectedFilePath(path)
+  setCurrentView('editor')
 }
 
 export const openFileAtLocation = (
@@ -591,6 +592,9 @@ export const closeEditorTab = (path: string): void => {
       const nextActive = next[closedIndex] || next[closedIndex - 1] || null
       setActiveTabPath(nextActive ? nextActive.path : null)
       setSelectedFilePath(nextActive ? nextActive.path : null)
+      if (!nextActive && currentView() === 'editor') {
+        setCurrentView('files')
+      }
     }
     return next
   })
