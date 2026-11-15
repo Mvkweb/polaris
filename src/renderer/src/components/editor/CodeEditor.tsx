@@ -6,7 +6,7 @@ import {
   onMount,
   Show
 } from 'solid-js'
-import { EditorState } from '@codemirror/state'
+import { EditorState, Text } from '@codemirror/state'
 import {
   EditorView,
   keymap,
@@ -61,9 +61,31 @@ interface CodeEditorProps {
 export const CodeEditor: Component<CodeEditorProps> = (props) => {
   let containerRef: HTMLDivElement | undefined
   let editorView: EditorView | null = null
+  let mountedPath: string | null = null
+  let cacheTimer: number | undefined
+  let initialDoc: Text | null = null
 
   const [isLoading, setIsLoading] = createSignal(true)
   const [errorMessage, setErrorMessage] = createSignal<string | null>(null)
+
+  /** Serializing the document is O(n); do it on a trailing edge, never per keystroke. */
+  const scheduleCacheFlush = (filePath: string): void => {
+    if (cacheTimer) window.clearTimeout(cacheTimer)
+    cacheTimer = window.setTimeout(() => {
+      cacheTimer = undefined
+      if (editorView) setCachedFileContent(filePath, editorView.state.doc.toString())
+    }, 180)
+  }
+
+  const flushCache = (): void => {
+    if (cacheTimer) {
+      window.clearTimeout(cacheTimer)
+      cacheTimer = undefined
+    }
+    if (editorView && mountedPath) {
+      setCachedFileContent(mountedPath, editorView.state.doc.toString())
+    }
+  }
 
   const handleSave = async (): Promise<void> => {
     if (!editorView || !props.path) return
@@ -89,11 +111,18 @@ export const CodeEditor: Component<CodeEditorProps> = (props) => {
 
       if (!containerRef) return
 
+      // Preserve the outgoing document before tearing the view down.
+      flushCache()
+
       // Clean up previous view instance if present
       if (editorView) {
         editorView.destroy()
         editorView = null
       }
+
+      const originalContent = getInitialDocContent(filePath) ?? content
+      setInitialDocContent(filePath, originalContent)
+      initialDoc = Text.of(originalContent.split('\n'))
 
       const langInfo = detectLanguage(filePath)
 
@@ -108,17 +137,19 @@ export const CodeEditor: Component<CodeEditorProps> = (props) => {
       ])
 
       const cursorListener = EditorView.updateListener.of((update) => {
-        if (update.selectionSet && props.onCursorChange) {
+        if ((update.selectionSet || update.docChanged) && props.onCursorChange) {
           const head = update.state.selection.main.head
           const line = update.state.doc.lineAt(head)
           props.onCursorChange(line.number, head - line.from + 1)
         }
 
         if (update.docChanged) {
-          const currentDoc = update.state.doc.toString()
-          setCachedFileContent(filePath, currentDoc)
-          const initial = getInitialDocContent(filePath) ?? ''
-          markFileDirty(filePath, currentDoc !== initial)
+          // Compare rope structure instead of materializing the whole file.
+          const doc = update.state.doc
+          const original = initialDoc
+          const dirty = !original || doc.length !== original.length || !doc.eq(original)
+          markFileDirty(filePath, dirty)
+          scheduleCacheFlush(filePath)
         }
       })
 
@@ -155,6 +186,12 @@ export const CodeEditor: Component<CodeEditorProps> = (props) => {
           ditherSyntaxTheme,
           smoothCursorExtension,
           cursorListener,
+          EditorView.contentAttributes.of({
+            spellcheck: 'false',
+            autocorrect: 'off',
+            autocapitalize: 'off',
+            translate: 'no'
+          }),
           EditorView.lineWrapping
         ]
       })
@@ -163,6 +200,7 @@ export const CodeEditor: Component<CodeEditorProps> = (props) => {
         state,
         parent: containerRef
       })
+      mountedPath = filePath
 
       // Check if there is a target location to scroll to (e.g. line jump)
       const targetLoc = targetEditorLocation()
@@ -206,9 +244,11 @@ export const CodeEditor: Component<CodeEditorProps> = (props) => {
 
     onCleanup(() => {
       ro.disconnect()
+      flushCache()
       if (editorView) {
         editorView.destroy()
         editorView = null
+        mountedPath = null
       }
     })
   })

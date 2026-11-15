@@ -29,7 +29,7 @@ export const EditorPane: Component = () => {
   const isSaved = () => Boolean(currentPath() && lastSavedPath() === currentPath())
 
   return (
-    <div class="relative flex-1 flex flex-col h-full w-full overflow-hidden bg-[#0a0a0a] select-none isolate">
+    <div class="relative flex-1 flex flex-col h-full w-full overflow-hidden bg-[#0a0a0a] isolate">
       {/* ── Top Liquid Gooey TabBar ── */}
       <div class="shrink-0 z-20 flex items-center justify-between border-b border-white/[0.04]">
         <div class="flex-1 min-w-0">

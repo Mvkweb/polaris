@@ -26,13 +26,11 @@ export const ditherTheme = EditorView.theme(
       fontFamily: 'inherit'
     },
     '.cm-content': {
-      caretColor: '#38bdf8',
       padding: '12px 0 32px 0'
     },
-    // Hide default harsh blinking cursor in favor of the smooth gliding cursor
-    '.cm-cursor, .cm-dropCursor': {
-      borderLeftColor: '#38bdf8',
-      borderLeftWidth: '2px',
+    // Only hide the native caret while the smooth overlay is actually alive.
+    // If that plugin ever fails, CodeMirror's own blinking caret comes back.
+    '&.cm-smooth-active .cm-cursor, &.cm-smooth-active .cm-dropCursor': {
       opacity: '0 !important'
     },
     '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
