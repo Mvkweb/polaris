@@ -70,6 +70,7 @@ export interface SystemDrive {
   bytesFree: number
   bytesTotal: number
   freeSpace: string
+  isRemovable?: boolean
 }
 
 export interface FileProperties {
@@ -131,6 +132,7 @@ export interface CustomAPI {
   terminalKill: (id: number) => Promise<void>
   onTerminalData: (callback: (id: number, data: string) => void) => () => void
   onTerminalExit: (callback: (id: number, exitCode: number) => void) => () => void
+  onDrivesChanged: (callback: () => void) => () => void
 }
 
 declare global {

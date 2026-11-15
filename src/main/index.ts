@@ -54,7 +54,42 @@ app.commandLine.appendSwitch('force-dark-mode')
 // the first frame, leaving the window invisible.
 nativeTheme.themeSource = 'dark'
 
+let driveMonitorProcess: ReturnType<typeof spawn> | null = null
+let driveDebounceTimer: NodeJS.Timeout | null = null
+
+function triggerDrivesChanged(): void {
+  if (driveDebounceTimer) clearTimeout(driveDebounceTimer)
+  driveDebounceTimer = setTimeout(() => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('system:drivesChanged')
+      }
+    }
+  }, 250)
+}
+
+function initDriveMonitoring(): void {
+  if (process.platform !== 'linux' || driveMonitorProcess) return
+  try {
+    driveMonitorProcess = spawn('udisksctl', ['monitor'], { stdio: ['ignore', 'pipe', 'ignore'] })
+    driveMonitorProcess.stdout?.on('data', () => {
+      triggerDrivesChanged()
+    })
+    driveMonitorProcess.on('error', (err) => {
+      console.warn('udisksctl monitor unavailable, falling back to findmnt:', err)
+      try {
+        const alt = spawn('findmnt', ['--poll=mount,umount'], { stdio: ['ignore', 'pipe', 'ignore'] })
+        alt.stdout?.on('data', () => triggerDrivesChanged())
+        driveMonitorProcess = alt
+      } catch {}
+    })
+  } catch (err) {
+    console.warn('Drive monitoring init error:', err)
+  }
+}
+
 function createWindow(): void {
+  initDriveMonitoring()
   const mainWindow = new BrowserWindow({
     width: 1240,
     height: 820,
@@ -143,6 +178,12 @@ app.whenReady().then(() => {
   app.on('before-quit', () => {
     emberCore.stop()
     killAllTerminals()
+    if (driveMonitorProcess) {
+      try {
+        driveMonitorProcess.kill()
+      } catch {}
+      driveMonitorProcess = null
+    }
   })
 
   // NOTE: Temporary default to process.cwd() / dev root; replace with user-selected workspace later
@@ -155,6 +196,9 @@ app.whenReady().then(() => {
     try {
       // NOTE: Defaults to process.cwd() if no path provided; replace with workspace root later
       const targetPath = resolve(dirPath || process.cwd())
+      if (targetPath === '/dev' || targetPath.startsWith('/dev/')) {
+        throw new Error(`Cannot browse block device node: ${targetPath}`)
+      }
       const entries = await readdir(targetPath, { withFileTypes: true })
 
       const mapped = entries
@@ -647,26 +691,35 @@ app.whenReady().then(() => {
         return valid[0] || ''
       }
 
-      const parseDev = async (dev: any, parentModel?: string): Promise<void> => {
+      const parseDev = async (
+        dev: any,
+        parentModel?: string,
+        parentLabel?: string,
+        parentRm?: boolean
+      ): Promise<void> => {
         const model = (dev.model || parentModel || '').trim()
         const type = dev.type
         const fstype = dev.fstype || ''
-        const label = dev.label || ''
+        const label = (dev.label || parentLabel || '').trim()
         const mountPoint = preferredMountPoint(dev.mountpoints)
         const isSwap = fstype === 'swap'
         const isLoop = type === 'loop' && !mountPoint
         const isBoot = mountPoint === '/boot' || mountPoint.startsWith('/boot/')
         const isValidFs = !isSwap && !isLoop && !isBoot
+        const isRemovable = Boolean(dev.rm || dev.hotplug || parentRm)
 
+        // Only emit mounted filesystems as navigable places
         if ((type === 'part' || type === 'disk') && isValidFs && mountPoint) {
           let displayName = label
           if (!displayName) {
             if (mountPoint === '/') {
               displayName = 'Root (/)'
+            } else if (mountPoint) {
+              displayName = mountPoint.split('/').filter(Boolean).pop() || model || dev.name
             } else if (model) {
               displayName = model
             } else {
-              displayName = dev.name || mountPoint.split('/').filter(Boolean).pop() || 'Drive'
+              displayName = dev.name || 'Drive'
             }
           }
 
@@ -698,40 +751,20 @@ app.whenReady().then(() => {
             usedPercent,
             bytesFree,
             bytesTotal,
-            freeSpace
+            freeSpace,
+            isRemovable
           })
         }
 
         if (dev.children) {
           for (const child of dev.children) {
-            await parseDev(child, model)
+            await parseDev(child, model, label || parentLabel, isRemovable)
           }
         }
       }
 
       for (const b of data.blockdevices || []) {
-        await parseDev(b, b.model)
-      }
-
-      // Add unmounted major disks if any
-      for (const b of data.blockdevices || []) {
-        if (
-          b.type === 'disk' &&
-          b.name.startsWith('sd') &&
-          !drives.some((d) => d.id === b.name || d.id.startsWith(b.name))
-        ) {
-          drives.push({
-            id: b.name,
-            name: (b.model || b.name).trim(),
-            model: (b.model || '').trim(),
-            mountPoint: `/dev/${b.name}`,
-            size: b.size,
-            usedPercent: 0,
-            bytesFree: 0,
-            bytesTotal: 0,
-            freeSpace: ''
-          })
-        }
+        await parseDev(b, b.model, b.label, Boolean(b.rm || b.hotplug))
       }
 
       return drives

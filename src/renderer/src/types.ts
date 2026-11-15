@@ -103,6 +103,7 @@ export interface SystemDrive {
   bytesFree: number
   bytesTotal: number
   freeSpace: string
+  isRemovable?: boolean
 }
 
 export interface ChatSessionSummary {

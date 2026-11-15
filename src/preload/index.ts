@@ -50,6 +50,11 @@ const api = {
     const listener = (_: unknown, id: number, exitCode: number): void => callback(id, exitCode)
     ipcRenderer.on('terminal:exit', listener)
     return () => ipcRenderer.removeListener('terminal:exit', listener)
+  },
+  onDrivesChanged: (callback: () => void) => {
+    const listener = (): void => callback()
+    ipcRenderer.on('system:drivesChanged', listener)
+    return () => ipcRenderer.removeListener('system:drivesChanged', listener)
   }
 }
 

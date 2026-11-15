@@ -119,6 +119,15 @@ const CircleDotIcon = (props: { class?: string }) => (
   </svg>
 )
 
+const UsbDriveIcon = (props: { class?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class={props.class ?? 'w-3.5 h-3.5'}>
+    <path d="M10 2v4h4V2h-4z" />
+    <rect x="7" y="6" width="10" height="15" rx="2" />
+    <path d="M10 11v3" />
+    <path d="M14 11v3" />
+  </svg>
+)
+
 const PlusIcon = (props: { class?: string }) => (
   <svg viewBox="0 0 24 24" fill="none" class={props.class ?? 'w-3.5 h-3.5'}>
     <path
@@ -583,6 +592,114 @@ const ScopeCarousel: Component = () => {
   )
 }
 
+const DriveItemRow: Component<{
+  drive: SystemDrive
+  activePlaceId: () => string | null
+  currentPath: () => string
+  hoveredDriveMount: () => string | null
+  setHoveredDriveMount: (val: string | null | ((curr: string | null) => string | null)) => void
+  onSelectDrive: (mountPoint?: string | null) => void
+  openContextMenu: (x: number, y: number, data: any) => void
+  icon: Component<{ class?: string }>
+}> = (props) => {
+  const isSelected = () => !props.activePlaceId() && props.currentPath() === props.drive.mountPoint
+  const isDriveHovered = () => props.hoveredDriveMount() === props.drive.mountPoint
+  const isExpanded = () => isDriveHovered() || isSelected()
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => props.onSelectDrive(props.drive.mountPoint)}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        props.openContextMenu(e.clientX, e.clientY, {
+          path: props.drive.mountPoint,
+          name: props.drive.name,
+          isDrive: true,
+          drive: props.drive
+        })
+      }}
+      onMouseEnter={() => props.setHoveredDriveMount(props.drive.mountPoint)}
+      onMouseLeave={() =>
+        props.setHoveredDriveMount((curr) => (curr === props.drive.mountPoint ? null : curr))
+      }
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          props.onSelectDrive(props.drive.mountPoint)
+        }
+      }}
+      class={`group rounded-md cursor-pointer outline-none transition-colors duration-150 select-none px-2.5 py-2 ${
+        isExpanded()
+          ? 'bg-white/[0.08] text-white/95'
+          : 'bg-transparent hover:bg-white/[0.04] text-white/60'
+      }`}
+    >
+      <div class="flex items-center gap-2.5 min-w-0">
+        <props.icon
+          class={`w-3.5 h-3.5 shrink-0 transition-colors ${
+            isExpanded() ? 'text-white/90' : 'text-white/40 group-hover:text-white/75'
+          }`}
+        />
+        <span
+          class={`flex-1 truncate text-[13px] font-medium transition-colors ${
+            isExpanded() ? 'text-white/95' : 'text-white/70'
+          }`}
+        >
+          {props.drive.name}
+        </span>
+        <Show when={props.drive.freeSpace || props.drive.size}>
+          <span
+            class={`text-[11px] font-mono tabular-nums shrink-0 transition-colors ${
+              isExpanded() ? 'text-white/55' : 'text-white/35'
+            }`}
+          >
+            {formatFreeSpace(props.drive.freeSpace || props.drive.size)}
+          </span>
+        </Show>
+      </div>
+
+      <div class="w-full mt-2">
+        <ProgressBar
+          label={props.drive.name || props.drive.model || props.drive.mountPoint}
+          value={Math.min(100, Math.max(0, Math.round(props.drive.usedPercent || 0)))}
+          max={100}
+          size="sm"
+          fill="gradient"
+          bloom="low"
+          color="blue"
+          hideLabel
+          class="w-full"
+        />
+      </div>
+
+      <div
+        class="grid transition-[grid-template-rows] duration-300 ease-out"
+        style={{
+          'grid-template-rows': isExpanded() ? '1fr' : '0fr'
+        }}
+      >
+        <div class="overflow-hidden">
+          <div
+            class={`flex items-center justify-between pt-1.5 text-[11px] font-mono transition-opacity duration-200 ${
+              isExpanded() ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            <span class="truncate text-white/40 max-w-[145px]" title={props.drive.mountPoint}>
+              {props.drive.mountPoint}
+            </span>
+            <span class="text-white/35 tabular-nums shrink-0">
+              {props.drive.usedPercent}% used
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const Sidebar: Component = () => {
   const [isHovered, setIsHovered] = createSignal(false)
   const [isNewNoteModalOpen, setIsNewNoteModalOpen] = createSignal(false)
@@ -600,7 +717,11 @@ const Sidebar: Component = () => {
   const [placesOpen, setPlacesOpen] = createSignal(true)
   const [places, setPlaces] = createSignal<AtlasPlaceItem[]>(DEFAULT_PLACES)
   const [devicesOpen, setDevicesOpen] = createSignal(true)
+  const [removableOpen, setRemovableOpen] = createSignal(true)
   const [hoveredDriveMount, setHoveredDriveMount] = createSignal<string | null>(null)
+
+  const internalDrives = createMemo(() => drives().filter((d) => !d.isRemovable))
+  const removableDrives = createMemo(() => drives().filter((d) => d.isRemovable))
 
   const currentPath = () => workspaceRoot() || '.'
 
@@ -631,9 +752,7 @@ const Sidebar: Component = () => {
     try {
       if (window.api?.getSystemDrives) {
         const result = await window.api.getSystemDrives()
-        if (result && result.length > 0) {
-          setDrives(result)
-        }
+        setDrives(result || [])
       }
     } catch (err) {
       console.warn('Failed to load system drives:', err)
@@ -646,7 +765,8 @@ const Sidebar: Component = () => {
     navigateTo(place.path)
   }
 
-  const handleSelectDrive = (mountPoint: string): void => {
+  const handleSelectDrive = (mountPoint?: string | null): void => {
+    if (!mountPoint) return
     setActivePlaceId(null)
     navigateTo(mountPoint)
   }
@@ -824,11 +944,21 @@ const Sidebar: Component = () => {
     loadUserPlaces()
     loadDrives()
     window.addEventListener('focus', refreshGitData)
-  })
+    window.addEventListener('focus', loadDrives)
 
-  onCleanup(() => {
-    window.removeEventListener('keydown', handleKeyDown)
-    window.removeEventListener('focus', refreshGitData)
+    let unsubscribeDrives: (() => void) | undefined
+    if (window.api?.onDrivesChanged) {
+      unsubscribeDrives = window.api.onDrivesChanged(() => {
+        loadDrives()
+      })
+    }
+
+    onCleanup(() => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('focus', refreshGitData)
+      window.removeEventListener('focus', loadDrives)
+      unsubscribeDrives?.()
+    })
   })
 
   return (
@@ -1174,7 +1304,7 @@ const Sidebar: Component = () => {
                     </Show>
                   </div>
 
-                  {/* ── Section: Devices (Borderless Chatmode Hover-Expand Style) ── */}
+                  {/* ── Section: Devices (Internal Drives) ── */}
                   <div class="flex flex-col pt-4">
                     <div
                       class="flex items-center justify-between px-2.5 py-1 text-[12px] font-semibold text-white/40 hover:text-white/70 transition-colors cursor-pointer select-none"
@@ -1185,120 +1315,54 @@ const Sidebar: Component = () => {
 
                     <Show when={devicesOpen()}>
                       <div class="flex flex-col gap-[2px] mt-0.5 px-0.5">
-                        <For each={drives()}>
-                          {(drive) => {
-                            const isSelected = () =>
-                              !activePlaceId() && currentPath() === drive.mountPoint
-                            const isDriveHovered = () => hoveredDriveMount() === drive.mountPoint
-                            const isExpanded = () => isDriveHovered() || isSelected()
-
-                            return (
-                              <div
-                                role="button"
-                                tabIndex={0}
-                                onClick={() => handleSelectDrive(drive.mountPoint)}
-                                onContextMenu={(e) => {
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                  openContextMenu(e.clientX, e.clientY, {
-                                    path: drive.mountPoint,
-                                    name: drive.name,
-                                    isDrive: true,
-                                    drive
-                                  })
-                                }}
-                                onMouseEnter={() => setHoveredDriveMount(drive.mountPoint)}
-                                onMouseLeave={() =>
-                                  setHoveredDriveMount((curr) =>
-                                    curr === drive.mountPoint ? null : curr
-                                  )
-                                }
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' || e.key === ' ') {
-                                    e.preventDefault()
-                                    handleSelectDrive(drive.mountPoint)
-                                  }
-                                }}
-                                class={`group rounded-md cursor-pointer outline-none transition-colors duration-150 select-none px-2.5 py-2 ${
-                                  isExpanded()
-                                    ? 'bg-white/[0.08] text-white/95'
-                                    : 'bg-transparent hover:bg-white/[0.04] text-white/60'
-                                }`}
-                              >
-                                {/* Top Row: Hard Drive Icon + Drive Name + Free Space */}
-                                <div class="flex items-center gap-2.5 min-w-0">
-                                  <SolarHardDriveLinear
-                                    class={`w-3.5 h-3.5 shrink-0 transition-colors ${
-                                      isExpanded()
-                                        ? 'text-white/90'
-                                        : 'text-white/40 group-hover:text-white/75'
-                                    }`}
-                                  />
-                                  <span
-                                    class={`flex-1 truncate text-[13px] font-medium transition-colors ${
-                                      isExpanded() ? 'text-white/95' : 'text-white/70'
-                                    }`}
-                                  >
-                                    {drive.name}
-                                  </span>
-                                  <Show when={drive.freeSpace || drive.size}>
-                                    <span
-                                      class={`text-[11px] font-mono tabular-nums shrink-0 transition-colors ${
-                                        isExpanded() ? 'text-white/55' : 'text-white/35'
-                                      }`}
-                                    >
-                                      {formatFreeSpace(drive.freeSpace || drive.size)}
-                                    </span>
-                                  </Show>
-                                </div>
-
-                                {/* Authentic Dithercn ProgressBar */}
-                                <div class="w-full mt-2">
-                                  <ProgressBar
-                                    label={drive.name || drive.model || drive.mountPoint}
-                                    value={Math.min(100, Math.max(0, Math.round(drive.usedPercent || 0)))}
-                                    max={100}
-                                    size="sm"
-                                    fill="gradient"
-                                    bloom="low"
-                                    color="blue"
-                                    hideLabel
-                                    class="w-full"
-                                  />
-                                </div>
-
-                                {/* Chatmode-style Smooth Accordion Details on Hover / Active */}
-                                <div
-                                  class="grid transition-[grid-template-rows] duration-300 ease-out"
-                                  style={{
-                                    'grid-template-rows': isExpanded() ? '1fr' : '0fr'
-                                  }}
-                                >
-                                  <div class="overflow-hidden">
-                                    <div
-                                      class={`flex items-center justify-between pt-1.5 text-[11px] font-mono transition-opacity duration-200 ${
-                                        isExpanded() ? 'opacity-100' : 'opacity-0'
-                                      }`}
-                                    >
-                                      <span
-                                        class="truncate text-white/40 max-w-[145px]"
-                                        title={drive.mountPoint}
-                                      >
-                                        {drive.mountPoint}
-                                      </span>
-                                      <span class="text-white/35 tabular-nums shrink-0">
-                                        {drive.usedPercent}% used
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            )
-                          }}
+                        <For each={internalDrives()}>
+                          {(drive) => (
+                            <DriveItemRow
+                              drive={drive}
+                              activePlaceId={activePlaceId}
+                              currentPath={currentPath}
+                              hoveredDriveMount={hoveredDriveMount}
+                              setHoveredDriveMount={setHoveredDriveMount}
+                              onSelectDrive={handleSelectDrive}
+                              openContextMenu={openContextMenu}
+                              icon={SolarHardDriveLinear}
+                            />
+                          )}
                         </For>
                       </div>
                     </Show>
                   </div>
+
+                  {/* ── Section: Removable Devices (USB / Hot-plugged Disks) ── */}
+                  <Show when={removableDrives().length > 0}>
+                    <div class="flex flex-col pt-3">
+                      <div
+                        class="flex items-center justify-between px-2.5 py-1 text-[12px] font-semibold text-white/40 hover:text-white/70 transition-colors cursor-pointer select-none"
+                        onClick={() => setRemovableOpen(!removableOpen())}
+                      >
+                        <span>Removable Devices</span>
+                      </div>
+
+                      <Show when={removableOpen()}>
+                        <div class="flex flex-col gap-[2px] mt-0.5 px-0.5">
+                          <For each={removableDrives()}>
+                            {(drive) => (
+                              <DriveItemRow
+                                drive={drive}
+                                activePlaceId={activePlaceId}
+                                currentPath={currentPath}
+                                hoveredDriveMount={hoveredDriveMount}
+                                setHoveredDriveMount={setHoveredDriveMount}
+                                onSelectDrive={handleSelectDrive}
+                                openContextMenu={openContextMenu}
+                                icon={UsbDriveIcon}
+                              />
+                            )}
+                          </For>
+                        </div>
+                      </Show>
+                    </div>
+                  </Show>
                 </Show>
               </Show>
 
