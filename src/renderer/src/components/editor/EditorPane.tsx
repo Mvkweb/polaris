@@ -28,6 +28,15 @@ export const EditorPane: Component = () => {
   const isDirty = () => Boolean(currentPath() && isFileDirty(currentPath()))
   const isSaved = () => Boolean(currentPath() && lastSavedPath() === currentPath())
 
+  const pathParts = createMemo(() => {
+    const p = currentPath()
+    if (!p) return { dir: '', file: '' }
+    const lastSlash = p.lastIndexOf('/')
+    const dir = lastSlash !== -1 ? p.slice(0, lastSlash + 1) : ''
+    const file = lastSlash !== -1 ? p.slice(lastSlash + 1) : p
+    return { dir, file }
+  })
+
   return (
     <div class="relative flex-1 flex flex-col h-full w-full overflow-hidden bg-[#0a0a0a] isolate">
       {/* ── Top Liquid Gooey TabBar ── */}
@@ -60,33 +69,45 @@ export const EditorPane: Component = () => {
         </Show>
       </div>
 
-      {/* ── Editor Footer / Status Bar ── */}
+      {/* ── Editor Footer / Status Bar (Seamlessly integrated into #0a0a0a canvas, no dividing border) ── */}
       <Show when={hasTabs() && currentPath()}>
-        <div class="shrink-0 h-6 px-3 flex items-center justify-between bg-[#080808] border-t border-white/[0.04] text-[11px] font-mono text-white/40 select-none">
-          {/* Left: Active File Path & Dirty State */}
-          <div class="flex items-center gap-2 truncate max-w-[60%]">
-            <span class="truncate text-white/50">{currentPath()}</span>
+        <div class="shrink-0 h-7 px-3.5 flex items-center justify-between bg-[#0a0a0a] text-[11.5px] font-mono select-none">
+          {/* Left: Path Breadcrumb & State Badge */}
+          <div class="flex items-center gap-2 truncate max-w-[65%] min-w-0">
+            <span class="truncate flex items-center gap-1">
+              <Show when={pathParts().dir}>
+                <span class="text-white/35 font-mono text-[11px] truncate">{pathParts().dir}</span>
+              </Show>
+              <span class="text-white/90 font-mono font-semibold text-[11.5px] shrink-0 tracking-tight">
+                {pathParts().file}
+              </span>
+            </span>
+
             <Show when={isDirty()}>
-              <span class="flex items-center gap-1 text-amber-400 font-sans text-[10px]">
-                <span class="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                <span>Modified (Ctrl+S to save)</span>
+              <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-400/10 text-amber-300 font-sans text-[10px] font-medium tracking-wide shrink-0">
+                <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                <span>Modified</span>
               </span>
             </Show>
+
             <Show when={isSaved()}>
-              <span class="flex items-center gap-1 text-emerald-400 font-sans text-[10px]">
+              <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-400/10 text-emerald-300 font-sans text-[10px] font-medium tracking-wide shrink-0">
                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                 <span>Saved</span>
               </span>
             </Show>
           </div>
 
-          {/* Right: Language, Line & Column, Encoding */}
+          {/* Right: Language Pill, Line/Col metrics & Encoding */}
           <div class="flex items-center gap-3 shrink-0 tabular-nums">
-            <span>{langInfo()}</span>
-            <span>
-              Ln {cursorPos().line}, Col {cursorPos().col}
+            <span class="px-2 py-0.5 rounded bg-white/[0.05] text-white/80 font-mono text-[10.5px] font-semibold tracking-wider uppercase">
+              {langInfo()}
             </span>
-            <span>UTF-8</span>
+            <span class="text-white/70 font-mono text-[11px]">
+              <span class="text-white/35">Ln</span> <strong class="text-white/90 font-semibold">{cursorPos().line}</strong>,{' '}
+              <span class="text-white/35">Col</span> <strong class="text-white/90 font-semibold">{cursorPos().col}</strong>
+            </span>
+            <span class="text-white/35 font-mono text-[10.5px]">UTF-8</span>
           </div>
         </div>
       </Show>

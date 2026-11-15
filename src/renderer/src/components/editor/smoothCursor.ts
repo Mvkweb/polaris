@@ -67,9 +67,21 @@ function injectStyles(): void {
   const style = document.createElement('style')
   style.id = STYLE_ID
   style.textContent = `
+    .cm-editor.cm-smooth-active,
+    .cm-editor.cm-smooth-active .cm-content,
+    .cm-editor.cm-smooth-active .cm-line,
+    .cm-editor.cm-smooth-active * {
+      caret-color: transparent !important;
+    }
+    .cm-editor.cm-smooth-active .cm-cursorLayer,
     .cm-editor.cm-smooth-active .cm-cursor,
+    .cm-editor.cm-smooth-active .cm-cursor-primary,
     .cm-editor.cm-smooth-active .cm-dropCursor {
+      display: none !important;
       opacity: 0 !important;
+      visibility: hidden !important;
+      border: none !important;
+      width: 0 !important;
     }
     .cm-smear-svg-layer {
       position: absolute;
