@@ -617,7 +617,7 @@ const DriveItemRow: Component<{
 
   const capacityLabel = (): string => {
     if (isUnmounted()) return props.drive.size
-    if (isReadOnly()) return `${props.drive.size} used`
+    if (isReadOnly()) return `${props.drive.size} / ${props.drive.size}`
     return formatFreeSpace(props.drive.freeSpace || props.drive.size)
   }
 
