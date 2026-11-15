@@ -63,25 +63,33 @@ function getConvexHull(points: Point[]): Point[] {
 const STYLE_ID = 'cm-smear-cursor-styles'
 
 function injectStyles(): void {
-  if (typeof document === 'undefined' || document.getElementById(STYLE_ID)) return
-  const style = document.createElement('style')
-  style.id = STYLE_ID
+  if (typeof document === 'undefined') return
+  let style = document.getElementById(STYLE_ID) as HTMLStyleElement | null
+  if (!style) {
+    style = document.createElement('style')
+    style.id = STYLE_ID
+    document.head.appendChild(style)
+  }
   style.textContent = `
-    .cm-editor.cm-smooth-active,
-    .cm-editor.cm-smooth-active .cm-content,
-    .cm-editor.cm-smooth-active .cm-line,
-    .cm-editor.cm-smooth-active * {
+    .cm-editor,
+    .cm-editor *,
+    .cm-content,
+    .cm-line {
       caret-color: transparent !important;
     }
-    .cm-editor.cm-smooth-active .cm-cursorLayer,
-    .cm-editor.cm-smooth-active .cm-cursor,
-    .cm-editor.cm-smooth-active .cm-cursor-primary,
-    .cm-editor.cm-smooth-active .cm-dropCursor {
+    .cm-cursorLayer,
+    .cm-cursor,
+    .cm-cursor-primary,
+    .cm-cursor-secondary,
+    .cm-dropCursor {
       display: none !important;
       opacity: 0 !important;
       visibility: hidden !important;
       border: none !important;
+      border-left: none !important;
       width: 0 !important;
+      height: 0 !important;
+      pointer-events: none !important;
     }
     .cm-smear-svg-layer {
       position: absolute;

@@ -30,15 +30,17 @@ export const ditherTheme = EditorView.theme(
       padding: '12px 0 32px 0',
       caretColor: 'transparent !important'
     },
-    '&.cm-smooth-active, &.cm-smooth-active .cm-content, &.cm-smooth-active .cm-line': {
+    '&, & *, .cm-content, .cm-line': {
       caretColor: 'transparent !important'
     },
-    '&.cm-smooth-active .cm-cursorLayer, &.cm-smooth-active .cm-cursor, &.cm-smooth-active .cm-cursor-primary, &.cm-smooth-active .cm-dropCursor': {
+    '.cm-cursorLayer, .cm-cursor, .cm-cursor-primary, .cm-cursor-secondary, .cm-dropCursor': {
       display: 'none !important',
       opacity: '0 !important',
       visibility: 'hidden !important',
       border: 'none !important',
-      width: '0 !important'
+      borderLeft: 'none !important',
+      width: '0 !important',
+      height: '0 !important'
     },
     // Selection styling: uniform background, flat internal edges
     '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-selectionLayer .cm-selectionBackground': {

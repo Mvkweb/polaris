@@ -179,3 +179,36 @@
   -webkit-mask-size: 4px 4px;
   mask-size: 4px 4px;
 }
+
+/* ── CodeMirror Caret & Drag Overrides ── */
+/* 1. Eliminate Chromium's native white insertion caret completely */
+.cm-editor,
+.cm-editor *,
+.cm-content,
+.cm-line {
+  caret-color: transparent !important;
+}
+
+/* 2. Completely eliminate CodeMirror's built-in white cursor lines */
+.cm-cursor,
+.cm-cursorLayer,
+.cm-cursor-primary,
+.cm-cursor-secondary,
+.cm-dropCursor {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  border: none !important;
+  border-left: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  pointer-events: none !important;
+}
+
+/* 3. Disable accidental HTML5 image-like text dragging */
+.cm-content,
+.cm-line,
+.cm-editor {
+  -webkit-user-drag: none !important;
+  user-drag: none !important;
+}

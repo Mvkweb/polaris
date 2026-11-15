@@ -186,11 +186,18 @@ export const CodeEditor: Component<CodeEditorProps> = (props) => {
           ditherSyntaxTheme,
           smoothCursorExtension,
           cursorListener,
+          EditorView.domEventHandlers({
+            dragstart: (e) => {
+              e.preventDefault()
+              return true
+            }
+          }),
           EditorView.contentAttributes.of({
             spellcheck: 'false',
             autocorrect: 'off',
             autocapitalize: 'off',
-            translate: 'no'
+            translate: 'no',
+            draggable: 'false'
           }),
           EditorView.lineWrapping
         ]
