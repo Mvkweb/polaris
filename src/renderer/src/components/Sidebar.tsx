@@ -739,6 +739,17 @@ const DriveItemRow: Component<{
               {mountError()}
             </p>
           </Show>
+          <Show
+            when={
+              props.drive.isRemovable &&
+              props.drive.diskSize &&
+              props.drive.diskSize !== props.drive.size
+            }
+          >
+            <p class="pt-0.5 text-[10px] font-mono text-white/25 truncate">
+              {props.drive.size} partition on a {props.drive.diskSize} drive
+            </p>
+          </Show>
         </div>
       </div>
     </div>

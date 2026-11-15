@@ -101,6 +101,7 @@ export interface SystemDrive {
   device: string
   fstype: string
   size: string
+  diskSize?: string
   usedPercent: number
   bytesFree: number
   bytesTotal: number

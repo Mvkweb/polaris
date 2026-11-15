@@ -713,6 +713,7 @@ app.whenReady().then(() => {
           parentModel?: string
           parentLabel?: string
           parentRm?: boolean
+          parentDiskSize?: string
           hideEsp?: boolean
         } = {}
       ): Promise<void> => {
@@ -782,6 +783,7 @@ app.whenReady().then(() => {
             device: `/dev/${dev.name}`,
             fstype,
             size: dev.size,
+            diskSize: options.parentDiskSize,
             usedPercent,
             bytesFree,
             bytesTotal,
@@ -801,6 +803,7 @@ app.whenReady().then(() => {
               parentModel: model,
               parentLabel: label || options.parentLabel,
               parentRm: isRemovable,
+              parentDiskSize: options.parentDiskSize || dev.size,
               hideEsp
             })
           }
@@ -811,7 +814,8 @@ app.whenReady().then(() => {
         await parseDev(b, {
           parentModel: b.model,
           parentLabel: b.label,
-          parentRm: Boolean(b.rm || b.hotplug)
+          parentRm: Boolean(b.rm || b.hotplug),
+          parentDiskSize: b.size
         })
       }
 
