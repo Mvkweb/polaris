@@ -24,7 +24,10 @@ export const ditherTheme = EditorView.theme(
       position: 'relative',
       overflow: 'auto',
       lineHeight: '1.65',
-      fontFamily: 'inherit'
+      fontFamily: 'inherit',
+      scrollBehavior: 'auto !important',
+      overscrollBehaviorY: 'contain',
+      willChange: 'scroll-position'
     },
     '.cm-content': {
       padding: '12px 0 32px 0',

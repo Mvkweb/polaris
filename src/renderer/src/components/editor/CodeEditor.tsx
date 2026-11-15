@@ -190,6 +190,45 @@ export const CodeEditor: Component<CodeEditorProps> = (props) => {
             dragstart: (e) => {
               e.preventDefault()
               return true
+            },
+            wheel: (event, view) => {
+              if (event.ctrlKey || event.metaKey || event.altKey) return false
+
+              const scroller = view.scrollDOM
+              const maxScrollY = scroller.scrollHeight - scroller.clientHeight
+              const maxScrollX = scroller.scrollWidth - scroller.clientWidth
+              if (maxScrollY <= 0 && maxScrollX <= 0) return false
+
+              const deltaY = event.deltaY
+              const deltaX = event.deltaX
+              if (deltaY === 0 && deltaX === 0) return false
+
+              // Precision trackpads produce fractional deltas; preserve native 1:1 tactile inertia
+              if (event.deltaMode === 0 && !Number.isInteger(deltaY) && Math.abs(deltaY) < 15) {
+                return false
+              }
+
+              let pixelY = deltaY
+              let pixelX = deltaX
+              if (event.deltaMode === 1) {
+                pixelY = deltaY * 26
+                pixelX = deltaX * 26
+              } else if (event.deltaMode === 2) {
+                pixelY = deltaY * scroller.clientHeight
+                pixelX = deltaX * scroller.clientWidth
+              }
+
+              // Bypass Chromium's slow easing interpolation for instant zero-lag responsiveness
+              event.preventDefault()
+
+              const SPEED_BOOST = 1.35
+              scroller.scrollBy({
+                top: pixelY * SPEED_BOOST,
+                left: pixelX * SPEED_BOOST,
+                behavior: 'auto'
+              })
+
+              return true
             }
           }),
           EditorView.contentAttributes.of({

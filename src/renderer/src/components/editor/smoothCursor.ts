@@ -2,65 +2,306 @@ import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view'
 import type { Extension } from '@codemirror/state'
 
 /**
- * Authentic 240Hz Neovide / Zed Smear Cursor for CodeMirror 6.
+ * 1:1 Zed Cursor Movement Animation & Damped Spring Physics for CodeMirror 6.
  *
- * Implements the signature 4-corner / convex-hull polygon smear ribbon:
- * - Real-time requestAnimationFrame physics running at native display V-sync (up to 240Hz+).
- * - Frame-rate independent exponential decay: identical motion curves on 60Hz, 120Hz, 144Hz, 240Hz.
- * - Dynamic cyan / sky-blue smear quadrilateral connecting leading head and lagging tail coordinates.
- * - Actively glides and leaves ribbons WHILE selecting text (tracks selection.head in real time).
- * - Bloom ribbon geometry during velocity jumps, collapsing cleanly into a razor-sharp 2.5px caret at rest.
+ * Direct port of Zed Editor's cursor animation physics:
+ * (crates/editor/src/cursor_animation.rs adapted from PR #63195 by @tiny-paris)
+ *
+ * Key physics characteristics:
+ * - 4-corner animated quad representation:
+ *     Corner 0: Top-Left (-0.5, -0.5)
+ *     Corner 1: Top-Right (0.5, -0.5)
+ *     Corner 2: Bottom-Right (0.5, 0.5)
+ *     Corner 3: Bottom-Left (-0.5, 0.5)
+ * - Exact DampedSpringAnimation closed-form differential equations:
+ *     angular_frequency = 4.0 / animation_length
+ *     decay = exp(-angular_frequency * dt)
+ *     position = (initial_pos + combined_vel * dt) * decay
+ *     velocity = decay * (-initial_pos * w - combined_vel * dt * w + combined_vel)
+ * - Directional corner alignment and ranking trail factors [1.0, 0.9, 0.5, 0.3]:
+ *     Leading corners (alignment > 0.5) snap forward in 20ms (SNAP_ANIMATION_LENGTH_SECONDS).
+ *     Trailing corners lag behind according to rank.
+ * - Short move threshold (8.0 chars): 50ms duration for rapid typing; 125ms for line jumps.
+ * - Single filled quadrilateral polygon matching Zed's visual smear ribbon.
+ * - Actively tracks and glides during selection (tracks selection.head in real time).
+ * - Instant snap on document scroll so scrolling remains crisp and responsive.
  * - Zero CPU/GPU wakeups while idle (rAF sleeps as soon as physics converge).
- * - Respects prefers-reduced-motion.
  */
 
-interface Point {
+const MAX_FRAME_DURATION = 0.033 // 33ms maximum dt
+const SPRING_RESET_EPSILON = 0.001
+const SPRING_ACTIVE_EPSILON = 0.01
+const CORNER_ACTIVE_DISTANCE = 0.5
+const GEOMETRY_EPSILON = 0.01
+const SHORT_MOVE_THRESHOLD = 8.0
+const LEADING_SNAP_THRESHOLD = 0.5
+const SNAP_ANIMATION_LENGTH_SECONDS = 0.02
+const ANIMATION_RESET_THRESHOLD_SECONDS = 0.075
+const MAX_TRAIL_DISTANCE_FACTOR = 100.0
+const RANK_TRAIL_FACTORS = [1.0, 0.9, 0.5, 0.3]
+const ANIMATION_LENGTH_SECONDS = 0.125
+const SHORT_ANIMATION_LENGTH_SECONDS = 0.05
+const TRAIL_SIZE = 1.0
+
+interface AnimationPoint {
   x: number
   y: number
 }
 
-function crossProduct(o: Point, a: Point, b: Point): number {
-  return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x)
+function pointLength(p: AnimationPoint): number {
+  return Math.hypot(p.x, p.y)
+}
+
+function normalizePoint(p: AnimationPoint): AnimationPoint {
+  const len = pointLength(p)
+  if (len === 0 || !Number.isFinite(len)) return { x: 0, y: 0 }
+  return { x: p.x / len, y: p.y / len }
+}
+
+interface CursorGeometry {
+  origin: AnimationPoint
+  width: number
+  height: number
+}
+
+function geometryCenter(g: CursorGeometry): AnimationPoint {
+  return {
+    x: g.origin.x + g.width / 2.0,
+    y: g.origin.y + g.height / 2.0
+  }
 }
 
 /**
- * Computes 2D Convex Hull (Andrew's Monotone Chain) for 8 corner points.
- * Runs in under 0.002ms, producing the exact polygon connecting head and tail rects.
+ * Closed-form analytical solution to the critically damped harmonic oscillator:
+ * x''(t) + 2*w*x'(t) + w^2*x(t) = 0
  */
-function getConvexHull(points: Point[]): Point[] {
-  if (points.length <= 3) return points
+class DampedSpringAnimation {
+  position = 0
+  velocity = 0
 
-  const sorted = points.slice().sort((a, b) => (a.x === b.x ? a.y - b.y : a.x - b.x))
-
-  const lower: Point[] = []
-  for (const p of sorted) {
-    while (
-      lower.length >= 2 &&
-      crossProduct(lower[lower.length - 2], lower[lower.length - 1], p) <= 0
+  update(elapsedSeconds: number, animationLength: number): boolean {
+    if (
+      !Number.isFinite(elapsedSeconds) ||
+      elapsedSeconds < 0 ||
+      !Number.isFinite(animationLength) ||
+      animationLength <= elapsedSeconds ||
+      Math.abs(this.position) < SPRING_RESET_EPSILON
     ) {
-      lower.pop()
+      this.reset()
+      return false
     }
-    lower.push(p)
+
+    if (elapsedSeconds === 0) {
+      return Math.abs(this.position) >= SPRING_ACTIVE_EPSILON
+    }
+
+    const angularFrequency = 4.0 / animationLength
+    const initialPosition = this.position
+    const combinedVelocity = this.position * angularFrequency + this.velocity
+    const decay = Math.exp(-angularFrequency * elapsedSeconds)
+
+    this.position = (initialPosition + combinedVelocity * elapsedSeconds) * decay
+    this.velocity =
+      decay *
+      (-initialPosition * angularFrequency -
+        combinedVelocity * elapsedSeconds * angularFrequency +
+        combinedVelocity)
+
+    if (
+      !Number.isFinite(this.position) ||
+      !Number.isFinite(this.velocity) ||
+      Math.abs(this.position) < SPRING_RESET_EPSILON
+    ) {
+      this.reset()
+      return false
+    }
+
+    return Math.abs(this.position) >= SPRING_ACTIVE_EPSILON
   }
 
-  const upper: Point[] = []
-  for (let i = sorted.length - 1; i >= 0; i--) {
-    const p = sorted[i]
-    while (
-      upper.length >= 2 &&
-      crossProduct(upper[upper.length - 2], upper[upper.length - 1], p) <= 0
-    ) {
-      upper.pop()
-    }
-    upper.push(p)
+  reset(): void {
+    this.position = 0
+    this.velocity = 0
   }
-
-  lower.pop()
-  upper.pop()
-  return lower.concat(upper)
 }
 
-const STYLE_ID = 'cm-smear-cursor-styles'
+class Corner {
+  readonly relativePosition: AnimationPoint
+  currentPosition: AnimationPoint = { x: 0, y: 0 }
+  targetPosition: AnimationPoint = { x: 0, y: 0 }
+  horizontalAnimation = new DampedSpringAnimation()
+  verticalAnimation = new DampedSpringAnimation()
+  animationLength = 0
+
+  constructor(rel: AnimationPoint) {
+    this.relativePosition = rel
+  }
+
+  destination(geometry: CursorGeometry): AnimationPoint {
+    const center = geometryCenter(geometry)
+    return {
+      x: center.x + this.relativePosition.x * geometry.width,
+      y: center.y + this.relativePosition.y * geometry.height
+    }
+  }
+
+  directionAlignment(geometry: CursorGeometry): number {
+    const dest = this.destination(geometry)
+    const travel = normalizePoint({
+      x: dest.x - this.currentPosition.x,
+      y: dest.y - this.currentPosition.y
+    })
+    const cornerDir = normalizePoint(this.relativePosition)
+    return travel.x * cornerDir.x + travel.y * cornerDir.y
+  }
+
+  snap(geometry: CursorGeometry): void {
+    const dest = this.destination(geometry)
+    this.currentPosition = { ...dest }
+    this.targetPosition = { ...dest }
+    this.horizontalAnimation.reset()
+    this.verticalAnimation.reset()
+  }
+
+  retarget(geometry: CursorGeometry, rank: number): void {
+    const destination = this.destination(geometry)
+    const geomWidth = Math.max(1e-7, geometry.width)
+    const geomHeight = Math.max(1e-7, geometry.height)
+
+    const horizontalJump = (destination.x - this.targetPosition.x) / geomWidth
+    const verticalJump = (destination.y - this.targetPosition.y) / geomHeight
+    const normalizedJump = normalizePoint({ x: horizontalJump, y: verticalJump })
+    const cornerDirection = normalizePoint(this.relativePosition)
+    const leadingAlignment =
+      normalizedJump.x * cornerDirection.x + normalizedJump.y * cornerDirection.y
+    const isShortJump =
+      Math.abs(horizontalJump) <= SHORT_MOVE_THRESHOLD &&
+      Math.abs(verticalJump) <= SPRING_RESET_EPSILON
+
+    const baseAnimationLength = isShortJump
+      ? Math.min(ANIMATION_LENGTH_SECONDS, SHORT_ANIMATION_LENGTH_SECONDS)
+      : ANIMATION_LENGTH_SECONDS
+
+    const referenceAnimationLength =
+      leadingAlignment > LEADING_SNAP_THRESHOLD
+        ? SNAP_ANIMATION_LENGTH_SECONDS
+        : baseAnimationLength * RANK_TRAIL_FACTORS[Math.min(3, rank)]
+
+    this.animationLength =
+      baseAnimationLength +
+      (referenceAnimationLength - baseAnimationLength) * TRAIL_SIZE
+
+    if (this.animationLength > ANIMATION_RESET_THRESHOLD_SECONDS) {
+      this.horizontalAnimation.reset()
+      this.verticalAnimation.reset()
+    }
+
+    this.targetPosition = destination
+    this.horizontalAnimation.position = destination.x - this.currentPosition.x
+    this.verticalAnimation.position = destination.y - this.currentPosition.y
+  }
+
+  update(elapsedSeconds: number, maxTrailDistance: number): boolean {
+    this.horizontalAnimation.update(elapsedSeconds, this.animationLength)
+    this.verticalAnimation.update(elapsedSeconds, this.animationLength)
+
+    this.horizontalAnimation.position = Math.max(
+      -maxTrailDistance,
+      Math.min(maxTrailDistance, this.horizontalAnimation.position)
+    )
+    this.verticalAnimation.position = Math.max(
+      -maxTrailDistance,
+      Math.min(maxTrailDistance, this.verticalAnimation.position)
+    )
+
+    this.currentPosition = {
+      x: this.targetPosition.x - this.horizontalAnimation.position,
+      y: this.targetPosition.y - this.verticalAnimation.position
+    }
+
+    return (
+      Math.abs(this.horizontalAnimation.position) > CORNER_ACTIVE_DISTANCE ||
+      Math.abs(this.verticalAnimation.position) > CORNER_ACTIVE_DISTANCE
+    )
+  }
+}
+
+class CursorAnimationState {
+  corners: [Corner, Corner, Corner, Corner]
+  targetGeometry: CursorGeometry | null = null
+  active = false
+
+  constructor() {
+    this.corners = [
+      new Corner({ x: -0.5, y: -0.5 }), // Top-Left (0)
+      new Corner({ x: 0.5, y: -0.5 }),  // Top-Right (1)
+      new Corner({ x: 0.5, y: 0.5 }),   // Bottom-Right (2)
+      new Corner({ x: -0.5, y: 0.5 })   // Bottom-Left (3)
+    ]
+  }
+
+  snap(geometry: CursorGeometry): void {
+    for (const corner of this.corners) {
+      corner.snap(geometry)
+    }
+    this.targetGeometry = geometry
+    this.active = false
+  }
+
+  retarget(geometry: CursorGeometry): void {
+    const alignedCorners = this.corners.map((corner, index) => ({
+      index,
+      alignment: corner.directionAlignment(geometry)
+    }))
+    alignedCorners.sort((a, b) => a.alignment - b.alignment)
+    const ranks = [0, 0, 0, 0]
+    alignedCorners.forEach((item, rank) => {
+      ranks[item.index] = rank
+    })
+
+    for (let i = 0; i < 4; i++) {
+      this.corners[i].retarget(geometry, ranks[i])
+    }
+
+    this.targetGeometry = geometry
+    this.active = this.corners.some(
+      (c) => c.horizontalAnimation.position !== 0 || c.verticalAnimation.position !== 0
+    )
+  }
+
+  advance(elapsedSeconds: number): boolean {
+    const maxTrailDistance = this.targetGeometry
+      ? Math.max(this.targetGeometry.width, this.targetGeometry.height) * MAX_TRAIL_DISTANCE_FACTOR
+      : 1000
+
+    let active = false
+    for (const corner of this.corners) {
+      if (corner.update(elapsedSeconds, maxTrailDistance)) {
+        active = true
+      }
+    }
+    this.active = active
+
+    if (!this.active && this.targetGeometry) {
+      for (const corner of this.corners) {
+        corner.snap(this.targetGeometry)
+      }
+    }
+
+    return this.active
+  }
+
+  reset(): void {
+    this.targetGeometry = null
+    this.active = false
+    for (const corner of this.corners) {
+      corner.horizontalAnimation.reset()
+      corner.verticalAnimation.reset()
+    }
+  }
+}
+
+const STYLE_ID = 'cm-zed-cursor-styles'
 
 function injectStyles(): void {
   if (typeof document === 'undefined') return
@@ -91,7 +332,7 @@ function injectStyles(): void {
       height: 0 !important;
       pointer-events: none !important;
     }
-    .cm-smear-svg-layer {
+    .cm-zed-cursor-svg-layer {
       position: absolute;
       top: 0;
       left: 0;
@@ -101,28 +342,27 @@ function injectStyles(): void {
       z-index: 120;
       overflow: visible;
     }
-    .cm-smear-polygon {
+    .cm-zed-cursor-polygon {
       pointer-events: none;
-      transition: opacity 120ms ease;
+      transition: opacity 80ms ease;
     }
-    .cm-smear-caret {
+    .cm-zed-cursor-caret {
       pointer-events: none;
     }
-    .cm-smear-caret.is-blinking {
-      animation: cm-smear-blink 1.06s steps(1) infinite;
+    .cm-zed-cursor-caret.is-blinking {
+      animation: cm-zed-caret-blink 1.06s steps(1) infinite;
     }
-    @keyframes cm-smear-blink {
+    @keyframes cm-zed-caret-blink {
       0%, 48% { opacity: 1; }
       50%, 98% { opacity: 0; }
       100% { opacity: 1; }
     }
     @media (prefers-reduced-motion: reduce) {
-      .cm-smear-polygon {
+      .cm-zed-cursor-polygon {
         display: none !important;
       }
     }
   `
-  document.head.appendChild(style)
 }
 
 interface MeasureResult {
@@ -135,24 +375,12 @@ interface MeasureResult {
   scrolled: boolean
 }
 
-class SmearCursorPlugin {
+class ZedCursorPlugin {
   private view: EditorView
   private svg: SVGSVGElement
   private polygon: SVGPolygonElement
   private caret: SVGRectElement
-
-  // Coordinates in scrollDOM space
-  private targetX = 0
-  private targetY = 0
-  private targetH = 18
-
-  private headX = 0
-  private headY = 0
-  private headH = 18
-
-  private tailX = 0
-  private tailY = 0
-  private tailH = 18
+  private state = new CursorAnimationState()
 
   private placed = false
   private animating = false
@@ -167,22 +395,21 @@ class SmearCursorPlugin {
     injectStyles()
     this.view = view
 
-    // SVG Layer covering the scroller
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-    svg.setAttribute('class', 'cm-smear-svg-layer')
+    svg.setAttribute('class', 'cm-zed-cursor-svg-layer')
 
-    // Polygon Smear Trail (clean, vibrant sky blue ribbon)
+    // Zed cursor polygon trail (clean sky-blue ribbon with subtle boundary definition)
     const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon')
-    polygon.setAttribute('class', 'cm-smear-polygon')
-    polygon.setAttribute('fill', 'rgba(56, 189, 248, 0.40)')
-    polygon.setAttribute('stroke', 'rgba(56, 189, 248, 0.70)')
+    polygon.setAttribute('class', 'cm-zed-cursor-polygon')
+    polygon.setAttribute('fill', 'rgba(56, 189, 248, 0.90)')
+    polygon.setAttribute('stroke', '#38bdf8')
     polygon.setAttribute('stroke-width', '0.5')
     polygon.setAttribute('stroke-linejoin', 'round')
     polygon.style.opacity = '0'
 
-    // Crisp Caret Bar
+    // Static Caret Bar (2.5px width, sky blue, subtle 1.2px rounding)
     const caret = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
-    caret.setAttribute('class', 'cm-smear-caret')
+    caret.setAttribute('class', 'cm-zed-cursor-caret')
     caret.setAttribute('fill', '#38bdf8')
     caret.setAttribute('rx', '1.2')
     caret.setAttribute('ry', '1.2')
@@ -196,8 +423,6 @@ class SmearCursorPlugin {
     this.caret = caret
 
     view.scrollDOM.appendChild(svg)
-    view.dom.classList.add('cm-smooth-active')
-
     this.scheduleMeasure()
   }
 
@@ -228,7 +453,7 @@ class SmearCursorPlugin {
     this.lastScrollTop = scroller.scrollTop
     this.lastScrollLeft = scroller.scrollLeft
 
-    // During selection, track selection.head so the cursor actively glides & smears with the selection!
+    // Track selection.head in real time so the cursor actively glides & trails during text selection
     const selection = view.state.selection.main
     const headPos = selection.head
     const coords =
@@ -282,61 +507,49 @@ class SmearCursorPlugin {
       return
     }
 
-    this.caret.style.opacity = '1'
     this.restartIdleBlink()
 
     const reducedMotion =
       typeof window !== 'undefined' &&
       window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-    // On initial mount or scroll: snap instantly without artificial smear
+    const targetGeometry: CursorGeometry = {
+      origin: { x: measure.left, y: measure.top },
+      width: 2.5,
+      height: measure.height
+    }
+
+    // On initial mount, document scroll, or reduced-motion: snap immediately without trail
     if (!this.placed || measure.scrolled || reducedMotion) {
       this.placed = true
-      this.targetX = measure.left
-      this.targetY = measure.top
-      this.targetH = measure.height
-
-      this.headX = this.targetX
-      this.headY = this.targetY
-      this.headH = this.targetH
-
-      this.tailX = this.targetX
-      this.tailY = this.targetY
-      this.tailH = this.targetH
-
-      this.polygon.style.opacity = '0'
-      this.polygon.setAttribute('points', '')
-
-      this.caret.setAttribute('x', this.headX.toFixed(2))
-      this.caret.setAttribute('y', this.headY.toFixed(2))
-      this.caret.setAttribute('width', '2.5')
-      this.caret.setAttribute('height', this.headH.toFixed(2))
+      this.state.snap(targetGeometry)
+      this.renderAtRest()
       this.stopAnimation()
       return
     }
 
-    const dx = measure.left - this.targetX
-    const dy = measure.top - this.targetY
-    const dist = Math.hypot(dx, dy)
+    // Check jump distance
+    const prevCenter = this.state.targetGeometry
+      ? geometryCenter(this.state.targetGeometry)
+      : { x: measure.left, y: measure.top }
+    const newCenter = geometryCenter(targetGeometry)
+    const jumpDist = Math.hypot(newCenter.x - prevCenter.x, newCenter.y - prevCenter.y)
 
-    this.targetX = measure.left
-    this.targetY = measure.top
-    this.targetH = measure.height
+    // Ignore identical position
+    if (jumpDist <= GEOMETRY_EPSILON) {
+      return
+    }
 
-    // If jump exceeds viewport height, snap cleanly without screen-spanning distortion
-    if (dist > 1800) {
-      this.headX = this.targetX
-      this.headY = this.targetY
-      this.headH = this.targetH
-      this.tailX = this.targetX
-      this.tailY = this.targetY
-      this.tailH = this.targetH
-      this.renderFrame(0)
+    // If jump exceeds screen distance, snap cleanly without screen distortion
+    if (jumpDist > 1600) {
+      this.state.snap(targetGeometry)
+      this.renderAtRest()
       this.stopAnimation()
       return
     }
 
-    // Start 240Hz physics animation
+    // Retarget the 4 corners using Zed's directional alignment and spring physics
+    this.state.retarget(targetGeometry)
     this.startAnimation()
   }
 
@@ -359,83 +572,39 @@ class SmearCursorPlugin {
   private tick(timestamp: number): void {
     if (!this.animating) return
 
-    const dt = Math.min(0.033, Math.max(0.001, (timestamp - this.lastTime) / 1000))
+    const elapsed = Math.min(
+      MAX_FRAME_DURATION,
+      Math.max(0.001, (timestamp - this.lastTime) / 1000)
+    )
     this.lastTime = timestamp
 
-    // Frame-rate independent exponential decay
-    // Head reaches 95% of target in ~45ms (snappy visual feedback)
-    // Tail reaches 95% of target in ~125ms (smooth elastic trailing ribbon)
-    const kHead = 65
-    const kTail = 23
-    const alphaHead = 1 - Math.exp(-kHead * dt)
-    const alphaTail = 1 - Math.exp(-kTail * dt)
+    const active = this.state.advance(elapsed)
 
-    this.headX += (this.targetX - this.headX) * alphaHead
-    this.headY += (this.targetY - this.headY) * alphaHead
-    this.headH += (this.targetH - this.headH) * alphaHead
+    if (active) {
+      const c = this.state.corners
+      const pts = `${c[0].currentPosition.x.toFixed(2)},${c[0].currentPosition.y.toFixed(2)} ${c[1].currentPosition.x.toFixed(2)},${c[1].currentPosition.y.toFixed(2)} ${c[2].currentPosition.x.toFixed(2)},${c[2].currentPosition.y.toFixed(2)} ${c[3].currentPosition.x.toFixed(2)},${c[3].currentPosition.y.toFixed(2)}`
+      this.polygon.setAttribute('points', pts)
+      this.polygon.style.opacity = '1'
+      this.caret.style.opacity = '0'
 
-    this.tailX += (this.targetX - this.tailX) * alphaTail
-    this.tailY += (this.targetY - this.tailY) * alphaTail
-    this.tailH += (this.targetH - this.tailH) * alphaTail
-
-    const headDist = Math.hypot(this.targetX - this.headX, this.targetY - this.headY)
-    const tailDist = Math.hypot(this.targetX - this.tailX, this.targetY - this.tailY)
-    const stretchDist = Math.hypot(this.headX - this.tailX, this.headY - this.tailY)
-
-    // Check if motion has fully converged
-    if (headDist < 0.15 && tailDist < 0.15) {
-      this.headX = this.targetX
-      this.headY = this.targetY
-      this.headH = this.targetH
-      this.tailX = this.targetX
-      this.tailY = this.targetY
-      this.tailH = this.targetH
-
-      this.renderFrame(0)
+      this.rafId = requestAnimationFrame((ts) => this.tick(ts))
+    } else {
+      this.renderAtRest()
       this.stopAnimation()
-      return
     }
-
-    this.renderFrame(stretchDist)
-    this.rafId = requestAnimationFrame((ts) => this.tick(ts))
   }
 
-  private renderFrame(stretchDist: number): void {
-    const baseWidth = 2.5
-    // Dynamic ribbon bloom during velocity jumps (contracts to 2.5px at rest)
-    const dynamicWidth = baseWidth + Math.min(22, stretchDist * 0.075)
+  private renderAtRest(): void {
+    this.polygon.style.opacity = '0'
+    this.polygon.setAttribute('points', '')
 
-    // Render Crisp Head Caret
-    this.caret.setAttribute('x', this.headX.toFixed(2))
-    this.caret.setAttribute('y', this.headY.toFixed(2))
-    this.caret.setAttribute('width', baseWidth.toFixed(2))
-    this.caret.setAttribute('height', this.headH.toFixed(2))
-
-    // Render Smear Polygon Ribbon if in motion
-    if (stretchDist > 1.0) {
-      const hw = dynamicWidth
-      const hh = this.headH
-      const tw = dynamicWidth
-      const th = this.tailH
-
-      const points: Point[] = [
-        { x: this.headX, y: this.headY },
-        { x: this.headX + hw, y: this.headY },
-        { x: this.headX + hw, y: this.headY + hh },
-        { x: this.headX, y: this.headY + hh },
-        { x: this.tailX, y: this.tailY },
-        { x: this.tailX + tw, y: this.tailY },
-        { x: this.tailX + tw, y: this.tailY + th },
-        { x: this.tailX, y: this.tailY + th }
-      ]
-
-      const hull = getConvexHull(points)
-      const pointsStr = hull.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
-      this.polygon.setAttribute('points', pointsStr)
-      this.polygon.style.opacity = '1'
-    } else {
-      this.polygon.style.opacity = '0'
-      this.polygon.setAttribute('points', '')
+    if (this.state.targetGeometry) {
+      const g = this.state.targetGeometry
+      this.caret.setAttribute('x', g.origin.x.toFixed(2))
+      this.caret.setAttribute('y', g.origin.y.toFixed(2))
+      this.caret.setAttribute('width', g.width.toFixed(2))
+      this.caret.setAttribute('height', g.height.toFixed(2))
+      this.caret.style.opacity = '1'
     }
   }
 
@@ -450,9 +619,8 @@ class SmearCursorPlugin {
   destroy(): void {
     this.stopAnimation()
     if (this.idleTimer) window.clearTimeout(this.idleTimer)
-    this.view.dom.classList.remove('cm-smooth-active')
     this.svg.remove()
   }
 }
 
-export const smoothCursorExtension: Extension = ViewPlugin.fromClass(SmearCursorPlugin)
+export const smoothCursorExtension: Extension = ViewPlugin.fromClass(ZedCursorPlugin)
