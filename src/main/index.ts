@@ -751,7 +751,7 @@ app.whenReady().then(() => {
             }
           }
 
-          let usedPercent = 0
+          let usedPercent = isReadOnly ? 100 : 0
           let freeSpace = ''
           let bytesFree = 0
           let bytesTotal = 0

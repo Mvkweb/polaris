@@ -616,7 +616,8 @@ const DriveItemRow: Component<{
     props.mountError()?.id === props.drive.id ? props.mountError()?.message : null
 
   const capacityLabel = (): string => {
-    if (isUnmounted() || isReadOnly()) return props.drive.size
+    if (isUnmounted()) return props.drive.size
+    if (isReadOnly()) return `${props.drive.size} used`
     return formatFreeSpace(props.drive.freeSpace || props.drive.size)
   }
 
@@ -686,7 +687,7 @@ const DriveItemRow: Component<{
         </Show>
       </div>
 
-      <Show when={!isUnmounted() && !isReadOnly()}>
+      <Show when={!isUnmounted()}>
         <div class="w-full mt-2">
           <ProgressBar
             label={props.drive.name || props.drive.model || props.drive.mountPoint}

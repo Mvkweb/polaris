@@ -202,6 +202,12 @@ export const FolderView: Component = () => {
 
   const currentPath = () => workspaceRoot() || '.'
 
+  const volumeStatus = createMemo(() => {
+    const drive = currentDrive()
+    if (!drive) return ''
+    return drive.isReadOnly ? `${drive.size} read-only` : drive.freeSpace
+  })
+
   // Volume free space lookup
   const currentDrive = createMemo(() => {
     const list = drives().filter((d) => d.isMounted !== false && Boolean(d.mountPoint))
@@ -674,9 +680,9 @@ export const FolderView: Component = () => {
             <span class="text-white/20">•</span>
           </Show>
           <span>{filteredEntries().length} items</span>
-          <Show when={currentDrive()?.freeSpace}>
+          <Show when={volumeStatus()}>
             <span class="text-white/20">•</span>
-            <span>{currentDrive()?.freeSpace}</span>
+            <span>{volumeStatus()}</span>
           </Show>
         </div>
 
