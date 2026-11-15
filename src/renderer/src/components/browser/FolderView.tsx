@@ -102,7 +102,7 @@ export const FolderView: Component = () => {
   let currentRequestId = 0
 
   createEffect(() => {
-    const root = workspaceRoot() || '/mnt/storage/polaris'
+    const root = workspaceRoot() || '.'
     explorerRefreshTrigger()
 
     const reqId = ++currentRequestId
@@ -200,7 +200,7 @@ export const FolderView: Component = () => {
     }
   })
 
-  const currentPath = () => workspaceRoot() || '/mnt/storage/polaris'
+  const currentPath = () => workspaceRoot() || '.'
 
   // Volume free space lookup
   const currentDrive = createMemo(() => {

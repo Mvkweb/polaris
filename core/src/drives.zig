@@ -12,12 +12,6 @@ pub fn detectDrives(allocator: std.mem.Allocator, io: std.Io) ![]const protocol.
             .fs_type = "ext4",
             .is_removable = false,
         });
-        try list.append(allocator, .{
-            .name = "Storage",
-            .path = "/mnt/storage",
-            .fs_type = "btrfs",
-            .is_removable = false,
-        });
         return list.toOwnedSlice(allocator);
     };
     defer proc_file.close(io);
@@ -26,6 +20,7 @@ pub fn detectDrives(allocator: std.mem.Allocator, io: std.Io) ![]const protocol.
     var reader = proc_file.reader(io, &r_buf);
 
     var seen_paths: std.ArrayList([]const u8) = .empty;
+    defer seen_paths.deinit(allocator);
 
     while (try reader.interface.takeDelimiter('\n')) |line| {
         const trimmed = std.mem.trim(u8, line, " \r\t");
@@ -60,6 +55,20 @@ pub fn detectDrives(allocator: std.mem.Allocator, io: std.Io) ![]const protocol.
             if (seg.len == 0 or std.mem.findScalar(u8, seg, '.') != null) continue;
             clean_mount = try std.Io.Dir.path.join(allocator, &.{ "/mnt", seg });
             clean_name = try allocator.dupe(u8, seg);
+        } else if (std.mem.startsWith(u8, mount, "/run/media/")) {
+            // Arch/Fedora udisks2 mounts: /run/media/<user>/<label>
+            const rest = mount["/run/media/".len..];
+            const slash_idx = std.mem.findScalar(u8, rest, '/');
+            if (slash_idx) |idx| {
+                const after_user = rest[idx + 1 ..];
+                const second_slash = std.mem.findScalar(u8, after_user, '/');
+                const label = if (second_slash) |sidx| after_user[0..sidx] else after_user;
+                if (label.len > 0) {
+                    clean_mount = try allocator.dupe(u8, mount[0 .. "/run/media/".len + idx + 1 + label.len]);
+                    clean_name = try allocator.dupe(u8, label);
+                }
+            }
+            if (clean_mount.len == 0) continue;
         } else if (std.mem.startsWith(u8, mount, "/media/")) {
             const rest = mount["/media/".len..];
             const slash_idx = std.mem.findScalar(u8, rest, '/');
@@ -97,12 +106,6 @@ pub fn detectDrives(allocator: std.mem.Allocator, io: std.Io) ![]const protocol.
             .name = "Root (/)",
             .path = "/",
             .fs_type = "rootfs",
-            .is_removable = false,
-        });
-        try list.append(allocator, .{
-            .name = "Storage",
-            .path = "/mnt/storage",
-            .fs_type = "btrfs",
             .is_removable = false,
         });
     }

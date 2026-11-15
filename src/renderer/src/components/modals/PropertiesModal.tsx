@@ -400,12 +400,12 @@ export const PropertiesModal: Component = () => {
 
                           <div class="h-6 flex items-center justify-between">
                             <span class="text-white/35 w-[84px] shrink-0">Owner</span>
-                            <span class="text-white/65 font-mono text-[11px]">mvk</span>
+                            <span class="text-white/65 font-mono text-[11px]">{props().owner || 'user'}</span>
                           </div>
 
                           <div class="h-6 flex items-center justify-between">
                             <span class="text-white/35 w-[84px] shrink-0">Group</span>
-                            <span class="text-white/65 font-mono text-[11px]">mvk</span>
+                            <span class="text-white/65 font-mono text-[11px]">{props().group || 'user'}</span>
                           </div>
                         </div>
                       </div>

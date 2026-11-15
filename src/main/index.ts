@@ -3,6 +3,8 @@ import { app, shell, BrowserWindow, ipcMain, nativeTheme, nativeImage, Menu, pro
 // Bypass native menu construction before app is ready
 Menu.setApplicationMenu(null)
 import { join, resolve, extname, basename } from 'path'
+import { existsSync } from 'fs'
+import { homedir, userInfo } from 'os'
 import { readdir, readFile, writeFile, stat, statfs, mkdir, rename, rm, cp } from 'fs/promises'
 import { execFile, spawn } from 'child_process'
 import { promisify } from 'util'
@@ -24,6 +26,7 @@ protocol.registerSchemesAsPrivileged([
 ])
 
 const execFileAsync = promisify(execFile)
+const idNameCache = new Map<string, string>()
 
 // Helper to fetch git-tracked and untracked (non-ignored) files
 const getGitFiles = async (cwd: string): Promise<string[] | null> => {
@@ -335,6 +338,40 @@ app.whenReady().then(() => {
           // ignore directory read error
         }
       }
+
+      let owner = String(stats.uid)
+      let group = String(stats.gid)
+      if (process.platform !== 'win32') {
+        // Fast-path: current user/group
+        const currentUid = process.getuid ? process.getuid() : -1
+        const currentGid = process.getgid ? process.getgid() : -1
+        if (stats.uid === currentUid) {
+          try {
+            owner = userInfo().username || owner
+          } catch {}
+        }
+        const resolveName = async (flag: '-un' | '-gn', idVal: number, fallback: string): Promise<string> => {
+          if (idVal === currentUid && flag === '-un') return owner
+          const cacheKey = `${flag}:${idVal}`
+          if (idNameCache.has(cacheKey)) return idNameCache.get(cacheKey)!
+          try {
+            const { stdout } = await execFileAsync('id', [flag, String(idVal)], { timeout: 1500 })
+            const name = stdout.trim() || fallback
+            idNameCache.set(cacheKey, name)
+            return name
+          } catch {
+            return fallback
+          }
+        }
+
+        const [resolvedOwner, resolvedGroup] = await Promise.all([
+          stats.uid === currentUid ? Promise.resolve(owner) : resolveName('-un', stats.uid, owner),
+          stats.gid === currentGid && currentGid !== -1 ? resolveName('-gn', stats.gid, group) : resolveName('-gn', stats.gid, group)
+        ])
+        owner = resolvedOwner
+        group = resolvedGroup
+      }
+
       return {
         path: fullPath,
         name: basename(fullPath),
@@ -346,6 +383,8 @@ app.whenReady().then(() => {
         modifiedTime: stats.mtimeMs,
         accessedTime: stats.atimeMs,
         permissions: (stats.mode & 0o777).toString(8).padStart(4, '0'),
+        owner,
+        group,
         itemCount
       }
     } catch (err) {
@@ -603,7 +642,6 @@ app.whenReady().then(() => {
         if (!mps || mps.length === 0) return ''
         const valid = mps.filter((m) => m && m !== '[SWAP]')
         if (valid.includes('/')) return '/'
-        if (valid.includes('/mnt/storage')) return '/mnt/storage'
         if (valid.includes('/home')) return '/home'
         valid.sort((a, b) => a.length - b.length || a.localeCompare(b))
         return valid[0] || ''
@@ -623,12 +661,12 @@ app.whenReady().then(() => {
         if ((type === 'part' || type === 'disk') && isValidFs && mountPoint) {
           let displayName = label
           if (!displayName) {
-            if (mountPoint === '/mnt/storage' || mountPoint.startsWith('/mnt/storage')) {
-              displayName = 'Storage'
+            if (mountPoint === '/') {
+              displayName = 'Root (/)'
             } else if (model) {
               displayName = model
             } else {
-              displayName = dev.name
+              displayName = dev.name || mountPoint.split('/').filter(Boolean).pop() || 'Drive'
             }
           }
 
@@ -702,6 +740,52 @@ app.whenReady().then(() => {
       // Never invent drives: the sidebar can show an empty state instead.
       return []
     }
+  })
+
+  // User standard places (Home, Documents, Downloads, etc.) based on active OS user
+  ipcMain.handle('system:getUserPlaces', () => {
+    const safeGetPath = (name: Parameters<typeof app.getPath>[0], fallback: string): string => {
+      try {
+        return app.getPath(name)
+      } catch {
+        return fallback
+      }
+    }
+
+    const home = safeGetPath('home', homedir())
+    const candidates: Record<string, string> = {
+      documents: safeGetPath('documents', join(home, 'Documents')),
+      downloads: safeGetPath('downloads', join(home, 'Downloads')),
+      music: safeGetPath('music', join(home, 'Music')),
+      pictures: safeGetPath('pictures', join(home, 'Pictures')),
+      videos: safeGetPath('videos', join(home, 'Videos'))
+    }
+
+    const result: Record<string, string> = { home }
+
+    for (const [key, candidatePath] of Object.entries(candidates)) {
+      // Avoid duplicate Home entries if minimal Linux maps xdg-user-dirs to Home
+      if (candidatePath && candidatePath !== home && existsSync(candidatePath)) {
+        result[key] = candidatePath
+      }
+    }
+
+    // Resolve trash path
+    if (process.platform === 'darwin') {
+      const macTrash = join(home, '.Trash')
+      if (existsSync(macTrash)) result.trash = macTrash
+    } else if (process.platform !== 'win32') {
+      const dataHome = process.env.XDG_DATA_HOME || join(home, '.local', 'share')
+      const linuxTrashFiles = join(dataHome, 'Trash', 'files')
+      const linuxTrashRoot = join(dataHome, 'Trash')
+      if (existsSync(linuxTrashFiles)) {
+        result.trash = linuxTrashFiles
+      } else if (existsSync(linuxTrashRoot)) {
+        result.trash = linuxTrashRoot
+      }
+    }
+
+    return result
   })
 
   ipcMain.handle('system:getStorageBreakdown', async (_, targetPath: string) => {

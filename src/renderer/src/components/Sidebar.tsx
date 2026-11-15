@@ -46,7 +46,6 @@ import {
   SolarGalleryLinear,
   SolarClapperboardLinear,
   SolarClockCircleLinear,
-  SolarBookmarkLinear,
   SolarHardDriveLinear,
   SolarTuningLinear
 } from './ui/SolarIcons'
@@ -63,18 +62,15 @@ interface AtlasPlaceItem {
   icon: Component<{ class?: string }>
 }
 
-const ATLAS_PLACES: AtlasPlaceItem[] = [
-  { id: 'home', name: 'Home', path: '/home/mvk', icon: SolarHome2Linear },
-  { id: 'docs', name: 'Documents', path: '/home/mvk/Documents', icon: SolarFileTextLinear },
-  { id: 'downloads', name: 'Downloads', path: '/home/mvk/Downloads', icon: SolarDownloadCircleLinear },
-  { id: 'music', name: 'Music', path: '/home/mvk/Music', icon: SolarMusicNoteLinear },
-  { id: 'pictures', name: 'Pictures', path: '/home/mvk/Pictures', icon: SolarGalleryLinear },
-  { id: 'videos', name: 'Videos', path: '/home/mvk/Videos', icon: SolarClapperboardLinear },
-  { id: 'recent', name: 'Recent', path: '/home/mvk', icon: SolarClockCircleLinear },
-  { id: 'trash', name: 'Trash', path: '/home/mvk/.local/share/Trash', icon: SolarTrashBinTrashLinear },
-  { id: 'data', name: 'data', path: '/mnt/data', icon: SolarBookmarkLinear },
-  { id: 'sqml', name: 'SQML', path: '/mnt/storage/SQML', icon: SolarBookmarkLinear },
-  { id: 'storage', name: 'storage', path: '/mnt/storage', icon: SolarBookmarkLinear }
+const DEFAULT_PLACES: AtlasPlaceItem[] = [
+  { id: 'home', name: 'Home', path: '', icon: SolarHome2Linear },
+  { id: 'docs', name: 'Documents', path: '', icon: SolarFileTextLinear },
+  { id: 'downloads', name: 'Downloads', path: '', icon: SolarDownloadCircleLinear },
+  { id: 'music', name: 'Music', path: '', icon: SolarMusicNoteLinear },
+  { id: 'pictures', name: 'Pictures', path: '', icon: SolarGalleryLinear },
+  { id: 'videos', name: 'Videos', path: '', icon: SolarClapperboardLinear },
+  { id: 'recent', name: 'Recent', path: '', icon: SolarClockCircleLinear },
+  { id: 'trash', name: 'Trash', path: '', icon: SolarTrashBinTrashLinear }
 ]
 
 const ICON_BASE = 'https://unpkg.com/@lobehub/icons-static-svg@latest/icons'
@@ -602,10 +598,34 @@ const Sidebar: Component = () => {
   const [drives, setDrives] = createSignal<SystemDrive[]>([])
   const [activePlaceId, setActivePlaceId] = createSignal<string | null>(null)
   const [placesOpen, setPlacesOpen] = createSignal(true)
+  const [places, setPlaces] = createSignal<AtlasPlaceItem[]>(DEFAULT_PLACES)
   const [devicesOpen, setDevicesOpen] = createSignal(true)
   const [hoveredDriveMount, setHoveredDriveMount] = createSignal<string | null>(null)
 
-  const currentPath = () => workspaceRoot() || '/mnt/storage/polaris'
+  const currentPath = () => workspaceRoot() || '.'
+
+  const loadUserPlaces = async (): Promise<void> => {
+    try {
+      if (window.api?.getUserPlaces) {
+        const u = await window.api.getUserPlaces()
+        if (u?.home) {
+          const list: AtlasPlaceItem[] = [
+            { id: 'home', name: 'Home', path: u.home, icon: SolarHome2Linear }
+          ]
+          if (u.documents) list.push({ id: 'docs', name: 'Documents', path: u.documents, icon: SolarFileTextLinear })
+          if (u.downloads) list.push({ id: 'downloads', name: 'Downloads', path: u.downloads, icon: SolarDownloadCircleLinear })
+          if (u.music) list.push({ id: 'music', name: 'Music', path: u.music, icon: SolarMusicNoteLinear })
+          if (u.pictures) list.push({ id: 'pictures', name: 'Pictures', path: u.pictures, icon: SolarGalleryLinear })
+          if (u.videos) list.push({ id: 'videos', name: 'Videos', path: u.videos, icon: SolarClapperboardLinear })
+          if (u.trash) list.push({ id: 'trash', name: 'Trash', path: u.trash, icon: SolarTrashBinTrashLinear })
+
+          setPlaces(list)
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load user places:', err)
+    }
+  }
 
   const loadDrives = async (): Promise<void> => {
     try {
@@ -621,6 +641,7 @@ const Sidebar: Component = () => {
   }
 
   const handleSelectPlace = (place: AtlasPlaceItem): void => {
+    if (!place.path) return
     setActivePlaceId(place.id)
     navigateTo(place.path)
   }
@@ -800,6 +821,7 @@ const Sidebar: Component = () => {
   onMount(() => {
     window.addEventListener('keydown', handleKeyDown)
     refreshGitData()
+    loadUserPlaces()
     loadDrives()
     window.addEventListener('focus', refreshGitData)
   })
@@ -1120,7 +1142,7 @@ const Sidebar: Component = () => {
 
                     <Show when={placesOpen()}>
                       <div class="flex flex-col gap-[2px] mt-0.5 px-0.5">
-                        <For each={ATLAS_PLACES}>
+                        <For each={places()}>
                           {(place) => {
                             const isSelected = () =>
                               activePlaceId()

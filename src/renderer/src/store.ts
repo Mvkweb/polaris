@@ -173,58 +173,7 @@ export interface ProjectItem {
   actions: ProjectAction[]
 }
 
-const DEFAULT_PROJECTS: ProjectItem[] = [
-  {
-    id: 'deep-research1',
-    name: 'deep-research1',
-    path: '/mnt/data/dev/deep-research1',
-    monogram: 'DR',
-    color: 'amber',
-    model: 'Beam Free',
-    workspaceMode: 'Local checkout',
-    actions: []
-  },
-  {
-    id: 'ember',
-    name: 'Ember',
-    path: '/mnt/storage/ember-ide/Ember',
-    monogram: 'ER',
-    color: 'emerald',
-    model: 'Beam Free',
-    workspaceMode: 'Local checkout',
-    actions: []
-  },
-  {
-    id: 'ember-ide',
-    name: 'ember-ide',
-    path: '/mnt/storage/ember-ide',
-    monogram: 'EI',
-    color: 'yellow',
-    model: 'Beam Free',
-    workspaceMode: 'Local checkout',
-    actions: []
-  },
-  {
-    id: 'monolith-shell',
-    name: 'monolith-shell',
-    path: '/mnt/data/dev/monolith-shell',
-    monogram: 'MS',
-    color: 'purple',
-    model: 'Medium',
-    workspaceMode: 'Local checkout',
-    actions: []
-  },
-  {
-    id: 'mvk',
-    name: 'mvk',
-    path: '/home/mvk',
-    monogram: 'MK',
-    color: 'cyan',
-    model: 'Beam Free',
-    workspaceMode: 'Local checkout',
-    actions: []
-  }
-]
+const DEFAULT_PROJECTS: ProjectItem[] = []
 
 export const [projectsList, setProjectsList] = createSignal<ProjectItem[]>(DEFAULT_PROJECTS)
 export const [selectedProjectId, setSelectedProjectId] = createSignal<string | null>(null)
@@ -426,12 +375,12 @@ export interface BrowserTab {
 }
 
 export const [browserTabs, setBrowserTabs] = createSignal<BrowserTab[]>([
-  { id: 'tab-default', path: '/mnt/storage/polaris', name: 'polaris' }
+  { id: 'tab-default', path: '', name: 'Workspace' }
 ])
 export const [activeTabId, setActiveTabId] = createSignal<string>('tab-default')
 
 export const openNewTab = (path?: string): void => {
-  const targetPath = path || workspaceRoot() || '/mnt/storage/polaris'
+  const targetPath = path || workspaceRoot() || '.'
   const name = targetPath.split(/[/\\]/).filter(Boolean).pop() || '/'
   const newTab: BrowserTab = {
     id: `tab-${Date.now()}`,

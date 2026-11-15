@@ -85,7 +85,7 @@ const SearchIcon: Component<{ class?: string }> = (props) => (
 )
 
 export const BrowserTopBar: Component = () => {
-  const currentPath = () => workspaceRoot() || '/mnt/storage/polaris'
+  const currentPath = () => workspaceRoot() || '.'
 
   const pathParts = createMemo(() => {
     return currentPath().split(/[/\\]/).filter(Boolean)

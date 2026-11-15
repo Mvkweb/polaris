@@ -60,6 +60,8 @@ export interface FileProperties {
   modifiedTime: number
   accessedTime: number
   permissions: string
+  owner?: string
+  group?: string
   itemCount?: number
 }
 

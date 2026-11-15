@@ -83,6 +83,8 @@ export interface FileProperties {
   modifiedTime: number
   accessedTime: number
   permissions: string
+  owner?: string
+  group?: string
   itemCount?: number
 }
 
@@ -90,6 +92,15 @@ export interface CustomAPI {
   getAppVersion: () => Promise<string>
   getPlatform: () => Promise<string>
   getSystemDrives: () => Promise<SystemDrive[]>
+  getUserPlaces: () => Promise<{
+    home: string
+    documents?: string
+    downloads?: string
+    music?: string
+    pictures?: string
+    videos?: string
+    trash?: string
+  }>
   getStorageBreakdown: (targetPath?: string) => Promise<any>
   getWorkspaceRoot: () => Promise<string>
   getCoreStatus: () => Promise<{ available: boolean; running: boolean }>
