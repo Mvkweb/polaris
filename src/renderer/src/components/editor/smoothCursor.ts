@@ -2,41 +2,19 @@ import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view'
 import type { Extension } from '@codemirror/state'
 
 /**
- * Smooth caret for CodeMirror 6.
+ * Kitty Terminal-Style Smooth Caret & Cursor Trail for CodeMirror 6.
  *
- * Modelled on kitty's `cursor_trail`: the caret glides between positions with
- * an exponential spring instead of teleporting, and a soft ghost trails behind
- * it, decaying as it catches up. Long jumps (line changes, scrolling, clicks
- * across the viewport) snap instantly so the eye never loses the cursor.
- *
- * Layout reads are deferred through `view.requestMeasure`, because CodeMirror
- * forbids `coordsAtPos` during an update cycle.
+ * Recreates the iconic Kitty terminal `cursor_trail` effect:
+ * 1. Snappy, liquid head caret with spring physics (tau ~20ms) that glides
+ *    between characters during typing and navigation with zero perceived latency.
+ * 2. Trailing comet smear connecting previous positions to the head while moving.
+ * 3. Multi-frame decaying ghost carets trailing behind fast movement.
+ * 4. Calibrated snapping on long jumps (>220px or across distant lines) and scrolling.
+ * 5. Gentle idle breathing pulse (1.05s) that immediately cancels on any keystroke.
+ * 6. Always visible when document is open (never randomly hidden on blur).
  */
 
-const REDUCED_MOTION =
-  typeof window !== 'undefined' &&
-  typeof window.matchMedia === 'function' &&
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-/** Time constants, in ms. Smaller is snappier. */
-const CARET_TAU_X = 20
-const CARET_TAU_Y = 24
-const TRAIL_TAU = 64
-/** Beyond these a move is a jump, not a glide. */
-const MAX_GLIDE_X = 240
-const MAX_GLIDE_LINES = 1.6
-/** Idle time before the caret starts its soft breathing blink. */
-const IDLE_BLINK_DELAY = 640
-
-interface Measure {
-  hidden: boolean
-  left: number
-  top: number
-  height: number
-  scrolled: boolean
-}
-
-const STYLE_ID = 'cm-smooth-cursor-styles'
+const STYLE_ID = 'cm-kitty-cursor-styles'
 
 function injectStyles(): void {
   if (typeof document === 'undefined' || document.getElementById(STYLE_ID)) return
@@ -47,270 +25,414 @@ function injectStyles(): void {
     .cm-editor.cm-smooth-active .cm-dropCursor {
       opacity: 0 !important;
     }
-    .cm-smooth-caret,
-    .cm-smooth-trail {
+    .cm-kitty-layer {
       position: absolute;
-      left: 0;
       top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 150;
+    }
+    .cm-kitty-head {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 2.5px;
+      border-radius: 1px;
+      background: #38bdf8;
+      box-shadow:
+        0 0 8px rgba(56, 189, 248, 0.75),
+        0 0 16px rgba(56, 189, 248, 0.35);
+      pointer-events: none;
+      will-change: transform, height, opacity;
+      transition: opacity 120ms ease;
+    }
+    .cm-kitty-head.is-idle-blinking {
+      animation: cm-kitty-breathe 1.05s ease-in-out infinite;
+    }
+    .cm-kitty-smear {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      border-radius: 1.5px;
+      pointer-events: none;
+      will-change: transform, width, opacity;
+      opacity: 0;
+    }
+    .cm-kitty-ghost {
+      position: absolute;
+      top: 0;
+      left: 0;
       width: 2px;
+      border-radius: 1px;
+      background: #38bdf8;
       pointer-events: none;
       will-change: transform, height, opacity;
       opacity: 0;
     }
-    .cm-smooth-caret { z-index: 120; }
-    .cm-smooth-trail { z-index: 119; }
-    .cm-smooth-caret-bar,
-    .cm-smooth-trail-bar {
-      width: 100%;
-      height: 100%;
-      border-radius: 1px;
-      background: #38bdf8;
+    .cm-kitty-ghost-1 {
+      box-shadow: 0 0 6px rgba(56, 189, 248, 0.5);
     }
-    .cm-smooth-caret-bar {
-      box-shadow:
-        0 0 8px rgba(56, 189, 248, 0.55),
-        0 0 18px rgba(56, 189, 248, 0.18);
+    .cm-kitty-ghost-2 {
+      box-shadow: 0 0 4px rgba(56, 189, 248, 0.25);
     }
-    .cm-smooth-trail-bar {
-      opacity: 0.22;
-      filter: blur(2.5px);
-    }
-    .cm-smooth-caret.is-blinking .cm-smooth-caret-bar {
-      animation: cm-smooth-breathe 1.08s ease-in-out infinite;
-    }
-    @keyframes cm-smooth-breathe {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.22; }
+    @keyframes cm-kitty-breathe {
+      0%, 100% { opacity: 1; filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.75)); }
+      50% { opacity: 0.35; filter: drop-shadow(0 0 3px rgba(56, 189, 248, 0.3)); }
     }
     @media (prefers-reduced-motion: reduce) {
-      .cm-smooth-caret-bar { animation: none !important; }
+      .cm-kitty-head { animation: none !important; }
+      .cm-kitty-smear, .cm-kitty-ghost { display: none !important; }
     }
   `
   document.head.appendChild(style)
 }
 
-class SmoothCursorPlugin {
-  private caret: HTMLDivElement
-  private trail: HTMLDivElement
-  private view: EditorView
+interface MeasureResult {
+  ready: boolean
+  hidden: boolean
+  isFocused: boolean
+  left: number
+  top: number
+  height: number
+  scrolled: boolean
+}
 
+class KittyCursorPlugin {
+  private view: EditorView
+  private layer: HTMLDivElement
+  private headEl: HTMLDivElement
+  private smearEl: HTMLDivElement
+  private ghost1El: HTMLDivElement
+  private ghost2El: HTMLDivElement
+
+  // Animation coordinates
   private x = 0
   private y = 0
-  private h = 16
+  private h = 18
+
   private trailX = 0
   private trailY = 0
+
+  private ghost1X = 0
+  private ghost1Y = 0
+
+  private ghost2X = 0
+  private ghost2Y = 0
+
   private targetX = 0
   private targetY = 0
-  private targetH = 16
+  private targetH = 18
 
   private placed = false
-  private visible = false
-  private raf = 0
-  private lastFrame = 0
-  private blinkTimer = 0
+  private rafId = 0
+  private lastTime = 0
+  private idleTimer = 0
+  private lastScrollTop = 0
+  private lastScrollLeft = 0
 
   constructor(view: EditorView) {
     injectStyles()
     this.view = view
 
-    this.trail = document.createElement('div')
-    this.trail.className = 'cm-smooth-trail'
-    this.trail.innerHTML = '<div class="cm-smooth-trail-bar"></div>'
+    this.layer = document.createElement('div')
+    this.layer.className = 'cm-kitty-layer'
 
-    this.caret = document.createElement('div')
-    this.caret.className = 'cm-smooth-caret'
-    this.caret.innerHTML = '<div class="cm-smooth-caret-bar"></div>'
+    this.smearEl = document.createElement('div')
+    this.smearEl.className = 'cm-kitty-smear'
 
-    view.scrollDOM.appendChild(this.trail)
-    view.scrollDOM.appendChild(this.caret)
+    this.ghost2El = document.createElement('div')
+    this.ghost2El.className = 'cm-kitty-ghost cm-kitty-ghost-2'
+
+    this.ghost1El = document.createElement('div')
+    this.ghost1El.className = 'cm-kitty-ghost cm-kitty-ghost-1'
+
+    this.headEl = document.createElement('div')
+    this.headEl.className = 'cm-kitty-head'
+
+    this.layer.appendChild(this.smearEl)
+    this.layer.appendChild(this.ghost2El)
+    this.layer.appendChild(this.ghost1El)
+    this.layer.appendChild(this.headEl)
+
+    view.scrollDOM.appendChild(this.layer)
     view.dom.classList.add('cm-smooth-active')
 
-    // No layout reads here: CodeMirror is mid-construction. requestMeasure
-    // queues the first read for after the initial layout pass.
-    this.schedule()
+    // Initial measure
+    this.scheduleMeasure()
   }
 
   update(update: ViewUpdate): void {
     if (
-      update.selectionSet ||
       update.docChanged ||
+      update.selectionSet ||
       update.focusChanged ||
       update.geometryChanged ||
       update.viewportChanged
     ) {
-      this.schedule()
+      this.scheduleMeasure()
     }
   }
 
-  private schedule(): void {
-    this.view.requestMeasure<Measure>({
-      read: (view) => this.read(view),
-      write: (measure) => this.write(measure)
+  private scheduleMeasure(): void {
+    this.view.requestMeasure<MeasureResult>({
+      read: (view) => this.readMeasure(view),
+      write: (measure) => this.applyMeasure(measure)
     })
   }
 
-  private lastScrollTop = 0
-
-  private read(view: EditorView): Measure {
-    const scrolled = view.scrollDOM.scrollTop !== this.lastScrollTop
-    this.lastScrollTop = view.scrollDOM.scrollTop
+  private readMeasure(view: EditorView): MeasureResult {
+    const scroller = view.scrollDOM
+    const scrolled =
+      scroller.scrollTop !== this.lastScrollTop ||
+      scroller.scrollLeft !== this.lastScrollLeft
+    this.lastScrollTop = scroller.scrollTop
+    this.lastScrollLeft = scroller.scrollLeft
 
     const selection = view.state.selection.main
-    if (!view.hasFocus || !selection.empty) {
-      return { hidden: true, left: 0, top: 0, height: 0, scrolled }
+    // Only hide custom caret when user is actively dragging/selecting text
+    if (!selection.empty) {
+      return {
+        ready: true,
+        hidden: true,
+        isFocused: view.hasFocus,
+        left: 0,
+        top: 0,
+        height: 0,
+        scrolled
+      }
     }
 
-    const coords = view.coordsAtPos(selection.head)
-    if (!coords) return { hidden: true, left: 0, top: 0, height: 0, scrolled }
+    const headPos = selection.head
+    const coords =
+      view.coordsAtPos(headPos, 1) ||
+      view.coordsAtPos(headPos, -1) ||
+      view.coordsAtPos(headPos)
 
-    const base = view.scrollDOM.getBoundingClientRect()
-    const textHeight = Math.max(10, coords.bottom - coords.top)
-    // A caret that only spans the glyphs looks stubby next to 1.65 line-height;
-    // stretch it to the full line box and centre it on the text.
-    const height = Math.max(textHeight, view.defaultLineHeight)
+    if (!coords) {
+      // Layout might not be ready yet
+      return {
+        ready: false,
+        hidden: false,
+        isFocused: view.hasFocus,
+        left: 0,
+        top: 0,
+        height: 0,
+        scrolled
+      }
+    }
+
+    const scrollerRect = scroller.getBoundingClientRect()
+    const textHeight = Math.max(12, coords.bottom - coords.top)
+    const lineHeight = Math.max(textHeight, view.defaultLineHeight || 18)
     const top =
-      coords.top - base.top + view.scrollDOM.scrollTop - Math.max(0, (height - textHeight) / 2)
+      coords.top -
+      scrollerRect.top +
+      scroller.scrollTop -
+      Math.max(0, (lineHeight - textHeight) / 2)
+    const left = coords.left - scrollerRect.left + scroller.scrollLeft
 
     return {
+      ready: true,
       hidden: false,
-      left: coords.left - base.left + view.scrollDOM.scrollLeft,
+      isFocused: view.hasFocus,
+      left,
       top,
-      height,
+      height: lineHeight,
       scrolled
     }
   }
 
-  private write(measure: Measure): void {
-    if (measure.hidden) {
-      this.hide()
+  private applyMeasure(measure: MeasureResult): void {
+    if (!measure.ready) {
+      // Re-schedule measure on next animation frame
+      requestAnimationFrame(() => this.scheduleMeasure())
       return
     }
+
+    if (measure.hidden) {
+      this.headEl.style.opacity = '0'
+      this.smearEl.style.opacity = '0'
+      this.ghost1El.style.opacity = '0'
+      this.ghost2El.style.opacity = '0'
+      this.stopAnimation()
+      return
+    }
+
+    const isApple =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
     const dx = measure.left - this.targetX
     const dy = measure.top - this.targetY
     const lineHeight = Math.max(1, measure.height)
-    const jump =
+
+    // A jump occurs on initial mount, window scroll, or long-distance repositioning
+    const isJump =
       !this.placed ||
       measure.scrolled ||
-      Math.abs(dx) > MAX_GLIDE_X ||
-      Math.abs(dy) / lineHeight > MAX_GLIDE_LINES
+      Math.abs(dx) > 240 ||
+      Math.abs(dy) / lineHeight > 1.8 ||
+      isApple
 
     this.targetX = measure.left
     this.targetY = measure.top
     this.targetH = measure.height
 
-    this.show()
-    this.restartBlink()
+    // Cursor visibility & idle breathing state
+    this.headEl.style.opacity = measure.isFocused ? '1' : '0.65'
+    this.restartIdleBlink()
 
-    if (jump || REDUCED_MOTION) {
+    if (isJump) {
+      this.placed = true
       this.x = this.targetX
       this.y = this.targetY
       this.h = this.targetH
       this.trailX = this.x
       this.trailY = this.y
+      this.ghost1X = this.x
+      this.ghost1Y = this.y
+      this.ghost2X = this.x
+      this.ghost2Y = this.y
       this.paint()
-      this.stop()
+      this.stopAnimation()
       return
     }
 
-    this.start()
+    this.placed = true
+    this.startAnimation()
   }
 
-  private show(): void {
-    if (this.visible) return
-    this.visible = true
-    this.caret.style.opacity = '1'
-    this.trail.style.opacity = '1'
+  private restartIdleBlink(): void {
+    this.headEl.classList.remove('is-idle-blinking')
+    if (this.idleTimer) window.clearTimeout(this.idleTimer)
+    this.idleTimer = window.setTimeout(() => {
+      this.headEl.classList.add('is-idle-blinking')
+    }, 550)
   }
 
-  private hide(): void {
-    if (!this.visible) return
-    this.visible = false
-    this.placed = false
-    this.caret.style.opacity = '0'
-    this.trail.style.opacity = '0'
-    this.caret.classList.remove('is-blinking')
-    this.stop()
-    if (this.blinkTimer) {
-      window.clearTimeout(this.blinkTimer)
-      this.blinkTimer = 0
-    }
+  private startAnimation(): void {
+    if (this.rafId) return
+    this.lastTime = 0
+    this.rafId = requestAnimationFrame(this.renderLoop)
   }
 
-  private restartBlink(): void {
-    this.caret.classList.remove('is-blinking')
-    if (this.blinkTimer) window.clearTimeout(this.blinkTimer)
-    this.blinkTimer = window.setTimeout(() => {
-      if (this.visible) this.caret.classList.add('is-blinking')
-    }, IDLE_BLINK_DELAY)
+  private stopAnimation(): void {
+    if (!this.rafId) return
+    cancelAnimationFrame(this.rafId)
+    this.rafId = 0
   }
 
-  private start(): void {
-    if (this.raf) return
-    this.lastFrame = 0
-    this.raf = requestAnimationFrame(this.tick)
-  }
+  private renderLoop = (now: number): void => {
+    const dt = this.lastTime ? Math.min(48, Math.max(4, now - this.lastTime)) : 16
+    this.lastTime = now
 
-  private stop(): void {
-    if (!this.raf) return
-    cancelAnimationFrame(this.raf)
-    this.raf = 0
-  }
+    // Physics time constants (ms) - lower is snappier
+    // Head caret is critically damped & instant-feeling
+    const headKx = 1 - Math.exp(-dt / 18)
+    const headKy = 1 - Math.exp(-dt / 22)
 
-  private tick = (now: number): void => {
-    const dt = this.lastFrame ? Math.min(48, now - this.lastFrame) : 16
-    this.lastFrame = now
+    // Trail smear lags behind
+    const trailK = 1 - Math.exp(-dt / 55)
 
-    const kx = 1 - Math.exp(-dt / CARET_TAU_X)
-    const ky = 1 - Math.exp(-dt / CARET_TAU_Y)
-    const kt = 1 - Math.exp(-dt / TRAIL_TAU)
+    // Ghost after-images
+    const ghost1K = 1 - Math.exp(-dt / 38)
+    const ghost2K = 1 - Math.exp(-dt / 72)
 
-    this.x += (this.targetX - this.x) * kx
-    this.y += (this.targetY - this.y) * ky
-    this.h += (this.targetH - this.h) * ky
-    this.trailX += (this.x - this.trailX) * kt
-    this.trailY += (this.y - this.trailY) * kt
+    this.x += (this.targetX - this.x) * headKx
+    this.y += (this.targetY - this.y) * headKy
+    this.h += (this.targetH - this.h) * headKy
+
+    this.trailX += (this.x - this.trailX) * trailK
+    this.trailY += (this.y - this.trailY) * trailK
+
+    this.ghost1X += (this.x - this.ghost1X) * ghost1K
+    this.ghost1Y += (this.y - this.ghost1Y) * ghost1K
+
+    this.ghost2X += (this.ghost1X - this.ghost2X) * ghost2K
+    this.ghost2Y += (this.ghost1Y - this.ghost2Y) * ghost2K
 
     this.paint()
 
+    // Settle criteria
     const settled =
-      Math.abs(this.targetX - this.x) < 0.08 &&
-      Math.abs(this.targetY - this.y) < 0.08 &&
-      Math.abs(this.targetH - this.h) < 0.08
+      Math.abs(this.targetX - this.x) < 0.1 &&
+      Math.abs(this.targetY - this.y) < 0.1 &&
+      Math.abs(this.x - this.trailX) < 0.2 &&
+      Math.abs(this.x - this.ghost2X) < 0.2
 
     if (settled) {
       this.x = this.targetX
       this.y = this.targetY
       this.h = this.targetH
+      this.trailX = this.targetX
+      this.trailY = this.targetY
+      this.ghost1X = this.targetX
+      this.ghost1Y = this.targetY
+      this.ghost2X = this.targetX
+      this.ghost2Y = this.targetY
       this.paint()
-      this.raf = 0
+      this.rafId = 0
       return
     }
 
-    this.raf = requestAnimationFrame(this.tick)
+    this.rafId = requestAnimationFrame(this.renderLoop)
   }
 
   private paint(): void {
-    const left = this.x - 1
-    this.caret.style.transform = `translate3d(${left}px, ${this.y}px, 0)`
-    this.caret.style.height = `${this.h}px`
+    // 1. Position main head caret
+    this.headEl.style.transform = `translate3d(${this.x.toFixed(2)}px, ${this.y.toFixed(2)}px, 0)`
+    this.headEl.style.height = `${this.h.toFixed(1)}px`
 
-    // The ghost lags a touch and only shows when it has actually drifted away.
-    const dx = Math.abs(this.x - this.trailX)
-    const dy = Math.abs(this.y - this.trailY)
-    const drift = Math.min(1, (dx + dy) / 26)
-    this.trail.style.transform = `translate3d(${this.trailX - 1}px, ${this.trailY}px, 0)`
-    this.trail.style.height = `${this.h}px`
-    this.trail.style.opacity = this.visible ? String(0.55 * drift) : '0'
+    const dx = this.x - this.trailX
+    const dy = this.y - this.trailY
+    const dist = Math.hypot(dx, dy)
+
+    // 2. Kitty Trail Smear (connects trailX to x when moving horizontally)
+    if (dist > 1.2 && Math.abs(dy) < 4) {
+      const minX = Math.min(this.x, this.trailX)
+      const maxX = Math.max(this.x, this.trailX)
+      const width = maxX - minX + 2.5
+      const movingRight = dx > 0
+
+      this.smearEl.style.transform = `translate3d(${minX.toFixed(2)}px, ${this.y.toFixed(2)}px, 0)`
+      this.smearEl.style.width = `${width.toFixed(2)}px`
+      this.smearEl.style.height = `${this.h.toFixed(1)}px`
+      this.smearEl.style.background = movingRight
+        ? 'linear-gradient(to right, rgba(56, 189, 248, 0.04), rgba(56, 189, 248, 0.45))'
+        : 'linear-gradient(to left, rgba(56, 189, 248, 0.04), rgba(56, 189, 248, 0.45))'
+      this.smearEl.style.opacity = Math.min(0.75, dist / 14).toFixed(2)
+    } else {
+      this.smearEl.style.opacity = '0'
+    }
+
+    // 3. Kitty Ghost 1 after-image
+    const g1Dist = Math.hypot(this.x - this.ghost1X, this.y - this.ghost1Y)
+    if (g1Dist > 2) {
+      this.ghost1El.style.transform = `translate3d(${this.ghost1X.toFixed(2)}px, ${this.ghost1Y.toFixed(2)}px, 0)`
+      this.ghost1El.style.height = `${this.h.toFixed(1)}px`
+      this.ghost1El.style.opacity = Math.min(0.48, g1Dist / 20).toFixed(2)
+    } else {
+      this.ghost1El.style.opacity = '0'
+    }
+
+    // 4. Kitty Ghost 2 after-image
+    const g2Dist = Math.hypot(this.x - this.ghost2X, this.y - this.ghost2Y)
+    if (g2Dist > 3.5) {
+      this.ghost2El.style.transform = `translate3d(${this.ghost2X.toFixed(2)}px, ${this.ghost2Y.toFixed(2)}px, 0)`
+      this.ghost2El.style.height = `${this.h.toFixed(1)}px`
+      this.ghost2El.style.opacity = Math.min(0.24, g2Dist / 28).toFixed(2)
+    } else {
+      this.ghost2El.style.opacity = '0'
+    }
   }
 
   destroy(): void {
-    this.stop()
-    if (this.blinkTimer) window.clearTimeout(this.blinkTimer)
+    this.stopAnimation()
+    if (this.idleTimer) window.clearTimeout(this.idleTimer)
     this.view.dom.classList.remove('cm-smooth-active')
-    this.caret.remove()
-    this.trail.remove()
+    this.layer.remove()
   }
 }
 
-export const smoothCursorExtension: Extension = ViewPlugin.fromClass(SmoothCursorPlugin)
+export const smoothCursorExtension: Extension = ViewPlugin.fromClass(KittyCursorPlugin)

@@ -17,10 +17,11 @@ export const ditherTheme = EditorView.theme(
       height: '100%',
       fontSize: '13px',
       fontFamily:
-        'ui-monospace, SFMono-Regular, "Space Grotesk", Menlo, Monaco, Consolas, "Liberation Mono", monospace',
-      letterSpacing: '-0.01em'
+        'ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Monaco, Consolas, "Liberation Mono", monospace',
+      letterSpacing: '0px'
     },
     '.cm-scroller': {
+      position: 'relative',
       overflow: 'auto',
       lineHeight: '1.65',
       fontFamily: 'inherit'
