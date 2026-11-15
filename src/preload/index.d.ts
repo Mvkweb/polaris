@@ -65,12 +65,21 @@ export interface SystemDrive {
   name: string
   model: string
   mountPoint: string
+  device: string
+  fstype: string
   size: string
   usedPercent: number
   bytesFree: number
   bytesTotal: number
   freeSpace: string
   isRemovable?: boolean
+  isMounted: boolean
+}
+
+export interface MountDriveResult {
+  ok: boolean
+  mountPoint?: string
+  error?: string
 }
 
 export interface FileProperties {
@@ -93,6 +102,7 @@ export interface CustomAPI {
   getAppVersion: () => Promise<string>
   getPlatform: () => Promise<string>
   getSystemDrives: () => Promise<SystemDrive[]>
+  mountDrive: (devicePath: string) => Promise<MountDriveResult>
   getUserPlaces: () => Promise<{
     home: string
     documents?: string

@@ -5,6 +5,7 @@ const api = {
   getAppVersion: () => ipcRenderer.invoke('app:version'),
   getPlatform: () => ipcRenderer.invoke('app:platform'),
   getSystemDrives: () => ipcRenderer.invoke('system:getDrives'),
+  mountDrive: (devicePath: string) => ipcRenderer.invoke('system:mountDrive', devicePath),
   getUserPlaces: () => ipcRenderer.invoke('system:getUserPlaces'),
   getStorageBreakdown: (targetPath?: string) =>
     ipcRenderer.invoke('system:getStorageBreakdown', targetPath),

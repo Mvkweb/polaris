@@ -677,12 +677,12 @@ app.whenReady().then(() => {
       const { stdout } = await execFileAsync('lsblk', [
         '-J',
         '-o',
-        'NAME,LABEL,MOUNTPOINTS,SIZE,TYPE,FSTYPE,RM,HOTPLUG,MODEL,UUID,PARTUUID'
+        'NAME,LABEL,MOUNTPOINTS,SIZE,TYPE,FSTYPE,RM,HOTPLUG,MODEL,UUID,PARTUUID,PARTTYPE'
       ])
       const data = JSON.parse(stdout)
       const drives: any[] = []
 
-      const preferredMountPoint = (mps: string[]): string => {
+      const preferredMountPoint = (mps?: string[]): string => {
         if (!mps || mps.length === 0) return ''
         const valid = mps.filter((m) => m && m !== '[SWAP]')
         if (valid.includes('/')) return '/'
@@ -691,25 +691,42 @@ app.whenReady().then(() => {
         return valid[0] || ''
       }
 
+      const isEsp = (dev: any): boolean => {
+        const type = String(dev.parttype || '').toLowerCase()
+        return type === '0xef' || type === 'c12a7328-f81f-11d2-ba4b-00a0c93ec93b'
+      }
+
+      const hasDataFs = (dev: any): boolean =>
+        Boolean(dev.fstype) && dev.fstype !== 'swap' && !isEsp(dev)
+
       const parseDev = async (
         dev: any,
-        parentModel?: string,
-        parentLabel?: string,
-        parentRm?: boolean
+        options: {
+          parentModel?: string
+          parentLabel?: string
+          parentRm?: boolean
+          hideEsp?: boolean
+        } = {}
       ): Promise<void> => {
-        const model = (dev.model || parentModel || '').trim()
+        const model = (dev.model || options.parentModel || '').trim()
         const type = dev.type
-        const fstype = dev.fstype || ''
-        const label = (dev.label || parentLabel || '').trim()
+        const fstype = (dev.fstype || '').trim()
+        const label = (dev.label || options.parentLabel || '').trim()
         const mountPoint = preferredMountPoint(dev.mountpoints)
         const isSwap = fstype === 'swap'
         const isLoop = type === 'loop' && !mountPoint
         const isBoot = mountPoint === '/boot' || mountPoint.startsWith('/boot/')
-        const isValidFs = !isSwap && !isLoop && !isBoot
-        const isRemovable = Boolean(dev.rm || dev.hotplug || parentRm)
+        const isRemovable = Boolean(dev.rm || dev.hotplug || options.parentRm)
+        const isMounted = Boolean(mountPoint)
+        const hasChildren = Array.isArray(dev.children) && dev.children.length > 0
+        const isContainer = type === 'disk' && hasChildren
+        const usableFs =
+          Boolean(fstype) && !isSwap && !isLoop && !isBoot && !(isEsp(dev) && options.hideEsp)
+        const isVolume = type === 'part' || (type === 'disk' && !isContainer)
 
-        // Only emit mounted filesystems as navigable places
-        if ((type === 'part' || type === 'disk') && isValidFs && mountPoint) {
+        // Emit mounted filesystems plus unmounted removable volumes, so a
+        // plugged-in USB is visible before it is mounted (like Dolphin).
+        if (isVolume && usableFs && (isMounted || isRemovable)) {
           let displayName = label
           if (!displayName) {
             if (mountPoint === '/') {
@@ -718,6 +735,8 @@ app.whenReady().then(() => {
               displayName = mountPoint.split('/').filter(Boolean).pop() || model || dev.name
             } else if (model) {
               displayName = model
+            } else if (type === 'part') {
+              displayName = `${fstype.toUpperCase()} volume (${dev.size})`
             } else {
               displayName = dev.name || 'Drive'
             }
@@ -728,43 +747,60 @@ app.whenReady().then(() => {
           let bytesFree = 0
           let bytesTotal = 0
 
-          try {
-            const st = await statfs(mountPoint)
-            bytesTotal = Number(st.blocks) * Number(st.bsize)
-            bytesFree = Number(st.bavail) * Number(st.bsize)
-            if (bytesTotal > 0) {
-              usedPercent = Math.min(
-                100,
-                Math.max(0, Math.round(((bytesTotal - bytesFree) / bytesTotal) * 100))
-              )
-              const gbFree = (bytesFree / 1024 ** 3).toFixed(1)
-              freeSpace = `${gbFree} GB free`
-            }
-          } catch {}
+          if (isMounted) {
+            try {
+              const st = await statfs(mountPoint)
+              bytesTotal = Number(st.blocks) * Number(st.bsize)
+              bytesFree = Number(st.bavail) * Number(st.bsize)
+              if (bytesTotal > 0) {
+                usedPercent = Math.min(
+                  100,
+                  Math.max(0, Math.round(((bytesTotal - bytesFree) / bytesTotal) * 100))
+                )
+                const gbFree = (bytesFree / 1024 ** 3).toFixed(1)
+                freeSpace = `${gbFree} GB free`
+              }
+            } catch {}
+          }
 
           drives.push({
             id: dev.name,
             name: displayName,
             model,
             mountPoint: mountPoint === '/bin' ? '/' : mountPoint,
+            device: `/dev/${dev.name}`,
+            fstype,
             size: dev.size,
             usedPercent,
             bytesFree,
             bytesTotal,
             freeSpace,
-            isRemovable
+            isRemovable,
+            isMounted
           })
         }
 
-        if (dev.children) {
+        if (hasChildren) {
+          // Hide the EFI system partition on removable media when the stick
+          // also carries a real data volume (Dolphin does the same).
+          const hideEsp = isRemovable && dev.children.some(hasDataFs)
           for (const child of dev.children) {
-            await parseDev(child, model, label || parentLabel, isRemovable)
+            await parseDev(child, {
+              parentModel: model,
+              parentLabel: label || options.parentLabel,
+              parentRm: isRemovable,
+              hideEsp
+            })
           }
         }
       }
 
       for (const b of data.blockdevices || []) {
-        await parseDev(b, b.model, b.label, Boolean(b.rm || b.hotplug))
+        await parseDev(b, {
+          parentModel: b.model,
+          parentLabel: b.label,
+          parentRm: Boolean(b.rm || b.hotplug)
+        })
       }
 
       return drives
@@ -772,6 +808,77 @@ app.whenReady().then(() => {
       console.warn('system:getDrives error:', err)
       // Never invent drives: the sidebar can show an empty state instead.
       return []
+    }
+  })
+
+  // Mount a removable volume on demand, the same way Dolphin does. Read-only:
+  // Polaris never writes to user media, and mounting read-only keeps it that way.
+  ipcMain.handle('system:mountDrive', async (_, devicePath: string) => {
+    if (process.platform !== 'linux') {
+      return { ok: false, error: 'Mounting is only supported on Linux' }
+    }
+    if (
+      typeof devicePath !== 'string' ||
+      !/^\/dev\/[a-zA-Z0-9._/-]+$/.test(devicePath) ||
+      devicePath.includes('..')
+    ) {
+      return { ok: false, error: 'Invalid device path' }
+    }
+
+    try {
+      await execFileAsync('udisksctl', ['mount', '-b', devicePath, '--options', 'ro'], {
+        timeout: 20000
+      })
+
+      const { stdout } = await execFileAsync('findmnt', [
+        '-n',
+        '-o',
+        'TARGET',
+        '--source',
+        devicePath
+      ])
+      const mountPoint = stdout
+        .split('\n')
+        .map((line) => line.trim())
+        .find(Boolean)
+
+      if (!mountPoint) {
+        return { ok: false, error: 'Mounted, but no mount point was reported' }
+      }
+
+      triggerDrivesChanged()
+      return { ok: true, mountPoint }
+    } catch (err) {
+      // If something else (Dolphin, udev) won the race, it is already mounted.
+      try {
+        const { stdout } = await execFileAsync('findmnt', [
+          '-n',
+          '-o',
+          'TARGET',
+          '--source',
+          devicePath
+        ])
+        const mountPoint = stdout
+          .split('\n')
+          .map((line) => line.trim())
+          .find(Boolean)
+        if (mountPoint) {
+          triggerDrivesChanged()
+          return { ok: true, mountPoint }
+        }
+      } catch {}
+
+      const message =
+        err && typeof err === 'object' && 'stderr' in err && err.stderr
+          ? String(err.stderr).trim()
+          : err instanceof Error
+            ? err.message
+            : 'Could not mount the drive'
+      console.warn('system:mountDrive error:', message)
+      return {
+        ok: false,
+        error: message.split('\n').filter(Boolean).pop() || 'Could not mount the drive'
+      }
     }
   })
 

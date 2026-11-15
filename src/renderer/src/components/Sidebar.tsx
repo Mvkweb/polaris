@@ -10,6 +10,7 @@ import {
 } from 'solid-js'
 import { AnimatedGradient } from './dithercn/animated-gradient'
 import { DitherButton } from './dithercn/dither-button'
+import { Loader } from './dithercn/loader'
 import { ProgressBar } from './dithercn/progress-bar'
 import {
   setCurrentNote,
@@ -596,24 +597,37 @@ const DriveItemRow: Component<{
   drive: SystemDrive
   activePlaceId: () => string | null
   currentPath: () => string
-  hoveredDriveMount: () => string | null
-  setHoveredDriveMount: (val: string | null | ((curr: string | null) => string | null)) => void
-  onSelectDrive: (mountPoint?: string | null) => void
+  hoveredDriveId: () => string | null
+  setHoveredDriveId: (val: string | null | ((curr: string | null) => string | null)) => void
+  onSelectDrive: (drive: SystemDrive) => void
+  mountingDriveId: () => string | null
+  mountError: () => { id: string; message: string } | null
   openContextMenu: (x: number, y: number, data: any) => void
   icon: Component<{ class?: string }>
 }> = (props) => {
-  const isSelected = () => !props.activePlaceId() && props.currentPath() === props.drive.mountPoint
-  const isDriveHovered = () => props.hoveredDriveMount() === props.drive.mountPoint
+  const isUnmounted = () => props.drive.isMounted === false
+  const isSelected = () =>
+    !isUnmounted() && !props.activePlaceId() && props.currentPath() === props.drive.mountPoint
+  const isDriveHovered = () => props.hoveredDriveId() === props.drive.id
   const isExpanded = () => isDriveHovered() || isSelected()
+  const isMounting = () => props.mountingDriveId() === props.drive.id
+  const mountError = () =>
+    props.mountError()?.id === props.drive.id ? props.mountError()?.message : null
+
+  const capacityLabel = (): string => {
+    if (isUnmounted()) return props.drive.size
+    return formatFreeSpace(props.drive.freeSpace || props.drive.size)
+  }
 
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={() => props.onSelectDrive(props.drive.mountPoint)}
+      onClick={() => props.onSelectDrive(props.drive)}
       onContextMenu={(e) => {
         e.preventDefault()
         e.stopPropagation()
+        if (isUnmounted()) return
         props.openContextMenu(e.clientX, e.clientY, {
           path: props.drive.mountPoint,
           name: props.drive.name,
@@ -621,14 +635,14 @@ const DriveItemRow: Component<{
           drive: props.drive
         })
       }}
-      onMouseEnter={() => props.setHoveredDriveMount(props.drive.mountPoint)}
+      onMouseEnter={() => props.setHoveredDriveId(props.drive.id)}
       onMouseLeave={() =>
-        props.setHoveredDriveMount((curr) => (curr === props.drive.mountPoint ? null : curr))
+        props.setHoveredDriveId((curr) => (curr === props.drive.id ? null : curr))
       }
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
-          props.onSelectDrive(props.drive.mountPoint)
+          props.onSelectDrive(props.drive)
         }
       }}
       class={`group rounded-md cursor-pointer outline-none transition-colors duration-150 select-none px-2.5 py-2 ${
@@ -650,30 +664,42 @@ const DriveItemRow: Component<{
         >
           {props.drive.name}
         </span>
-        <Show when={props.drive.freeSpace || props.drive.size}>
+        <Show when={isMounting()}>
+          <Loader
+            variant="dots"
+            size="sm"
+            cell={1}
+            color="ink"
+            label={`Mounting ${props.drive.name}`}
+            class="h-4 opacity-80"
+          />
+        </Show>
+        <Show when={!isMounting() && (props.drive.freeSpace || props.drive.size)}>
           <span
             class={`text-[11px] font-mono tabular-nums shrink-0 transition-colors ${
               isExpanded() ? 'text-white/55' : 'text-white/35'
             }`}
           >
-            {formatFreeSpace(props.drive.freeSpace || props.drive.size)}
+            {capacityLabel()}
           </span>
         </Show>
       </div>
 
-      <div class="w-full mt-2">
-        <ProgressBar
-          label={props.drive.name || props.drive.model || props.drive.mountPoint}
-          value={Math.min(100, Math.max(0, Math.round(props.drive.usedPercent || 0)))}
-          max={100}
-          size="sm"
-          fill="gradient"
-          bloom="low"
-          color="blue"
-          hideLabel
-          class="w-full"
-        />
-      </div>
+      <Show when={!isUnmounted()}>
+        <div class="w-full mt-2">
+          <ProgressBar
+            label={props.drive.name || props.drive.model || props.drive.mountPoint}
+            value={Math.min(100, Math.max(0, Math.round(props.drive.usedPercent || 0)))}
+            max={100}
+            size="sm"
+            fill="gradient"
+            bloom="low"
+            color="blue"
+            hideLabel
+            class="w-full"
+          />
+        </div>
+      </Show>
 
       <div
         class="grid transition-[grid-template-rows] duration-300 ease-out"
@@ -687,13 +713,30 @@ const DriveItemRow: Component<{
               isExpanded() ? 'opacity-100' : 'opacity-0'
             }`}
           >
-            <span class="truncate text-white/40 max-w-[145px]" title={props.drive.mountPoint}>
-              {props.drive.mountPoint}
-            </span>
-            <span class="text-white/35 tabular-nums shrink-0">
-              {props.drive.usedPercent}% used
-            </span>
+            <Show
+              when={!isUnmounted()}
+              fallback={
+                <span class="truncate text-white/40">
+                  {isMounting() ? 'Mounting…' : 'Not mounted · click to mount'}
+                </span>
+              }
+            >
+              <span class="truncate text-white/40 max-w-[145px]" title={props.drive.mountPoint}>
+                {props.drive.mountPoint}
+              </span>
+              <span class="text-white/35 tabular-nums shrink-0">
+                {props.drive.usedPercent}% used
+              </span>
+            </Show>
           </div>
+          <Show when={mountError()}>
+            <p
+              class="pt-1 text-[11px] leading-snug text-amber-300/80 truncate"
+              title={mountError() ?? undefined}
+            >
+              {mountError()}
+            </p>
+          </Show>
         </div>
       </div>
     </div>
@@ -718,10 +761,20 @@ const Sidebar: Component = () => {
   const [places, setPlaces] = createSignal<AtlasPlaceItem[]>(DEFAULT_PLACES)
   const [devicesOpen, setDevicesOpen] = createSignal(true)
   const [removableOpen, setRemovableOpen] = createSignal(true)
-  const [hoveredDriveMount, setHoveredDriveMount] = createSignal<string | null>(null)
+  const [hoveredDriveId, setHoveredDriveId] = createSignal<string | null>(null)
+  const [mountingDriveId, setMountingDriveId] = createSignal<string | null>(null)
+  const [mountError, setMountError] = createSignal<{ id: string; message: string } | null>(null)
 
   const internalDrives = createMemo(() => drives().filter((d) => !d.isRemovable))
-  const removableDrives = createMemo(() => drives().filter((d) => d.isRemovable))
+  const removableDrives = createMemo(() =>
+    drives()
+      .filter((d) => d.isRemovable)
+      .sort(
+        (a, b) =>
+          Number(b.isMounted !== false) - Number(a.isMounted !== false) ||
+          a.name.localeCompare(b.name)
+      )
+  )
 
   const currentPath = () => workspaceRoot() || '.'
 
@@ -765,10 +818,35 @@ const Sidebar: Component = () => {
     navigateTo(place.path)
   }
 
-  const handleSelectDrive = (mountPoint?: string | null): void => {
-    if (!mountPoint) return
-    setActivePlaceId(null)
-    navigateTo(mountPoint)
+  const handleSelectDrive = async (drive: SystemDrive): Promise<void> => {
+    if (drive.isMounted !== false) {
+      if (!drive.mountPoint) return
+      setActivePlaceId(null)
+      navigateTo(drive.mountPoint)
+      return
+    }
+
+    if (!drive.device || mountingDriveId()) return
+
+    setMountingDriveId(drive.id)
+    setMountError(null)
+    try {
+      const result = await window.api?.mountDrive?.(drive.device)
+      if (result?.ok && result.mountPoint) {
+        await loadDrives()
+        setActivePlaceId(null)
+        navigateTo(result.mountPoint)
+      } else {
+        setMountError({ id: drive.id, message: result?.error || 'Could not mount the drive' })
+      }
+    } catch (err) {
+      setMountError({
+        id: drive.id,
+        message: err instanceof Error ? err.message : 'Could not mount the drive'
+      })
+    } finally {
+      setMountingDriveId(null)
+    }
   }
 
   // Spaces state
@@ -1321,9 +1399,11 @@ const Sidebar: Component = () => {
                               drive={drive}
                               activePlaceId={activePlaceId}
                               currentPath={currentPath}
-                              hoveredDriveMount={hoveredDriveMount}
-                              setHoveredDriveMount={setHoveredDriveMount}
+                              hoveredDriveId={hoveredDriveId}
+                              setHoveredDriveId={setHoveredDriveId}
                               onSelectDrive={handleSelectDrive}
+                              mountingDriveId={mountingDriveId}
+                              mountError={mountError}
                               openContextMenu={openContextMenu}
                               icon={SolarHardDriveLinear}
                             />
@@ -1351,9 +1431,11 @@ const Sidebar: Component = () => {
                                 drive={drive}
                                 activePlaceId={activePlaceId}
                                 currentPath={currentPath}
-                                hoveredDriveMount={hoveredDriveMount}
-                                setHoveredDriveMount={setHoveredDriveMount}
+                                hoveredDriveId={hoveredDriveId}
+                                setHoveredDriveId={setHoveredDriveId}
                                 onSelectDrive={handleSelectDrive}
+                                mountingDriveId={mountingDriveId}
+                                mountError={mountError}
                                 openContextMenu={openContextMenu}
                                 icon={UsbDriveIcon}
                               />

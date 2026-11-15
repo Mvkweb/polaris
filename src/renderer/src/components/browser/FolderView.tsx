@@ -204,7 +204,7 @@ export const FolderView: Component = () => {
 
   // Volume free space lookup
   const currentDrive = createMemo(() => {
-    const list = drives()
+    const list = drives().filter((d) => d.isMounted !== false && Boolean(d.mountPoint))
     if (!list.length) return undefined
     const path = currentPath()
     return (

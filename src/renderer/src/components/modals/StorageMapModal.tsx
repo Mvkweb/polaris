@@ -140,10 +140,13 @@ export const StorageMapModal: Component = () => {
       // statfs. Categories are never guessed.
       try {
         const drives = await window.api?.getSystemDrives?.()
+        const mountedDrives = (drives ?? []).filter(
+          (d) => d.isMounted !== false && Boolean(d.mountPoint)
+        )
         const matched =
-          drives?.find((d) => d.mountPoint === state.targetPath) ||
-          drives
-            ?.filter((d) => state.targetPath.startsWith(d.mountPoint))
+          mountedDrives.find((d) => d.mountPoint === state.targetPath) ||
+          mountedDrives
+            .filter((d) => state.targetPath.startsWith(d.mountPoint))
             .sort((a, b) => b.mountPoint.length - a.mountPoint.length)[0]
         if (matched && matched.bytesTotal > 0) {
           const gb = 1024 * 1024 * 1024

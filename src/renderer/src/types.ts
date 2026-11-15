@@ -98,12 +98,15 @@ export interface SystemDrive {
   name: string
   model: string
   mountPoint: string
+  device: string
+  fstype: string
   size: string
   usedPercent: number
   bytesFree: number
   bytesTotal: number
   freeSpace: string
   isRemovable?: boolean
+  isMounted: boolean
 }
 
 export interface ChatSessionSummary {
