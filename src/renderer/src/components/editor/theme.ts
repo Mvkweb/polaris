@@ -32,22 +32,48 @@ export const ditherTheme = EditorView.theme(
     '&.cm-smooth-active .cm-cursor, &.cm-smooth-active .cm-dropCursor': {
       opacity: '0 !important'
     },
-    // Rounded modern selection highlights
+    // Selection styling: uniform background, flat internal edges
     '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-selectionLayer .cm-selectionBackground': {
       backgroundColor: 'rgba(56, 189, 248, 0.22) !important',
-      borderRadius: '4px !important'
+      borderRadius: '0px'
     },
+    // Single-line or word selection: clean subtle 3px rounding
+    '.cm-selectionLayer .cm-selectionBackground:only-child': {
+      borderRadius: '3px !important'
+    },
+    // Multi-line top row: round only top-left & top-right
+    '.cm-selectionLayer .cm-selectionBackground:first-child': {
+      borderTopLeftRadius: '3px !important',
+      borderTopRightRadius: '3px !important',
+      borderBottomLeftRadius: '0 !important',
+      borderBottomRightRadius: '0 !important'
+    },
+    // Multi-line bottom row: round only bottom-left & bottom-right
+    '.cm-selectionLayer .cm-selectionBackground:last-child': {
+      borderBottomLeftRadius: '3px !important',
+      borderBottomRightRadius: '3px !important',
+      borderTopLeftRadius: '0 !important',
+      borderTopRightRadius: '0 !important'
+    },
+    // Seamless straight edges on intermediate rows (no scalloped notches)
+    '.cm-selectionLayer .cm-selectionBackground:not(:first-child):not(:last-child)': {
+      borderRadius: '0 !important'
+    },
+    // Hide duplicate native browser selection to avoid double-brightness
     '.cm-content ::selection': {
-      backgroundColor: 'rgba(56, 189, 248, 0.22) !important'
+      backgroundColor: 'transparent !important'
+    },
+    // When text is selected, avoid activeLine background clashing under the cursor line
+    '&:has(.cm-selectionLayer .cm-selectionBackground) .cm-activeLine': {
+      backgroundColor: 'transparent !important'
     },
     '.cm-selectionMatch': {
       backgroundColor: 'rgba(56, 189, 248, 0.12)',
       outline: '1px solid rgba(56, 189, 248, 0.3)',
-      borderRadius: '4px'
+      borderRadius: '3px'
     },
     '.cm-activeLine': {
-      backgroundColor: 'rgba(255, 255, 255, 0.025)',
-      borderRadius: '3px'
+      backgroundColor: 'rgba(255, 255, 255, 0.025)'
     },
     '.cm-gutters': {
       backgroundColor: '#0a0a0a',
