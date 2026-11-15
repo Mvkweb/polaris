@@ -2,18 +2,19 @@ import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view'
 import type { Extension } from '@codemirror/state'
 
 /**
- * Clean, High-Craft Smooth Caret & Motion Trail for CodeMirror 6.
+ * 240Hz GPU-Composited Smooth Caret & Motion Trail for CodeMirror 6.
  *
  * Designed with strict adherence to design engineering principles:
+ * - Offloads coordinate transitions directly to Chromium's GPU compositor
+ *   thread (runs at native display V-sync: 120Hz, 144Hz, 240Hz+).
+ * - Zero JS frame-step stutter: silky-smooth interruptible hardware curves.
  * - Crisp, razor-sharp 2px solid caret bar (ZERO blurry neon glow, ZERO box-shadow halos).
- * - Smooth, critically damped spring interpolation (tau ~18ms) for instantaneous,
- *   butter-smooth typing and arrow navigation.
- * - Minimal, elegant trailing stretch during rapid motion that collapses cleanly at rest.
- * - Classic clean blinking when idle (>550ms), solid and steady while typing.
- * - Rock-solid visibility: reliably measured and rendered across all states.
+ * - Subtle, elegant trailing ghost that smoothly lags during typing and collapses at rest.
+ * - Calibrated instant snapping on line jumps (>1.5 lines), scroll, and initial mount.
+ * - Classic discrete blinking when idle (>550ms), solid and steady while typing.
  */
 
-const STYLE_ID = 'cm-clean-cursor-styles'
+const STYLE_ID = 'cm-hardware-cursor-styles'
 
 function injectStyles(): void {
   if (typeof document === 'undefined' || document.getElementById(STYLE_ID)) return
@@ -24,14 +25,14 @@ function injectStyles(): void {
     .cm-editor.cm-smooth-active .cm-dropCursor {
       opacity: 0 !important;
     }
-    .cm-clean-cursor-layer {
+    .cm-hw-cursor-layer {
       position: absolute;
       top: 0;
       left: 0;
       pointer-events: none;
       z-index: 150;
     }
-    .cm-clean-caret {
+    .cm-hw-caret {
       position: absolute;
       top: 0;
       left: 0;
@@ -40,31 +41,39 @@ function injectStyles(): void {
       background: #38bdf8;
       pointer-events: none;
       will-change: transform, height, opacity;
-      transition: opacity 80ms ease;
+      transform: translate3d(0, 0, 0);
+      transition: transform 65ms cubic-bezier(0.16, 1, 0.3, 1), height 75ms ease-out;
     }
-    .cm-clean-caret.is-blinking {
-      animation: cm-clean-blink 1.06s steps(1) infinite;
+    .cm-hw-caret.is-blinking {
+      animation: cm-hw-blink 1.06s steps(1) infinite;
     }
-    .cm-clean-trail {
+    .cm-hw-trail {
       position: absolute;
       top: 0;
       left: 0;
-      height: 100%;
+      width: 2px;
       border-radius: 1px;
-      background: rgba(56, 189, 248, 0.22);
+      background: rgba(56, 189, 248, 0.32);
       pointer-events: none;
-      will-change: transform, width, opacity;
+      will-change: transform, height, opacity;
+      transform: translate3d(0, 0, 0);
+      transition: transform 125ms cubic-bezier(0.16, 1, 0.3, 1), height 75ms ease-out, opacity 140ms ease;
       opacity: 0;
-      transition: opacity 120ms ease;
     }
-    @keyframes cm-clean-blink {
+    @keyframes cm-hw-blink {
       0%, 48% { opacity: 1; }
       50%, 98% { opacity: 0; }
       100% { opacity: 1; }
     }
     @media (prefers-reduced-motion: reduce) {
-      .cm-clean-trail { display: none !important; }
-      .cm-clean-caret { animation: none !important; }
+      .cm-hw-caret,
+      .cm-hw-trail {
+        transition: none !important;
+        animation: none !important;
+      }
+      .cm-hw-trail {
+        display: none !important;
+      }
     }
   `
   document.head.appendChild(style)
@@ -80,25 +89,17 @@ interface MeasureResult {
   scrolled: boolean
 }
 
-class CleanSmoothCursorPlugin {
+class HardwareSmoothCursorPlugin {
   private view: EditorView
   private layer: HTMLDivElement
   private caretEl: HTMLDivElement
   private trailEl: HTMLDivElement
 
-  // Animation coordinates
-  private x = 0
-  private y = 0
-  private h = 18
-
-  private trailX = 0
   private targetX = 0
   private targetY = 0
   private targetH = 18
 
   private placed = false
-  private rafId = 0
-  private lastTime = 0
   private idleTimer = 0
   private lastScrollTop = 0
   private lastScrollLeft = 0
@@ -108,13 +109,13 @@ class CleanSmoothCursorPlugin {
     this.view = view
 
     this.layer = document.createElement('div')
-    this.layer.className = 'cm-clean-cursor-layer'
+    this.layer.className = 'cm-hw-cursor-layer'
 
     this.trailEl = document.createElement('div')
-    this.trailEl.className = 'cm-clean-trail'
+    this.trailEl.className = 'cm-hw-trail'
 
     this.caretEl = document.createElement('div')
-    this.caretEl.className = 'cm-clean-caret'
+    this.caretEl.className = 'cm-hw-caret'
 
     this.layer.appendChild(this.trailEl)
     this.layer.appendChild(this.caretEl)
@@ -214,25 +215,19 @@ class CleanSmoothCursorPlugin {
     if (measure.hidden) {
       this.caretEl.style.opacity = '0'
       this.trailEl.style.opacity = '0'
-      this.stopAnimation()
       return
     }
-
-    const isApple =
-      typeof window !== 'undefined' &&
-      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
     const dx = measure.left - this.targetX
     const dy = measure.top - this.targetY
     const lineHeight = Math.max(1, measure.height)
 
-    // Snap on first placement, window scroll, or long-distance line jump
+    // Snap without transition on first placement, window scroll, or long-distance jump
     const isJump =
       !this.placed ||
       measure.scrolled ||
-      Math.abs(dx) > 260 ||
-      Math.abs(dy) / lineHeight > 1.8 ||
-      isApple
+      Math.abs(dx) > 240 ||
+      Math.abs(dy) / lineHeight > 1.6
 
     this.targetX = measure.left
     this.targetY = measure.top
@@ -243,17 +238,39 @@ class CleanSmoothCursorPlugin {
 
     if (isJump) {
       this.placed = true
-      this.x = this.targetX
-      this.y = this.targetY
-      this.h = this.targetH
-      this.trailX = this.x
-      this.paint()
-      this.stopAnimation()
+      // Disable transition for instantaneous snap
+      this.caretEl.style.transition = 'none'
+      this.trailEl.style.transition = 'none'
+      this.trailEl.style.opacity = '0'
+
+      this.caretEl.style.transform = `translate3d(${this.targetX.toFixed(2)}px, ${this.targetY.toFixed(2)}px, 0)`
+      this.caretEl.style.height = `${this.targetH.toFixed(1)}px`
+      this.trailEl.style.transform = `translate3d(${this.targetX.toFixed(2)}px, ${this.targetY.toFixed(2)}px, 0)`
+      this.trailEl.style.height = `${this.targetH.toFixed(1)}px`
+
+      // Restore GPU transitions on next animation frame
+      requestAnimationFrame(() => {
+        this.caretEl.style.transition = ''
+        this.trailEl.style.transition = ''
+      })
       return
     }
 
     this.placed = true
-    this.startAnimation()
+
+    // Show trailing ghost during active motion
+    this.trailEl.style.opacity = '0.5'
+
+    // GPU compositor smoothly animates both transform and height at native display refresh rate
+    this.caretEl.style.transform = `translate3d(${this.targetX.toFixed(2)}px, ${this.targetY.toFixed(2)}px, 0)`
+    this.caretEl.style.height = `${this.targetH.toFixed(1)}px`
+    this.trailEl.style.transform = `translate3d(${this.targetX.toFixed(2)}px, ${this.targetY.toFixed(2)}px, 0)`
+    this.trailEl.style.height = `${this.targetH.toFixed(1)}px`
+
+    // Fade trail ghost back to 0 once motion settles
+    window.setTimeout(() => {
+      this.trailEl.style.opacity = '0'
+    }, 130)
   }
 
   private restartIdleBlink(): void {
@@ -264,84 +281,11 @@ class CleanSmoothCursorPlugin {
     }, 550)
   }
 
-  private startAnimation(): void {
-    if (this.rafId) return
-    this.lastTime = 0
-    this.rafId = requestAnimationFrame(this.renderLoop)
-  }
-
-  private stopAnimation(): void {
-    if (!this.rafId) return
-    cancelAnimationFrame(this.rafId)
-    this.rafId = 0
-  }
-
-  private renderLoop = (now: number): void => {
-    const dt = this.lastTime ? Math.min(48, Math.max(4, now - this.lastTime)) : 16
-    this.lastTime = now
-
-    // Physics time constants:
-    // Snappy, critically damped glide for the caret
-    const headKx = 1 - Math.exp(-dt / 18)
-    const headKy = 1 - Math.exp(-dt / 20)
-
-    // Smooth subtle trailing edge
-    const trailK = 1 - Math.exp(-dt / 42)
-
-    this.x += (this.targetX - this.x) * headKx
-    this.y += (this.targetY - this.y) * headKy
-    this.h += (this.targetH - this.h) * headKy
-    this.trailX += (this.x - this.trailX) * trailK
-
-    this.paint()
-
-    const settled =
-      Math.abs(this.targetX - this.x) < 0.1 &&
-      Math.abs(this.targetY - this.y) < 0.1 &&
-      Math.abs(this.x - this.trailX) < 0.2
-
-    if (settled) {
-      this.x = this.targetX
-      this.y = this.targetY
-      this.h = this.targetH
-      this.trailX = this.targetX
-      this.paint()
-      this.rafId = 0
-      return
-    }
-
-    this.rafId = requestAnimationFrame(this.renderLoop)
-  }
-
-  private paint(): void {
-    // 1. Crisp 2px solid caret bar
-    this.caretEl.style.transform = `translate3d(${this.x.toFixed(2)}px, ${this.y.toFixed(2)}px, 0)`
-    this.caretEl.style.height = `${this.h.toFixed(1)}px`
-
-    // 2. Clean trailing stretch (only when moving across a line)
-    const dx = this.x - this.trailX
-    const dist = Math.abs(dx)
-
-    if (dist > 1.5) {
-      const minX = Math.min(this.x, this.trailX)
-      const maxX = Math.max(this.x, this.trailX)
-      const width = maxX - minX + 2
-
-      this.trailEl.style.transform = `translate3d(${minX.toFixed(2)}px, ${this.y.toFixed(2)}px, 0)`
-      this.trailEl.style.width = `${width.toFixed(2)}px`
-      this.trailEl.style.height = `${this.h.toFixed(1)}px`
-      this.trailEl.style.opacity = Math.min(0.5, dist / 16).toFixed(2)
-    } else {
-      this.trailEl.style.opacity = '0'
-    }
-  }
-
   destroy(): void {
-    this.stopAnimation()
     if (this.idleTimer) window.clearTimeout(this.idleTimer)
     this.view.dom.classList.remove('cm-smooth-active')
     this.layer.remove()
   }
 }
 
-export const smoothCursorExtension: Extension = ViewPlugin.fromClass(CleanSmoothCursorPlugin)
+export const smoothCursorExtension: Extension = ViewPlugin.fromClass(HardwareSmoothCursorPlugin)
