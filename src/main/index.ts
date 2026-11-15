@@ -678,11 +678,15 @@ app.whenReady().then(() => {
   // System drives detection matching Atlas DriveManager
   ipcMain.handle('system:getDrives', async () => {
     try {
-      const { stdout } = await execFileAsync('lsblk', [
-        '-J',
-        '-o',
-        'NAME,LABEL,MOUNTPOINTS,SIZE,TYPE,FSTYPE,RM,HOTPLUG,MODEL,UUID,PARTUUID,PARTTYPE'
-      ])
+      const { stdout } = await execFileAsync(
+        'lsblk',
+        [
+          '-J',
+          '-o',
+          'NAME,LABEL,MOUNTPOINTS,SIZE,TYPE,FSTYPE,RM,HOTPLUG,MODEL,UUID,PARTUUID,PARTTYPE'
+        ],
+        { env: { ...process.env, LC_ALL: 'C' } }
+      )
       const data = JSON.parse(stdout)
       const drives: any[] = []
 
