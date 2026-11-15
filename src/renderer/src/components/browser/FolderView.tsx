@@ -202,12 +202,6 @@ export const FolderView: Component = () => {
 
   const currentPath = () => workspaceRoot() || '.'
 
-  const volumeStatus = createMemo(() => {
-    const drive = currentDrive()
-    if (!drive) return ''
-    return drive.isReadOnly ? `${drive.size} read-only` : drive.freeSpace
-  })
-
   // Volume free space lookup
   const currentDrive = createMemo(() => {
     const list = drives().filter((d) => d.isMounted !== false && Boolean(d.mountPoint))
@@ -222,6 +216,12 @@ export const FolderView: Component = () => {
             path.startsWith(d.mountPoint === '/' ? '/' : `${d.mountPoint}/`)
         ) || list[0]
     )
+  })
+
+  const volumeStatus = createMemo(() => {
+    const drive = currentDrive()
+    if (!drive) return ''
+    return drive.isReadOnly ? `${drive.size} read-only` : drive.freeSpace
   })
 
   const selectOnly = (path: string | null): void => {
