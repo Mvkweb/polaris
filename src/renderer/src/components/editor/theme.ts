@@ -33,6 +33,10 @@ export const ditherTheme = EditorView.theme(
       padding: '12px 0 32px 0',
       caretColor: 'transparent !important'
     },
+    '.cm-line': {
+      position: 'relative',
+      paddingLeft: '6px !important'
+    },
     '&, & *, .cm-content, .cm-line': {
       caretColor: 'transparent !important'
     },

@@ -9,17 +9,18 @@ import {
 import { RangeSetBuilder, type Extension, type Text } from '@codemirror/state'
 
 /**
- * Zed-Style Indentation Guides & Whitespace Dots for CodeMirror 6.
+ * Authentic Zed Indentation Guides & Whitespace Behavior for CodeMirror 6.
  *
- * Implements:
+ * Matches Zed 1:1:
  * 1. Indentation Guides:
- *    - Vertical 1px guide lines at each indentation level.
- *    - Interpolates blank lines across enclosing blocks so vertical lines never break.
- *    - Real-time active scope detection: highlights the enclosing block's guide line.
- * 2. Whitespace Dots & Tabs:
- *    - Renders leading indentation spaces and multiple spaces as subtle centered dots (·).
- *    - Renders tabs as subtle directional arrows (→).
- *    - Uses non-destructive CSS ::before rendering so text selection and clipboard copying remain 100% clean.
+ *    - Clean, subtle vertical 1px lines at each parent block's indentation level.
+ *    - Continuous across blank lines without interruptions.
+ *    - Active scope highlighting: when cursor is inside a block, its guide line glows brighter.
+ * 2. Whitespace Dots & Tabs ("show_whitespaces: selection"):
+ *    - By default, unselected code has ZERO dots (clean and uncluttered, matching Zed).
+ *    - When text IS selected, spaces inside the selection display subtle centered dots (·).
+ *    - Tabs display subtle directional arrows (→).
+ *    - Trailing whitespace at end of lines is subtly marked.
  */
 
 const STYLE_ID = 'cm-zed-guides-styles'
@@ -35,6 +36,7 @@ function injectZedGuideStyles(): void {
   style.textContent = `
     .cm-line {
       position: relative;
+      padding-left: 6px !important;
     }
     .cm-indent-guides {
       position: absolute;
@@ -57,8 +59,8 @@ function injectZedGuideStyles(): void {
       transition: background-color 150ms ease;
     }
     .cm-indent-guide.cm-indent-guide-active {
-      background-color: rgba(255, 255, 255, 0.28);
-      box-shadow: 0 0 1px rgba(255, 255, 255, 0.2);
+      background-color: rgba(255, 255, 255, 0.32);
+      box-shadow: 0 0 1px rgba(255, 255, 255, 0.25);
     }
     .cm-whitespace-dot {
       position: relative;
@@ -73,7 +75,7 @@ function injectZedGuideStyles(): void {
       display: flex;
       align-items: center;
       justify-content: center;
-      color: rgba(255, 255, 255, 0.16);
+      color: rgba(255, 255, 255, 0.22);
       font-size: 13px;
       line-height: 1;
       pointer-events: none;
@@ -90,7 +92,7 @@ function injectZedGuideStyles(): void {
       bottom: 0;
       display: flex;
       align-items: center;
-      color: rgba(255, 255, 255, 0.14);
+      color: rgba(255, 255, 255, 0.20);
       font-size: 10px;
       line-height: 1;
       pointer-events: none;
@@ -116,19 +118,21 @@ function injectZedGuideStyles(): void {
 
 class IndentGuidesWidget extends WidgetType {
   constructor(
-    readonly levels: number,
-    readonly activeIndex: number, // 0-based active level, or -1 if none
-    readonly stepPx: number
+    readonly guideColumns: number[],
+    readonly activeCol: number, // column index of active guide, or -1 if none
+    readonly charWidth: number
   ) {
     super()
   }
 
   eq(other: IndentGuidesWidget): boolean {
-    return (
-      this.levels === other.levels &&
-      this.activeIndex === other.activeIndex &&
-      Math.abs(this.stepPx - other.stepPx) < 0.2
-    )
+    if (this.guideColumns.length !== other.guideColumns.length) return false
+    if (this.activeCol !== other.activeCol) return false
+    if (Math.abs(this.charWidth - other.charWidth) >= 0.1) return false
+    for (let i = 0; i < this.guideColumns.length; i++) {
+      if (this.guideColumns[i] !== other.guideColumns[i]) return false
+    }
+    return true
   }
 
   toDOM(): HTMLElement {
@@ -136,11 +140,12 @@ class IndentGuidesWidget extends WidgetType {
     wrap.className = 'cm-indent-guides'
     wrap.setAttribute('aria-hidden', 'true')
 
-    for (let i = 0; i < this.levels; i++) {
+    const padLeft = 6 // Matches .cm-line padding-left
+    for (const col of this.guideColumns) {
       const guide = document.createElement('span')
-      const isActive = i === this.activeIndex
+      const isActive = col === this.activeCol
       guide.className = 'cm-indent-guide' + (isActive ? ' cm-indent-guide-active' : '')
-      guide.style.left = `${(i + 1) * this.stepPx}px`
+      guide.style.left = `${padLeft + col * this.charWidth}px`
       wrap.appendChild(guide)
     }
 
@@ -155,7 +160,7 @@ class IndentGuidesWidget extends WidgetType {
 /**
  * Returns raw indent column count (spaces = 1, tab = indentUnit)
  */
-function getLineIndent(text: string, indentUnit: number): number {
+function countLeadingSpaces(text: string, indentUnit: number): number {
   let count = 0
   for (let i = 0; i < text.length; i++) {
     const ch = text.charCodeAt(i)
@@ -167,7 +172,7 @@ function getLineIndent(text: string, indentUnit: number): number {
       break
     }
   }
-  return Math.floor(count / indentUnit)
+  return count
 }
 
 function isBlankLine(text: string): boolean {
@@ -179,86 +184,91 @@ function isBlankLine(text: string): boolean {
 }
 
 /**
- * Computes effective indent for a line, interpolating blank lines across surrounding code.
+ * Computes effective indent spaces for a line, interpolating blank lines.
  */
-function getEffectiveIndent(lineNum: number, doc: Text, indentUnit: number): number {
+function getEffectiveIndentSpaces(lineNum: number, doc: Text, indentUnit: number): number {
   const line = doc.line(lineNum)
   if (!isBlankLine(line.text)) {
-    return getLineIndent(line.text, indentUnit)
+    return countLeadingSpaces(line.text, indentUnit)
   }
 
   // Blank line: scan backward and forward
-  let prevIndent = 0
+  let prevSpaces = 0
   for (let l = lineNum - 1; l >= Math.max(1, lineNum - 40); l--) {
     const prev = doc.line(l)
     if (!isBlankLine(prev.text)) {
-      prevIndent = getLineIndent(prev.text, indentUnit)
+      prevSpaces = countLeadingSpaces(prev.text, indentUnit)
       break
     }
   }
 
-  let nextIndent = 0
-  for (let l = lineNum + 1; l <= Math.min(doc.lines, lineNum + 40); l--) {
+  let nextSpaces = 0
+  for (let l = lineNum + 1; l <= Math.min(doc.lines, lineNum + 40); l++) {
     const next = doc.line(l)
     if (!isBlankLine(next.text)) {
-      nextIndent = getLineIndent(next.text, indentUnit)
+      nextSpaces = countLeadingSpaces(next.text, indentUnit)
       break
     }
   }
 
-  return Math.min(prevIndent, nextIndent)
+  return Math.min(prevSpaces, nextSpaces)
 }
 
 interface ActiveScope {
-  activeLevel: number
+  activeCol: number
   fromLine: number
   toLine: number
 }
 
 function computeActiveScope(doc: Text, cursorHead: number, indentUnit: number): ActiveScope {
   const cursorLine = doc.lineAt(cursorHead)
-  const cursorIndent = getEffectiveIndent(cursorLine.number, doc, indentUnit)
+  const cursorSpaces = getEffectiveIndentSpaces(cursorLine.number, doc, indentUnit)
+  const cursorLevel = Math.floor(cursorSpaces / indentUnit)
 
-  if (cursorIndent <= 0) {
-    return { activeLevel: 0, fromLine: 0, toLine: 0 }
+  if (cursorLevel <= 0) {
+    return { activeCol: -1, fromLine: 0, toLine: 0 }
+  }
+
+  // Active guide column is the enclosing parent's indent column
+  const activeCol = (cursorLevel - 1) * indentUnit
+  if (activeCol <= 0) {
+    return { activeCol: -1, fromLine: 0, toLine: 0 }
   }
 
   let fromLine = cursorLine.number
   while (fromLine > 1) {
-    if (getEffectiveIndent(fromLine - 1, doc, indentUnit) < cursorIndent) break
+    const sp = getEffectiveIndentSpaces(fromLine - 1, doc, indentUnit)
+    if (Math.floor(sp / indentUnit) < cursorLevel) break
     fromLine--
   }
 
   let toLine = cursorLine.number
   while (toLine < doc.lines) {
-    if (getEffectiveIndent(toLine + 1, doc, indentUnit) < cursorIndent) break
+    const sp = getEffectiveIndentSpaces(toLine + 1, doc, indentUnit)
+    if (Math.floor(sp / indentUnit) < cursorLevel) break
     toLine++
   }
 
-  return { activeLevel: cursorIndent, fromLine, toLine }
+  return { activeCol, fromLine, toLine }
 }
 
 /**
  * Detects common indentation unit (2 or 4) from the document
  */
 function detectIndentUnit(doc: Text): number {
-  let count2 = 0
-  let count4 = 0
-  const maxLines = Math.min(doc.lines, 80)
-
+  const maxLines = Math.min(doc.lines, 120)
   for (let l = 1; l <= maxLines; l++) {
     const text = doc.line(l).text
     let spaces = 0
     for (let i = 0; i < text.length && text.charCodeAt(i) === 32; i++) {
       spaces++
     }
-    if (spaces > 0) {
-      if (spaces % 4 === 0) count4++
-      else if (spaces % 2 === 0) count2++
+    // If any line has 2, 6, or 10 spaces, the file is 2-space indented
+    if (spaces === 2 || spaces === 6 || spaces === 10) {
+      return 2
     }
   }
-
-  return count2 > count4 ? 2 : 4
+  return 4
 }
 
 const dotMark = Decoration.mark({ class: 'cm-whitespace-dot' })
@@ -268,12 +278,64 @@ function buildDecorations(view: EditorView): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>()
   const doc = view.state.doc
   const indentUnit = detectIndentUnit(doc)
-  const charWidth = view.defaultCharacterWidth || 7.8
-  const stepPx = indentUnit * charWidth
+  const charWidth = view.defaultCharacterWidth || 7.82
 
   const cursorHead = view.state.selection.main.head
   const scope = computeActiveScope(doc, cursorHead, indentUnit)
 
+  // 1. Indentation Guides on Visible Lines
+  for (const { from, to } of view.visibleRanges) {
+    const startLine = doc.lineAt(from).number
+    const endLine = doc.lineAt(to).number
+
+    for (let l = startLine; l <= endLine; l++) {
+      const line = doc.line(l)
+      const effectiveSpaces = getEffectiveIndentSpaces(l, doc, indentUnit)
+      const level = Math.floor(effectiveSpaces / indentUnit)
+
+      // A line indented to level >= 2 has parent guide lines at level 1, 2, ..., level - 1
+      if (level >= 2) {
+        const guideCols: number[] = []
+        for (let k = 1; k < level; k++) {
+          guideCols.push(k * indentUnit)
+        }
+
+        const isActive = l >= scope.fromLine && l <= scope.toLine
+        const activeCol = isActive ? scope.activeCol : -1
+
+        builder.add(
+          line.from,
+          line.from,
+          Decoration.widget({
+            widget: new IndentGuidesWidget(guideCols, activeCol, charWidth),
+            side: -1
+          })
+        )
+      }
+    }
+  }
+
+  // 2. Whitespace Dots: Only in Selection (Zed default: show_whitespaces = "selection")
+  // and trailing whitespace
+  for (const range of view.state.selection.ranges) {
+    if (range.empty) continue
+    const selFrom = Math.max(range.from, view.viewport.from)
+    const selTo = Math.min(range.to, view.viewport.to)
+    if (selFrom >= selTo) continue
+
+    const slice = doc.sliceString(selFrom, selTo)
+    for (let i = 0; i < slice.length; i++) {
+      const ch = slice.charCodeAt(i)
+      const pos = selFrom + i
+      if (ch === 32) {
+        builder.add(pos, pos + 1, dotMark)
+      } else if (ch === 9) {
+        builder.add(pos, pos + 1, tabMark)
+      }
+    }
+  }
+
+  // 3. Trailing Whitespace Dots on Visible Lines (subtle alert for trailing spaces)
   for (const { from, to } of view.visibleRanges) {
     const startLine = doc.lineAt(from).number
     const endLine = doc.lineAt(to).number
@@ -281,56 +343,27 @@ function buildDecorations(view: EditorView): DecorationSet {
     for (let l = startLine; l <= endLine; l++) {
       const line = doc.line(l)
       const text = line.text
-      const effectiveIndent = getEffectiveIndent(l, doc, indentUnit)
+      if (text.length === 0) continue
 
-      // 1. Add Indentation Guides Widget
-      if (effectiveIndent > 0) {
-        const isActive = l >= scope.fromLine && l <= scope.toLine
-        const activeIdx = isActive ? scope.activeLevel - 1 : -1
-        builder.add(
-          line.from,
-          line.from,
-          Decoration.widget({
-            widget: new IndentGuidesWidget(effectiveIndent, activeIdx, stepPx),
-            side: -1
-          })
-        )
+      let trail = text.length - 1
+      while (trail >= 0 && (text.charCodeAt(trail) === 32 || text.charCodeAt(trail) === 9)) {
+        trail--
       }
 
-      // 2. Add Whitespace Dots on Leading Indentation & Multiple Spaces
-      let i = 0
-      // Leading whitespace
-      while (i < text.length && (text.charCodeAt(i) === 32 || text.charCodeAt(i) === 9)) {
-        const pos = line.from + i
-        if (text.charCodeAt(i) === 32) {
-          builder.add(pos, pos + 1, dotMark)
-        } else {
-          builder.add(pos, pos + 1, tabMark)
-        }
-        i++
-      }
-
-      // Consecutive multiple spaces or trailing spaces inside code
-      while (i < text.length) {
-        if (text.charCodeAt(i) === 32) {
-          let runStart = i
-          while (i < text.length && text.charCodeAt(i) === 32) {
-            i++
-          }
-          const runLen = i - runStart
-          const isTrailing = i === text.length
-          if (runLen >= 2 || isTrailing) {
-            for (let r = runStart; r < i; r++) {
-              const p = line.from + r
-              builder.add(p, p + 1, dotMark)
+      // If trailing whitespace exists after non-whitespace content
+      if (trail >= 0 && trail < text.length - 1) {
+        for (let p = trail + 1; p < text.length; p++) {
+          const absPos = line.from + p
+          const inSelection = view.state.selection.ranges.some(
+            (r) => !r.empty && r.from <= absPos && absPos < r.to
+          )
+          if (!inSelection) {
+            if (text.charCodeAt(p) === 32) {
+              builder.add(absPos, absPos + 1, dotMark)
+            } else {
+              builder.add(absPos, absPos + 1, tabMark)
             }
           }
-        } else if (text.charCodeAt(i) === 9) {
-          const p = line.from + i
-          builder.add(p, p + 1, tabMark)
-          i++
-        } else {
-          i++
         }
       }
     }
