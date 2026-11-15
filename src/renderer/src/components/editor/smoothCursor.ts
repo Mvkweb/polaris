@@ -4,12 +4,12 @@ import type { Extension } from '@codemirror/state'
 /**
  * Authentic 240Hz Neovide / Zed Smear Cursor for CodeMirror 6.
  *
- * Implements the signature 4-corner / convex-hull polygon smear ribbon
- * seen in Zed's cursor animation and Neovide / smear-cursor:
+ * Implements the signature 4-corner / convex-hull polygon smear ribbon:
  * - Real-time requestAnimationFrame physics running at native display V-sync (up to 240Hz+).
  * - Frame-rate independent exponential decay: identical motion curves on 60Hz, 120Hz, 144Hz, 240Hz.
- * - Dynamic lavender smear quadrilateral connecting leading head and lagging tail coordinates.
- * - Bloom ribbon geometry during line jumps, collapsing cleanly into a razor-sharp 2.5px caret at rest.
+ * - Dynamic cyan / sky-blue smear quadrilateral connecting leading head and lagging tail coordinates.
+ * - Actively glides and leaves ribbons WHILE selecting text (tracks selection.head in real time).
+ * - Bloom ribbon geometry during velocity jumps, collapsing cleanly into a razor-sharp 2.5px caret at rest.
  * - Zero CPU/GPU wakeups while idle (rAF sleeps as soon as physics converge).
  * - Respects prefers-reduced-motion.
  */
@@ -151,11 +151,11 @@ class SmearCursorPlugin {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
     svg.setAttribute('class', 'cm-smear-svg-layer')
 
-    // Polygon Smear Trail (soft lavender ribbon matching Zed Aura Dark)
+    // Polygon Smear Trail (clean, vibrant sky blue ribbon)
     const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon')
     polygon.setAttribute('class', 'cm-smear-polygon')
-    polygon.setAttribute('fill', 'rgba(189, 157, 255, 0.72)')
-    polygon.setAttribute('stroke', 'rgba(189, 157, 255, 0.85)')
+    polygon.setAttribute('fill', 'rgba(56, 189, 248, 0.40)')
+    polygon.setAttribute('stroke', 'rgba(56, 189, 248, 0.70)')
     polygon.setAttribute('stroke-width', '0.5')
     polygon.setAttribute('stroke-linejoin', 'round')
     polygon.style.opacity = '0'
@@ -163,7 +163,7 @@ class SmearCursorPlugin {
     // Crisp Caret Bar
     const caret = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
     caret.setAttribute('class', 'cm-smear-caret')
-    caret.setAttribute('fill', '#BD9DFF')
+    caret.setAttribute('fill', '#38bdf8')
     caret.setAttribute('rx', '1.2')
     caret.setAttribute('ry', '1.2')
     caret.style.opacity = '0'
@@ -208,20 +208,8 @@ class SmearCursorPlugin {
     this.lastScrollTop = scroller.scrollTop
     this.lastScrollLeft = scroller.scrollLeft
 
+    // During selection, track selection.head so the cursor actively glides & smears with the selection!
     const selection = view.state.selection.main
-    // Hide custom caret when user is actively dragging or has a multi-char selection
-    if (!selection.empty) {
-      return {
-        ready: true,
-        hidden: true,
-        isFocused: view.hasFocus,
-        left: 0,
-        top: 0,
-        height: 0,
-        scrolled
-      }
-    }
-
     const headPos = selection.head
     const coords =
       view.coordsAtPos(headPos, 1) ||

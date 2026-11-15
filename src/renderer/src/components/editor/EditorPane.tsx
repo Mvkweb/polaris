@@ -29,7 +29,7 @@ export const EditorPane: Component = () => {
   const isSaved = () => Boolean(currentPath() && lastSavedPath() === currentPath())
 
   return (
-    <div class="relative flex-1 flex flex-col h-full w-full overflow-hidden bg-[#15141c] isolate">
+    <div class="relative flex-1 flex flex-col h-full w-full overflow-hidden bg-[#0a0a0a] isolate">
       {/* ── Top Liquid Gooey TabBar ── */}
       <div class="shrink-0 z-20 flex items-center justify-between border-b border-white/[0.04]">
         <div class="flex-1 min-w-0">
@@ -62,7 +62,7 @@ export const EditorPane: Component = () => {
 
       {/* ── Editor Footer / Status Bar ── */}
       <Show when={hasTabs() && currentPath()}>
-        <div class="shrink-0 h-6 px-3 flex items-center justify-between bg-[#110f18] border-t border-white/[0.04] text-[11px] font-mono text-white/40 select-none">
+        <div class="shrink-0 h-6 px-3 flex items-center justify-between bg-[#080808] border-t border-white/[0.04] text-[11px] font-mono text-white/40 select-none">
           {/* Left: Active File Path & Dirty State */}
           <div class="flex items-center gap-2 truncate max-w-[60%]">
             <span class="truncate text-white/50">{currentPath()}</span>
