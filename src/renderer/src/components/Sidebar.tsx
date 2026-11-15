@@ -606,6 +606,7 @@ const DriveItemRow: Component<{
   icon: Component<{ class?: string }>
 }> = (props) => {
   const isUnmounted = () => props.drive.isMounted === false
+  const isReadOnly = () => props.drive.isReadOnly === true
   const isSelected = () =>
     !isUnmounted() && !props.activePlaceId() && props.currentPath() === props.drive.mountPoint
   const isDriveHovered = () => props.hoveredDriveId() === props.drive.id
@@ -615,7 +616,7 @@ const DriveItemRow: Component<{
     props.mountError()?.id === props.drive.id ? props.mountError()?.message : null
 
   const capacityLabel = (): string => {
-    if (isUnmounted()) return props.drive.size
+    if (isUnmounted() || isReadOnly()) return props.drive.size
     return formatFreeSpace(props.drive.freeSpace || props.drive.size)
   }
 
@@ -685,7 +686,7 @@ const DriveItemRow: Component<{
         </Show>
       </div>
 
-      <Show when={!isUnmounted()}>
+      <Show when={!isUnmounted() && !isReadOnly()}>
         <div class="w-full mt-2">
           <ProgressBar
             label={props.drive.name || props.drive.model || props.drive.mountPoint}
@@ -725,7 +726,7 @@ const DriveItemRow: Component<{
                 {props.drive.mountPoint}
               </span>
               <span class="text-white/35 tabular-nums shrink-0">
-                {props.drive.usedPercent}% used
+                {isReadOnly() ? 'read-only' : `${props.drive.usedPercent}% used`}
               </span>
             </Show>
           </div>

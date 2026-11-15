@@ -28,6 +28,10 @@ protocol.registerSchemesAsPrivileged([
 const execFileAsync = promisify(execFile)
 const idNameCache = new Map<string, string>()
 
+// Filesystems that are read-only by design. They report zero free blocks, so
+// a usage percentage would always read 100% even though nothing is "full".
+const READ_ONLY_FILESYSTEMS = new Set(['iso9660', 'squashfs', 'erofs', 'cramfs', 'romfs'])
+
 // Helper to fetch git-tracked and untracked (non-ignored) files
 const getGitFiles = async (cwd: string): Promise<string[] | null> => {
   try {
@@ -718,6 +722,7 @@ app.whenReady().then(() => {
         const isBoot = mountPoint === '/boot' || mountPoint.startsWith('/boot/')
         const isRemovable = Boolean(dev.rm || dev.hotplug || options.parentRm)
         const isMounted = Boolean(mountPoint)
+        const isReadOnly = READ_ONLY_FILESYSTEMS.has(fstype)
         const hasChildren = Array.isArray(dev.children) && dev.children.length > 0
         const isContainer = type === 'disk' && hasChildren
         const usableFs =
@@ -751,14 +756,16 @@ app.whenReady().then(() => {
             try {
               const st = await statfs(mountPoint)
               bytesTotal = Number(st.blocks) * Number(st.bsize)
-              bytesFree = Number(st.bavail) * Number(st.bsize)
-              if (bytesTotal > 0) {
-                usedPercent = Math.min(
-                  100,
-                  Math.max(0, Math.round(((bytesTotal - bytesFree) / bytesTotal) * 100))
-                )
-                const gbFree = (bytesFree / 1024 ** 3).toFixed(1)
-                freeSpace = `${gbFree} GB free`
+              if (!isReadOnly) {
+                bytesFree = Number(st.bavail) * Number(st.bsize)
+                if (bytesTotal > 0) {
+                  usedPercent = Math.min(
+                    100,
+                    Math.max(0, Math.round(((bytesTotal - bytesFree) / bytesTotal) * 100))
+                  )
+                  const gbFree = (bytesFree / 1024 ** 3).toFixed(1)
+                  freeSpace = `${gbFree} GB free`
+                }
               }
             } catch {}
           }
@@ -776,7 +783,8 @@ app.whenReady().then(() => {
             bytesTotal,
             freeSpace,
             isRemovable,
-            isMounted
+            isMounted,
+            isReadOnly
           })
         }
 

@@ -107,6 +107,7 @@ export interface SystemDrive {
   freeSpace: string
   isRemovable?: boolean
   isMounted: boolean
+  isReadOnly: boolean
 }
 
 export interface ChatSessionSummary {
