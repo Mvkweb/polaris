@@ -2,19 +2,18 @@ import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view'
 import type { Extension } from '@codemirror/state'
 
 /**
- * Kitty Terminal-Style Smooth Caret & Cursor Trail for CodeMirror 6.
+ * Clean, High-Craft Smooth Caret & Motion Trail for CodeMirror 6.
  *
- * Recreates the iconic Kitty terminal `cursor_trail` effect:
- * 1. Snappy, liquid head caret with spring physics (tau ~20ms) that glides
- *    between characters during typing and navigation with zero perceived latency.
- * 2. Trailing comet smear connecting previous positions to the head while moving.
- * 3. Multi-frame decaying ghost carets trailing behind fast movement.
- * 4. Calibrated snapping on long jumps (>220px or across distant lines) and scrolling.
- * 5. Gentle idle breathing pulse (1.05s) that immediately cancels on any keystroke.
- * 6. Always visible when document is open (never randomly hidden on blur).
+ * Designed with strict adherence to design engineering principles:
+ * - Crisp, razor-sharp 2px solid caret bar (ZERO blurry neon glow, ZERO box-shadow halos).
+ * - Smooth, critically damped spring interpolation (tau ~18ms) for instantaneous,
+ *   butter-smooth typing and arrow navigation.
+ * - Minimal, elegant trailing stretch during rapid motion that collapses cleanly at rest.
+ * - Classic clean blinking when idle (>550ms), solid and steady while typing.
+ * - Rock-solid visibility: reliably measured and rendered across all states.
  */
 
-const STYLE_ID = 'cm-kitty-cursor-styles'
+const STYLE_ID = 'cm-clean-cursor-styles'
 
 function injectStyles(): void {
   if (typeof document === 'undefined' || document.getElementById(STYLE_ID)) return
@@ -25,41 +24,14 @@ function injectStyles(): void {
     .cm-editor.cm-smooth-active .cm-dropCursor {
       opacity: 0 !important;
     }
-    .cm-kitty-layer {
+    .cm-clean-cursor-layer {
       position: absolute;
       top: 0;
       left: 0;
       pointer-events: none;
       z-index: 150;
     }
-    .cm-kitty-head {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 2.5px;
-      border-radius: 1px;
-      background: #38bdf8;
-      box-shadow:
-        0 0 8px rgba(56, 189, 248, 0.75),
-        0 0 16px rgba(56, 189, 248, 0.35);
-      pointer-events: none;
-      will-change: transform, height, opacity;
-      transition: opacity 120ms ease;
-    }
-    .cm-kitty-head.is-idle-blinking {
-      animation: cm-kitty-breathe 1.05s ease-in-out infinite;
-    }
-    .cm-kitty-smear {
-      position: absolute;
-      top: 0;
-      left: 0;
-      height: 100%;
-      border-radius: 1.5px;
-      pointer-events: none;
-      will-change: transform, width, opacity;
-      opacity: 0;
-    }
-    .cm-kitty-ghost {
+    .cm-clean-caret {
       position: absolute;
       top: 0;
       left: 0;
@@ -68,21 +40,31 @@ function injectStyles(): void {
       background: #38bdf8;
       pointer-events: none;
       will-change: transform, height, opacity;
+      transition: opacity 80ms ease;
+    }
+    .cm-clean-caret.is-blinking {
+      animation: cm-clean-blink 1.06s steps(1) infinite;
+    }
+    .cm-clean-trail {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      border-radius: 1px;
+      background: rgba(56, 189, 248, 0.22);
+      pointer-events: none;
+      will-change: transform, width, opacity;
       opacity: 0;
+      transition: opacity 120ms ease;
     }
-    .cm-kitty-ghost-1 {
-      box-shadow: 0 0 6px rgba(56, 189, 248, 0.5);
-    }
-    .cm-kitty-ghost-2 {
-      box-shadow: 0 0 4px rgba(56, 189, 248, 0.25);
-    }
-    @keyframes cm-kitty-breathe {
-      0%, 100% { opacity: 1; filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.75)); }
-      50% { opacity: 0.35; filter: drop-shadow(0 0 3px rgba(56, 189, 248, 0.3)); }
+    @keyframes cm-clean-blink {
+      0%, 48% { opacity: 1; }
+      50%, 98% { opacity: 0; }
+      100% { opacity: 1; }
     }
     @media (prefers-reduced-motion: reduce) {
-      .cm-kitty-head { animation: none !important; }
-      .cm-kitty-smear, .cm-kitty-ghost { display: none !important; }
+      .cm-clean-trail { display: none !important; }
+      .cm-clean-caret { animation: none !important; }
     }
   `
   document.head.appendChild(style)
@@ -98,13 +80,11 @@ interface MeasureResult {
   scrolled: boolean
 }
 
-class KittyCursorPlugin {
+class CleanSmoothCursorPlugin {
   private view: EditorView
   private layer: HTMLDivElement
-  private headEl: HTMLDivElement
-  private smearEl: HTMLDivElement
-  private ghost1El: HTMLDivElement
-  private ghost2El: HTMLDivElement
+  private caretEl: HTMLDivElement
+  private trailEl: HTMLDivElement
 
   // Animation coordinates
   private x = 0
@@ -112,14 +92,6 @@ class KittyCursorPlugin {
   private h = 18
 
   private trailX = 0
-  private trailY = 0
-
-  private ghost1X = 0
-  private ghost1Y = 0
-
-  private ghost2X = 0
-  private ghost2Y = 0
-
   private targetX = 0
   private targetY = 0
   private targetH = 18
@@ -136,29 +108,20 @@ class KittyCursorPlugin {
     this.view = view
 
     this.layer = document.createElement('div')
-    this.layer.className = 'cm-kitty-layer'
+    this.layer.className = 'cm-clean-cursor-layer'
 
-    this.smearEl = document.createElement('div')
-    this.smearEl.className = 'cm-kitty-smear'
+    this.trailEl = document.createElement('div')
+    this.trailEl.className = 'cm-clean-trail'
 
-    this.ghost2El = document.createElement('div')
-    this.ghost2El.className = 'cm-kitty-ghost cm-kitty-ghost-2'
+    this.caretEl = document.createElement('div')
+    this.caretEl.className = 'cm-clean-caret'
 
-    this.ghost1El = document.createElement('div')
-    this.ghost1El.className = 'cm-kitty-ghost cm-kitty-ghost-1'
-
-    this.headEl = document.createElement('div')
-    this.headEl.className = 'cm-kitty-head'
-
-    this.layer.appendChild(this.smearEl)
-    this.layer.appendChild(this.ghost2El)
-    this.layer.appendChild(this.ghost1El)
-    this.layer.appendChild(this.headEl)
+    this.layer.appendChild(this.trailEl)
+    this.layer.appendChild(this.caretEl)
 
     view.scrollDOM.appendChild(this.layer)
     view.dom.classList.add('cm-smooth-active')
 
-    // Initial measure
     this.scheduleMeasure()
   }
 
@@ -210,7 +173,6 @@ class KittyCursorPlugin {
       view.coordsAtPos(headPos)
 
     if (!coords) {
-      // Layout might not be ready yet
       return {
         ready: false,
         hidden: false,
@@ -245,16 +207,13 @@ class KittyCursorPlugin {
 
   private applyMeasure(measure: MeasureResult): void {
     if (!measure.ready) {
-      // Re-schedule measure on next animation frame
       requestAnimationFrame(() => this.scheduleMeasure())
       return
     }
 
     if (measure.hidden) {
-      this.headEl.style.opacity = '0'
-      this.smearEl.style.opacity = '0'
-      this.ghost1El.style.opacity = '0'
-      this.ghost2El.style.opacity = '0'
+      this.caretEl.style.opacity = '0'
+      this.trailEl.style.opacity = '0'
       this.stopAnimation()
       return
     }
@@ -267,11 +226,11 @@ class KittyCursorPlugin {
     const dy = measure.top - this.targetY
     const lineHeight = Math.max(1, measure.height)
 
-    // A jump occurs on initial mount, window scroll, or long-distance repositioning
+    // Snap on first placement, window scroll, or long-distance line jump
     const isJump =
       !this.placed ||
       measure.scrolled ||
-      Math.abs(dx) > 240 ||
+      Math.abs(dx) > 260 ||
       Math.abs(dy) / lineHeight > 1.8 ||
       isApple
 
@@ -279,8 +238,7 @@ class KittyCursorPlugin {
     this.targetY = measure.top
     this.targetH = measure.height
 
-    // Cursor visibility & idle breathing state
-    this.headEl.style.opacity = measure.isFocused ? '1' : '0.65'
+    this.caretEl.style.opacity = measure.isFocused ? '1' : '0.6'
     this.restartIdleBlink()
 
     if (isJump) {
@@ -289,11 +247,6 @@ class KittyCursorPlugin {
       this.y = this.targetY
       this.h = this.targetH
       this.trailX = this.x
-      this.trailY = this.y
-      this.ghost1X = this.x
-      this.ghost1Y = this.y
-      this.ghost2X = this.x
-      this.ghost2Y = this.y
       this.paint()
       this.stopAnimation()
       return
@@ -304,10 +257,10 @@ class KittyCursorPlugin {
   }
 
   private restartIdleBlink(): void {
-    this.headEl.classList.remove('is-idle-blinking')
+    this.caretEl.classList.remove('is-blinking')
     if (this.idleTimer) window.clearTimeout(this.idleTimer)
     this.idleTimer = window.setTimeout(() => {
-      this.headEl.classList.add('is-idle-blinking')
+      this.caretEl.classList.add('is-blinking')
     }, 550)
   }
 
@@ -327,50 +280,31 @@ class KittyCursorPlugin {
     const dt = this.lastTime ? Math.min(48, Math.max(4, now - this.lastTime)) : 16
     this.lastTime = now
 
-    // Physics time constants (ms) - lower is snappier
-    // Head caret is critically damped & instant-feeling
+    // Physics time constants:
+    // Snappy, critically damped glide for the caret
     const headKx = 1 - Math.exp(-dt / 18)
-    const headKy = 1 - Math.exp(-dt / 22)
+    const headKy = 1 - Math.exp(-dt / 20)
 
-    // Trail smear lags behind
-    const trailK = 1 - Math.exp(-dt / 55)
-
-    // Ghost after-images
-    const ghost1K = 1 - Math.exp(-dt / 38)
-    const ghost2K = 1 - Math.exp(-dt / 72)
+    // Smooth subtle trailing edge
+    const trailK = 1 - Math.exp(-dt / 42)
 
     this.x += (this.targetX - this.x) * headKx
     this.y += (this.targetY - this.y) * headKy
     this.h += (this.targetH - this.h) * headKy
-
     this.trailX += (this.x - this.trailX) * trailK
-    this.trailY += (this.y - this.trailY) * trailK
-
-    this.ghost1X += (this.x - this.ghost1X) * ghost1K
-    this.ghost1Y += (this.y - this.ghost1Y) * ghost1K
-
-    this.ghost2X += (this.ghost1X - this.ghost2X) * ghost2K
-    this.ghost2Y += (this.ghost1Y - this.ghost2Y) * ghost2K
 
     this.paint()
 
-    // Settle criteria
     const settled =
       Math.abs(this.targetX - this.x) < 0.1 &&
       Math.abs(this.targetY - this.y) < 0.1 &&
-      Math.abs(this.x - this.trailX) < 0.2 &&
-      Math.abs(this.x - this.ghost2X) < 0.2
+      Math.abs(this.x - this.trailX) < 0.2
 
     if (settled) {
       this.x = this.targetX
       this.y = this.targetY
       this.h = this.targetH
       this.trailX = this.targetX
-      this.trailY = this.targetY
-      this.ghost1X = this.targetX
-      this.ghost1Y = this.targetY
-      this.ghost2X = this.targetX
-      this.ghost2Y = this.targetY
       this.paint()
       this.rafId = 0
       return
@@ -380,50 +314,25 @@ class KittyCursorPlugin {
   }
 
   private paint(): void {
-    // 1. Position main head caret
-    this.headEl.style.transform = `translate3d(${this.x.toFixed(2)}px, ${this.y.toFixed(2)}px, 0)`
-    this.headEl.style.height = `${this.h.toFixed(1)}px`
+    // 1. Crisp 2px solid caret bar
+    this.caretEl.style.transform = `translate3d(${this.x.toFixed(2)}px, ${this.y.toFixed(2)}px, 0)`
+    this.caretEl.style.height = `${this.h.toFixed(1)}px`
 
+    // 2. Clean trailing stretch (only when moving across a line)
     const dx = this.x - this.trailX
-    const dy = this.y - this.trailY
-    const dist = Math.hypot(dx, dy)
+    const dist = Math.abs(dx)
 
-    // 2. Kitty Trail Smear (connects trailX to x when moving horizontally)
-    if (dist > 1.2 && Math.abs(dy) < 4) {
+    if (dist > 1.5) {
       const minX = Math.min(this.x, this.trailX)
       const maxX = Math.max(this.x, this.trailX)
-      const width = maxX - minX + 2.5
-      const movingRight = dx > 0
+      const width = maxX - minX + 2
 
-      this.smearEl.style.transform = `translate3d(${minX.toFixed(2)}px, ${this.y.toFixed(2)}px, 0)`
-      this.smearEl.style.width = `${width.toFixed(2)}px`
-      this.smearEl.style.height = `${this.h.toFixed(1)}px`
-      this.smearEl.style.background = movingRight
-        ? 'linear-gradient(to right, rgba(56, 189, 248, 0.04), rgba(56, 189, 248, 0.45))'
-        : 'linear-gradient(to left, rgba(56, 189, 248, 0.04), rgba(56, 189, 248, 0.45))'
-      this.smearEl.style.opacity = Math.min(0.75, dist / 14).toFixed(2)
+      this.trailEl.style.transform = `translate3d(${minX.toFixed(2)}px, ${this.y.toFixed(2)}px, 0)`
+      this.trailEl.style.width = `${width.toFixed(2)}px`
+      this.trailEl.style.height = `${this.h.toFixed(1)}px`
+      this.trailEl.style.opacity = Math.min(0.5, dist / 16).toFixed(2)
     } else {
-      this.smearEl.style.opacity = '0'
-    }
-
-    // 3. Kitty Ghost 1 after-image
-    const g1Dist = Math.hypot(this.x - this.ghost1X, this.y - this.ghost1Y)
-    if (g1Dist > 2) {
-      this.ghost1El.style.transform = `translate3d(${this.ghost1X.toFixed(2)}px, ${this.ghost1Y.toFixed(2)}px, 0)`
-      this.ghost1El.style.height = `${this.h.toFixed(1)}px`
-      this.ghost1El.style.opacity = Math.min(0.48, g1Dist / 20).toFixed(2)
-    } else {
-      this.ghost1El.style.opacity = '0'
-    }
-
-    // 4. Kitty Ghost 2 after-image
-    const g2Dist = Math.hypot(this.x - this.ghost2X, this.y - this.ghost2Y)
-    if (g2Dist > 3.5) {
-      this.ghost2El.style.transform = `translate3d(${this.ghost2X.toFixed(2)}px, ${this.ghost2Y.toFixed(2)}px, 0)`
-      this.ghost2El.style.height = `${this.h.toFixed(1)}px`
-      this.ghost2El.style.opacity = Math.min(0.24, g2Dist / 28).toFixed(2)
-    } else {
-      this.ghost2El.style.opacity = '0'
+      this.trailEl.style.opacity = '0'
     }
   }
 
@@ -435,4 +344,4 @@ class KittyCursorPlugin {
   }
 }
 
-export const smoothCursorExtension: Extension = ViewPlugin.fromClass(KittyCursorPlugin)
+export const smoothCursorExtension: Extension = ViewPlugin.fromClass(CleanSmoothCursorPlugin)

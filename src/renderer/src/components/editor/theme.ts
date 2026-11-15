@@ -57,7 +57,7 @@ export const ditherTheme = EditorView.theme(
       minWidth: '44px',
       textAlign: 'right',
       fontSize: '11.5px',
-      fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+      fontFamily: 'inherit',
       color: '#475569'
     },
     '.cm-activeLineGutter': {
