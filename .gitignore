@@ -9,3 +9,4 @@ core/zig-out
 *.log
 .DS_Store
 *.local
+.zed

@@ -9,10 +9,10 @@ import QuickOpenModal from './components/modals/QuickOpenModal'
 import SettingsModal from './components/settings/SettingsModal'
 import ContextMenu from './components/ui/ContextMenu'
 import FileActionModal from './components/file-tree/FileActionModal'
-import PropertiesModal from './components/modals/PropertiesModal'
 import { StorageMapModal } from './components/modals/StorageMapModal'
 import { MonodriveIconDefs } from './components/browser/MonodriveIcons'
 import EditorPane from './components/editor/EditorPane'
+import { InspectorDrawer } from './components/inspector/InspectorDrawer'
 import {
   activeTerminalId,
   addTerminal,
@@ -24,6 +24,7 @@ import {
   terminalSessions,
   toggleTerminal,
   toggleQuickOpen,
+  toggleInspector,
   currentView,
   setCurrentView,
   isSettingsModalOpen,
@@ -58,6 +59,9 @@ const handleGlobalKeyDown = (e: KeyboardEvent): void => {
   } else if (e.key.toLowerCase() === 'f' && e.shiftKey) {
     e.preventDefault()
     setCurrentView('search')
+  } else if (e.key.toLowerCase() === 'i' && !e.shiftKey) {
+    e.preventDefault()
+    toggleInspector()
   } else if (e.key === ',') {
     e.preventDefault()
     toggleSettingsModal()
@@ -151,7 +155,6 @@ const App: Component = () => {
       {/* Global Context Menu & Modals */}
       <ContextMenu />
       <FileActionModal />
-      <PropertiesModal />
       <StorageMapModal />
 
       {/* Ember-style Sidebar */}
@@ -162,11 +165,14 @@ const App: Component = () => {
         {/* Top Navigation Bar sitting directly on the window/workspace base above the canvas */}
         <BrowserTopBar />
 
-        {/* Main Canvas: Monodrive-Style Folder Browser & Code Editor */}
-        <main class="relative z-10 flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden bg-[#0a0a0a] rounded-[20px]">
-          <Show when={currentView() === 'editor'} fallback={<FolderView />}>
-            <EditorPane />
-          </Show>
+        {/* Main Canvas: Monodrive-Style Folder Browser & Code Editor + Right Inspector Drawer */}
+        <main class="relative z-10 flex-1 min-h-0 min-w-0 flex flex-row overflow-hidden bg-[#0a0a0a] rounded-[20px]">
+          <div class="flex-1 min-w-0 min-h-0 flex flex-col h-full overflow-hidden">
+            <Show when={currentView() === 'editor'} fallback={<FolderView />}>
+              <EditorPane />
+            </Show>
+          </div>
+          <InspectorDrawer />
         </main>
 
         {/* Terminal Drawer in the dark below the canvas */}

@@ -5,7 +5,7 @@ Menu.setApplicationMenu(null)
 import { join, resolve, extname, basename } from 'path'
 import { existsSync } from 'fs'
 import { homedir, userInfo } from 'os'
-import { readdir, readFile, writeFile, stat, statfs, mkdir, rename, rm, cp } from 'fs/promises'
+import { readdir, readFile, writeFile, stat, lstat, realpath, statfs, mkdir, rename, rm, cp } from 'fs/promises'
 import { execFile, spawn } from 'child_process'
 import { promisify } from 'util'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -373,12 +373,70 @@ app.whenReady().then(() => {
     }
   })
 
+  function getMimeType(filePath: string, isDirectory: boolean): string {
+    if (isDirectory) return 'inode/directory'
+    const ext = extname(filePath).toLowerCase().replace('.', '')
+    const mimeMap: Record<string, string> = {
+      png: 'image/png',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      webp: 'image/webp',
+      gif: 'image/gif',
+      svg: 'image/svg+xml',
+      avif: 'image/avif',
+      ico: 'image/x-icon',
+      mp4: 'video/mp4',
+      webm: 'video/webm',
+      mkv: 'video/x-matroska',
+      mov: 'video/quicktime',
+      mp3: 'audio/mpeg',
+      wav: 'audio/wav',
+      flac: 'audio/flac',
+      ogg: 'audio/ogg',
+      json: 'application/json',
+      ts: 'text/typescript',
+      tsx: 'text/tsx',
+      js: 'text/javascript',
+      jsx: 'text/jsx',
+      zig: 'text/x-zig',
+      rs: 'text/rust',
+      go: 'text/x-go',
+      py: 'text/x-python',
+      c: 'text/x-c',
+      cpp: 'text/x-c++',
+      h: 'text/x-c',
+      hpp: 'text/x-c++',
+      html: 'text/html',
+      css: 'text/css',
+      md: 'text/markdown',
+      txt: 'text/plain',
+      pdf: 'application/pdf',
+      zip: 'application/zip',
+      tar: 'application/x-tar',
+      gz: 'application/gzip'
+    }
+    return mimeMap[ext] || 'application/octet-stream'
+  }
+
   // Inspect detailed file and directory metadata / properties
   ipcMain.handle('fs:getFileProperties', async (_, fullPath: string) => {
     try {
-      const stats = await stat(fullPath)
+      const stats = await lstat(fullPath)
+      const isSymlink = stats.isSymbolicLink()
+      let realPath: string | undefined = undefined
+      let targetStats = stats
+
+      if (isSymlink) {
+        try {
+          realPath = await realpath(fullPath)
+          targetStats = await stat(fullPath)
+        } catch {
+          // broken symlink
+        }
+      }
+
       let itemCount: number | undefined = undefined
-      if (stats.isDirectory()) {
+      if (targetStats.isDirectory()) {
         try {
           const entries = await readdir(fullPath)
           itemCount = entries.length
@@ -390,7 +448,6 @@ app.whenReady().then(() => {
       let owner = String(stats.uid)
       let group = String(stats.gid)
       if (process.platform !== 'win32') {
-        // Fast-path: current user/group
         const currentUid = process.getuid ? process.getuid() : -1
         const currentGid = process.getgid ? process.getgid() : -1
         if (stats.uid === currentUid) {
@@ -420,20 +477,39 @@ app.whenReady().then(() => {
         group = resolvedGroup
       }
 
+      const ext = extname(fullPath).toLowerCase()
+      const mime = getMimeType(fullPath, targetStats.isDirectory())
+
+      let imageDimensions: { width: number; height: number } | undefined = undefined
+      const imageExts = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.ico', '.avif'])
+      if (imageExts.has(ext)) {
+        try {
+          const img = nativeImage.createFromPath(fullPath)
+          const sz = img.getSize()
+          if (sz.width > 0 && sz.height > 0) {
+            imageDimensions = { width: sz.width, height: sz.height }
+          }
+        } catch {}
+      }
+
       return {
         path: fullPath,
         name: basename(fullPath),
-        isDirectory: stats.isDirectory(),
-        isFile: stats.isFile(),
-        isSymbolicLink: stats.isSymbolicLink(),
-        size: stats.size,
-        createdTime: stats.birthtimeMs || stats.ctimeMs,
-        modifiedTime: stats.mtimeMs,
-        accessedTime: stats.atimeMs,
-        permissions: (stats.mode & 0o777).toString(8).padStart(4, '0'),
+        isDirectory: targetStats.isDirectory(),
+        isFile: targetStats.isFile(),
+        isSymbolicLink: isSymlink,
+        realPath,
+        size: targetStats.size,
+        createdTime: targetStats.birthtimeMs || targetStats.ctimeMs,
+        modifiedTime: targetStats.mtimeMs,
+        accessedTime: targetStats.atimeMs,
+        permissions: (targetStats.mode & 0o777).toString(8).padStart(4, '0'),
         owner,
         group,
-        itemCount
+        itemCount,
+        extension: ext,
+        mime,
+        imageDimensions
       }
     } catch (err) {
       console.error('Failed to get file properties:', fullPath, err)

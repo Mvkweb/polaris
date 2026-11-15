@@ -75,11 +75,18 @@ export const DEFAULT_SHORTCUTS: ShortcutItem[] = [
     keys: ['Mod', 'B']
   },
   {
+    id: 'toggle_inspector',
+    title: 'Toggle File Details & Inspector',
+    description: 'Slide open or close the right file inspector drawer',
+    group: 'General & Navigation',
+    keys: ['Mod', 'I']
+  },
+  {
     id: 'cycle_scope',
     title: 'Cycle Sidebar Scope',
     description: 'Cycle between Files, Search, Tasks, and Chat',
     group: 'General & Navigation',
-    keys: ['Mod', 'I']
+    keys: ['Mod', 'Shift', 'E']
   },
   {
     id: 'switch_items',

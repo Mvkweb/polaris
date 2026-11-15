@@ -693,6 +693,51 @@ export const closeFileActionModal = (): void => {
   setFileActionModalState((prev) => (prev.isOpen ? { ...prev, isOpen: false } : prev))
 }
 
+// ── Inspector Drawer State ───────────────────────────────────────────────────
+export const [isInspectorOpen, setIsInspectorOpen] = createSignal(false)
+export const [inspectorTargetPath, setInspectorTargetPath] = createSignal<string | null>(null)
+const getInitialInspectorWidth = (): number => {
+  try {
+    const saved = localStorage.getItem('polaris.inspector.width')
+    if (saved) {
+      const val = parseInt(saved, 10)
+      if (!Number.isNaN(val)) return Math.max(280, Math.min(480, val))
+    }
+  } catch {}
+  return 320
+}
+
+export const [inspectorWidth, setInspectorWidth] = createSignal<number>(getInitialInspectorWidth())
+
+export const setAndPersistInspectorWidth = (w: number): void => {
+  const clamped = Math.max(280, Math.min(480, w))
+  setInspectorWidth(clamped)
+  try {
+    localStorage.setItem('polaris.inspector.width', String(clamped))
+  } catch {}
+}
+
+export const openInspector = (path?: string): void => {
+  if (path) setInspectorTargetPath(path)
+  setIsInspectorOpen(true)
+}
+
+export const closeInspector = (): void => {
+  setIsInspectorOpen(false)
+}
+
+export const toggleInspector = (path?: string): void => {
+  if (isInspectorOpen()) {
+    if (path && inspectorTargetPath() !== path) {
+      setInspectorTargetPath(path)
+    } else {
+      closeInspector()
+    }
+  } else {
+    openInspector(path)
+  }
+}
+
 export interface PropertiesModalState {
   isOpen: boolean
   targetPath: string
@@ -704,6 +749,7 @@ export const [propertiesModalState, setPropertiesModalState] = createSignal<Prop
 })
 
 export const openPropertiesModal = (targetPath: string): void => {
+  openInspector(targetPath)
   setPropertiesModalState({
     isOpen: true,
     targetPath
@@ -711,6 +757,7 @@ export const openPropertiesModal = (targetPath: string): void => {
 }
 
 export const closePropertiesModal = (): void => {
+  closeInspector()
   setPropertiesModalState((prev) => (prev.isOpen ? { ...prev, isOpen: false } : prev))
 }
 

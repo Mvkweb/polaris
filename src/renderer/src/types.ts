@@ -55,6 +55,7 @@ export interface FileProperties {
   isDirectory: boolean
   isFile: boolean
   isSymbolicLink: boolean
+  realPath?: string
   size: number
   createdTime: number
   modifiedTime: number
@@ -63,6 +64,10 @@ export interface FileProperties {
   owner?: string
   group?: string
   itemCount?: number
+  extension?: string
+  mime?: string
+  volume?: string
+  imageDimensions?: { width: number; height: number }
 }
 
 export interface SearchResult {

@@ -12,8 +12,11 @@ import {
   switchTab,
   workspaceRoot,
   browserSearchFilter,
-  setBrowserSearchFilter
+  setBrowserSearchFilter,
+  isInspectorOpen,
+  toggleInspector
 } from '../../store'
+import { SolarInfoCircleLinear } from '../ui/SolarIcons'
 import { fillStyle } from '@/lib/dither'
 
 /* ── Monodrive Exact Hugeicons SVGs ── */
@@ -215,38 +218,54 @@ export const BrowserTopBar: Component = () => {
         </div>
       </div>
 
-      {/* ── Right: Minimal Dithered Transparent Glass Search Field ── */}
-      <div class="group relative flex items-center w-36 focus-within:w-48 transition-all duration-200 rounded-full overflow-hidden isolate">
-        {/* Subtle dither background glass */}
-        <div
-          aria-hidden="true"
-          class="pointer-events-none absolute inset-0 rounded-full bg-white/[0.04] group-hover:bg-white/[0.07] group-focus-within:bg-white/[0.09] transition-colors -z-10"
-        />
-        {/* Authentic Dither Track along bottom */}
-        <div
-          aria-hidden="true"
-          class="pointer-events-none absolute inset-x-2.5 bottom-0 h-[2px] opacity-25 group-hover:opacity-60 group-focus-within:h-[3px] group-focus-within:opacity-100 transition-all duration-200 rounded-b-full overflow-hidden"
-          style={ditherTrackStyle()}
-        />
-        <div class="absolute left-2.5 pointer-events-none text-white/35 group-focus-within:text-[var(--dither-ink)] transition-colors">
-          <SearchIcon class="w-3 h-3" />
+      {/* ── Right: Inspector Toggle & Minimal Dithered Transparent Glass Search Field ── */}
+      <div class="flex items-center gap-1.5 shrink-0">
+        <button
+          type="button"
+          onClick={() => toggleInspector()}
+          class={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+            isInspectorOpen()
+              ? 'bg-white/[0.12] text-white shadow-sm'
+              : 'text-white/40 hover:text-white hover:bg-white/[0.06]'
+          }`}
+          title="File Details & Inspector (Ctrl+I)"
+          aria-label="File Details"
+        >
+          <SolarInfoCircleLinear class="w-3.5 h-3.5" />
+        </button>
+
+        <div class="group relative flex items-center w-36 focus-within:w-48 transition-all duration-200 rounded-full overflow-hidden isolate">
+          {/* Subtle dither background glass */}
+          <div
+            aria-hidden="true"
+            class="pointer-events-none absolute inset-0 rounded-full bg-white/[0.04] group-hover:bg-white/[0.07] group-focus-within:bg-white/[0.09] transition-colors -z-10"
+          />
+          {/* Authentic Dither Track along bottom */}
+          <div
+            aria-hidden="true"
+            class="pointer-events-none absolute inset-x-2.5 bottom-0 h-[2px] opacity-25 group-hover:opacity-60 group-focus-within:h-[3px] group-focus-within:opacity-100 transition-all duration-200 rounded-b-full overflow-hidden"
+            style={ditherTrackStyle()}
+          />
+          <div class="absolute left-2.5 pointer-events-none text-white/35 group-focus-within:text-[var(--dither-ink)] transition-colors">
+            <SearchIcon class="w-3 h-3" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search..."
+            value={browserSearchFilter()}
+            onInput={(e) => setBrowserSearchFilter(e.currentTarget.value)}
+            class="w-full h-7 pl-7 pr-6 bg-transparent rounded-full text-[12px] text-white placeholder:text-white/30 border border-transparent group-focus-within:border-white/10 outline-none transition-all duration-200"
+          />
+          <Show when={browserSearchFilter()}>
+            <button
+              type="button"
+              onClick={() => setBrowserSearchFilter('')}
+              class="absolute right-2 text-white/40 hover:text-white text-[11px] cursor-pointer"
+            >
+              ×
+            </button>
+          </Show>
         </div>
-        <input
-          type="text"
-          placeholder="Search..."
-          value={browserSearchFilter()}
-          onInput={(e) => setBrowserSearchFilter(e.currentTarget.value)}
-          class="w-full h-7 pl-7 pr-6 bg-transparent rounded-full text-[12px] text-white placeholder:text-white/30 border border-transparent group-focus-within:border-white/10 outline-none transition-all duration-200"
-        />
-        <Show when={browserSearchFilter()}>
-          <button
-            type="button"
-            onClick={() => setBrowserSearchFilter('')}
-            class="absolute right-2 text-white/40 hover:text-white text-[11px] cursor-pointer"
-          >
-            ×
-          </button>
-        </Show>
       </div>
     </header>
   )
