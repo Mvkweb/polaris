@@ -277,3 +277,46 @@ textarea {
     transform: none;
   }
 }
+
+/* Editor status bar save state: hidden → accent dot (dirty) → drawn check (saved) */
+.editor-status-dot,
+.editor-status-check {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  transition:
+    transform 260ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 200ms ease,
+    background-color 200ms ease;
+}
+.editor-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--accent, #fff);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--accent, #fff) 60%, transparent);
+  transform: scale(0);
+  opacity: 0;
+}
+.editor-status-state.is-dirty .editor-status-dot {
+  transform: scale(1);
+  opacity: 1;
+}
+.editor-status-check {
+  width: 12px;
+  height: 12px;
+  stroke: #6ee7a0;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 12;
+  stroke-dashoffset: 12;
+  opacity: 0;
+  transition:
+    stroke-dashoffset 360ms cubic-bezier(0.16, 1, 0.3, 1) 60ms,
+    opacity 200ms ease;
+}
+.editor-status-state.is-saved .editor-status-check {
+  stroke-dashoffset: 0;
+  opacity: 1;
+}

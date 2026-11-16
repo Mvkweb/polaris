@@ -11,21 +11,10 @@ import { promisify } from 'util'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { detectEditors, listEditors, openInEditor } from './editors'
 import { startThemeWatcher, getWallpaperTheme, wallpaperThemePath } from './theme'
+import { MEDIA_SCHEME_PRIVILEGES, registerMediaProtocol } from './media'
 
 // Register privileged custom schemes before app is ready
-protocol.registerSchemesAsPrivileged([
-  {
-    scheme: 'polaris-media',
-    privileges: {
-      standard: true,
-      secure: true,
-      supportFetchAPI: true,
-      corsEnabled: true,
-      stream: true,
-      bypassCSP: true
-    }
-  }
-])
+protocol.registerSchemesAsPrivileged([MEDIA_SCHEME_PRIVILEGES])
 
 const execFileAsync = promisify(execFile)
 const idNameCache = new Map<string, string>()
@@ -133,40 +122,8 @@ app.whenReady().then(() => {
   electronApp.setAppUserModelId('dev.ember.ide')
   nativeTheme.themeSource = 'dark'
 
-  // Serve local media files securely in both development and production via Node fs
-  protocol.handle('polaris-media', async (request) => {
-    try {
-      const url = new URL(request.url)
-      // Custom standard schemes parse the first path component as host (e.g. polaris-media:///mnt/data -> host="mnt", path="/data")
-      const raw = url.host ? `/${url.host}${url.pathname}` : url.pathname
-      let decodedPath = decodeURIComponent(raw)
-      if (process.platform === 'win32') {
-        decodedPath = decodedPath.replace(/^\/+/, '')
-      }
-      const data = await readFile(decodedPath)
-      const ext = extname(decodedPath).toLowerCase().replace(/^\./, '')
-      const mimeTypes: Record<string, string> = {
-        png: 'image/png',
-        jpg: 'image/jpeg',
-        jpeg: 'image/jpeg',
-        gif: 'image/gif',
-        webp: 'image/webp',
-        svg: 'image/svg+xml',
-        bmp: 'image/bmp',
-        ico: 'image/x-icon'
-      }
-      const contentType = mimeTypes[ext] || 'application/octet-stream'
-      return new Response(data, {
-        status: 200,
-        headers: {
-          'Content-Type': contentType,
-          'Cache-Control': 'public, max-age=86400'
-        }
-      })
-    } catch {
-      return new Response(null, { status: 404 })
-    }
-  })
+  // Stream local media (Range-aware) for thumbnails, inspector and the media viewer
+  registerMediaProtocol()
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)

@@ -1,5 +1,14 @@
 import { Show, type Component } from 'solid-js'
-import { EXTENSION_TOKENS, FILE_NAME_TOKENS, SPRITE_SYMBOLS, TOKEN_COLORS } from './pierre/icons'
+import {
+  EXTENSION_TOKENS as PIERRE_EXTENSIONS,
+  FILE_NAME_TOKENS,
+  SPRITE_SYMBOLS,
+  TOKEN_COLORS as PIERRE_COLORS
+} from './pierre/icons'
+import { EXTRA_EXTENSION_TOKENS, EXTRA_SYMBOLS, EXTRA_TOKEN_COLORS } from './extraIcons'
+
+const EXTENSION_TOKENS: Record<string, string> = { ...EXTRA_EXTENSION_TOKENS, ...PIERRE_EXTENSIONS }
+const TOKEN_COLORS: Record<string, string> = { ...PIERRE_COLORS, ...EXTRA_TOKEN_COLORS }
 
 // Pierre's file-icon set (the one T3 Code ships). Icons are monochrome sprite
 // symbols tinted per file type; one hidden <svg> sprite is injected on first
@@ -15,7 +24,7 @@ const ensureSprite = (): void => {
   host.setAttribute('width', '0')
   host.setAttribute('height', '0')
   host.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden'
-  host.innerHTML = SPRITE_SYMBOLS
+  host.innerHTML = SPRITE_SYMBOLS + EXTRA_SYMBOLS
   document.body.prepend(host)
 }
 

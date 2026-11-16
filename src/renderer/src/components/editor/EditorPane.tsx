@@ -1,11 +1,15 @@
-import { Component, Show, createMemo, createSignal } from 'solid-js'
+import { Component, For, Show, createMemo, createSignal } from 'solid-js'
 import {
   openTabs,
   activeTabPath,
   isFileDirty,
   lastSavedPath,
-  setCurrentView
+  setCurrentView,
+  workspaceRoot
 } from '../../store'
+import { FileIcon } from '../file-tree/FileIcon'
+import { MediaViewer } from '../media/MediaViewer'
+import { hasSourceView, mediaKind, mediaLabel } from '../media/mediaKind'
 import TabBar from './TabBar'
 import CodeEditor from './CodeEditor'
 import EmptyState from './EmptyState'
@@ -20,21 +24,42 @@ export const EditorPane: Component = () => {
   const hasTabs = createMemo(() => openTabs().length > 0)
   const currentPath = () => activeTabPath()
 
+  // Media files open in the viewer; SVGs can flip to their source and back.
+  const [sourceViewPaths, setSourceViewPaths] = createSignal<ReadonlySet<string>>(new Set())
+  const [mediaInfo, setMediaInfo] = createSignal<string | null>(null)
+  const kind = createMemo(() => mediaKind(currentPath()))
+  const showMedia = () => {
+    const p = currentPath()
+    return Boolean(p && kind() && !sourceViewPaths().has(p))
+  }
+  const setSourceView = (path: string, on: boolean): void => {
+    const next = new Set(sourceViewPaths())
+    if (on) next.add(path)
+    else next.delete(path)
+    setSourceViewPaths(next)
+  }
+
   const langInfo = createMemo(() => {
     const p = currentPath()
-    return p ? detectLanguage(p).name : 'Plain Text'
+    if (!p) return 'Plain Text'
+    const k = kind()
+    return k && showMedia() ? mediaLabel(p, k) : detectLanguage(p).name
   })
 
   const isDirty = () => Boolean(currentPath() && isFileDirty(currentPath()))
   const isSaved = () => Boolean(currentPath() && lastSavedPath() === currentPath())
 
-  const pathParts = createMemo(() => {
+  // Workspace-relative breadcrumb ("src › renderer › App.tsx"); outside the
+  // workspace, $HOME folds to ~ and long paths keep only the last three folders.
+  const crumbs = createMemo(() => {
     const p = currentPath()
-    if (!p) return { dir: '', file: '' }
-    const lastSlash = p.lastIndexOf('/')
-    const dir = lastSlash !== -1 ? p.slice(0, lastSlash + 1) : ''
-    const file = lastSlash !== -1 ? p.slice(lastSlash + 1) : p
-    return { dir, file }
+    if (!p) return { dirs: [] as string[], file: '' }
+    const root = workspaceRoot()
+    const rel =
+      root && p.startsWith(root + '/') ? p.slice(root.length + 1) : p.replace(/^\/home\/[^/]+/, '~')
+    const parts = rel.split('/').filter(Boolean)
+    const file = parts.pop() ?? p
+    return { dirs: parts.length > 3 ? ['…', ...parts.slice(-3)] : parts, file }
   })
 
   return (
@@ -62,52 +87,91 @@ export const EditorPane: Component = () => {
       {/* ── Code Editor Body ── */}
       <div class="relative flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
         <Show when={hasTabs() && currentPath()} fallback={<EmptyState />}>
-          <CodeEditor
-            path={currentPath()!}
-            onCursorChange={(line, col) => setCursorPos({ line, col })}
-          />
+          <Show
+            when={showMedia()}
+            fallback={
+              <CodeEditor
+                path={currentPath()!}
+                onCursorChange={(line, col) => setCursorPos({ line, col })}
+              />
+            }
+          >
+            <MediaViewer
+              path={currentPath()!}
+              kind={kind()!}
+              onInfo={setMediaInfo}
+              onViewSource={
+                hasSourceView(currentPath()!)
+                  ? () => setSourceView(currentPath()!, true)
+                  : undefined
+              }
+            />
+          </Show>
         </Show>
       </div>
 
-      {/* ── Editor Footer / Status Bar (Seamlessly integrated into #0a0a0a canvas, no dividing border) ── */}
+      {/* ── Status bar: borderless, sans, everything at rest in white/35 ── */}
       <Show when={hasTabs() && currentPath()}>
-        <div class="shrink-0 h-7 px-3.5 flex items-center justify-between bg-[#0a0a0a] text-[11.5px] font-mono select-none">
-          {/* Left: Path Breadcrumb & State Badge */}
-          <div class="flex items-center gap-2 truncate max-w-[65%] min-w-0">
-            <span class="truncate flex items-center gap-1">
-              <Show when={pathParts().dir}>
-                <span class="text-white/35 font-mono text-[11px] truncate">{pathParts().dir}</span>
-              </Show>
-              <span class="text-white/90 font-mono font-semibold text-[11.5px] shrink-0 tracking-tight">
-                {pathParts().file}
-              </span>
+        <div class="editor-status shrink-0 h-7 pl-4 pr-3.5 flex items-center justify-between gap-4 text-[11.5px] text-white/35 select-none">
+          {/* Left: breadcrumb + save-state glyph that morphs dot → check */}
+          <div class="flex items-center min-w-0 gap-1">
+            <For each={crumbs().dirs}>
+              {(dir) => (
+                <>
+                  <span class="truncate max-w-[140px] hover:text-white/60 transition-colors">
+                    {dir}
+                  </span>
+                  <svg viewBox="0 0 16 16" class="w-2.5 h-2.5 shrink-0 text-white/20 -rotate-90">
+                    <use href="#file-tree-icon-chevron" />
+                  </svg>
+                </>
+              )}
+            </For>
+            <span class="text-white/85 font-medium truncate tracking-[-0.01em]">
+              {crumbs().file}
             </span>
-
-            <Show when={isDirty()}>
-              <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-400/10 text-amber-300 font-sans text-[10px] font-medium tracking-wide shrink-0">
-                <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                <span>Modified</span>
-              </span>
-            </Show>
-
-            <Show when={isSaved()}>
-              <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-400/10 text-emerald-300 font-sans text-[10px] font-medium tracking-wide shrink-0">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                <span>Saved</span>
-              </span>
-            </Show>
+            <span
+              class="editor-status-state relative ml-1 w-3 h-3 shrink-0"
+              classList={{ 'is-dirty': isDirty(), 'is-saved': isSaved() && !isDirty() }}
+              title={isDirty() ? 'Unsaved changes' : isSaved() ? 'Saved' : undefined}
+            >
+              <span class="editor-status-dot" />
+              <svg viewBox="0 0 12 12" class="editor-status-check" fill="none">
+                <path d="M2.5 6.2 5 8.5l4.5-5" />
+              </svg>
+            </span>
           </div>
 
-          {/* Right: Language Pill, Line/Col metrics & Encoding */}
-          <div class="flex items-center gap-3 shrink-0 tabular-nums">
-            <span class="px-2 py-0.5 rounded bg-white/[0.05] text-white/80 font-mono text-[10.5px] font-semibold tracking-wider uppercase">
-              {langInfo()}
+          {/* Right: language (with its Pierre icon), position, encoding */}
+          <div class="flex items-center gap-4 shrink-0 tabular-nums">
+            <span class="flex items-center gap-1.5 text-white/55">
+              <FileIcon name={crumbs().file} isDirectory={false} class="w-3.5 h-3.5" />
+              <span>{langInfo()}</span>
             </span>
-            <span class="text-white/70 font-mono text-[11px]">
-              <span class="text-white/35">Ln</span> <strong class="text-white/90 font-semibold">{cursorPos().line}</strong>,{' '}
-              <span class="text-white/35">Col</span> <strong class="text-white/90 font-semibold">{cursorPos().col}</strong>
-            </span>
-            <span class="text-white/35 font-mono text-[10.5px]">UTF-8</span>
+            <Show
+              when={showMedia()}
+              fallback={
+                <>
+                  <Show when={kind() && currentPath() && hasSourceView(currentPath()!)}>
+                    <button
+                      type="button"
+                      onClick={() => setSourceView(currentPath()!, false)}
+                      class="text-white/45 hover:text-white/85 transition-colors cursor-pointer"
+                    >
+                      Preview
+                    </button>
+                  </Show>
+                  <span class="font-mono text-[11px]">
+                    <span class="text-white/70">{cursorPos().line}</span>
+                    <span class="text-white/25">:</span>
+                    <span class="text-white/70">{cursorPos().col}</span>
+                  </span>
+                  <span class="text-white/25 text-[11px]">UTF-8</span>
+                </>
+              }
+            >
+              <span class="text-white/70 text-[11.5px]">{mediaInfo() ?? '…'}</span>
+            </Show>
           </div>
         </div>
       </Show>
