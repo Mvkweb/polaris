@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "mode": "{{ mode }}",
+  "primary": "{{ colors.primary.dark.hex }}",
+  "onPrimary": "{{ colors.on_primary.dark.hex }}",
+  "primaryContainer": "{{ colors.primary_container.dark.hex }}",
+  "tertiary": "{{ colors.tertiary.dark.hex }}"
+}

@@ -282,7 +282,7 @@ export const BrowserTopBar: Component = () => {
             isFilterTabActive() ? 'w-56' : 'w-44 hover:bg-white/[0.04]'
           }`}
         >
-          <SearchIcon class="w-3.5 h-3.5 shrink-0 text-white/45 group-focus-within:text-white/80 transition-colors" />
+          <SearchIcon class="w-3.5 h-3.5 shrink-0 text-white/45 group-focus-within:text-[var(--accent)] transition-colors" />
           <input
             ref={(el) => (filterInputRef = el)}
             type="text"

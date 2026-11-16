@@ -45,6 +45,13 @@ const api = {
   terminalResize: (id: number, cols: number, rows: number) =>
     ipcRenderer.invoke('terminal:resize', id, cols, rows),
   terminalKill: (id: number) => ipcRenderer.invoke('terminal:kill', id),
+  getWallpaperTheme: () => ipcRenderer.invoke('theme:get'),
+  getWallpaperThemePath: () => ipcRenderer.invoke('theme:path'),
+  onWallpaperTheme: (callback: (theme: unknown) => void) => {
+    const listener = (_: unknown, theme: unknown): void => callback(theme)
+    ipcRenderer.on('theme:changed', listener)
+    return () => ipcRenderer.removeListener('theme:changed', listener)
+  },
   onTerminalData: (callback: (id: number, data: string) => void) => {
     const listener = (_: unknown, id: number, data: string): void => callback(id, data)
     ipcRenderer.on('terminal:data', listener)

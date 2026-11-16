@@ -34,6 +34,11 @@ const loaderFadeMs = (): number => {
   return typeof custom === 'number' && custom >= 0 ? custom : LOADER_FADE_MS
 }
 
+// The core tags one category "blue" as the house colour; let it follow the theme
+// (ink → accent) while the other categories keep their distinct chart colours.
+const themedItems = (items: StorageMapItem[]): StorageMapItem[] =>
+  items.map((item) => (item.color === 'blue' ? { ...item, color: 'ink' } : item))
+
 export const StorageMapModal: Component = () => {
   const [data, setData] = createSignal<BreakdownData | null>(null)
   const [loading, setLoading] = createSignal(false)
@@ -185,7 +190,7 @@ export const StorageMapModal: Component = () => {
                 target={res().target}
                 capacity={res().capacity_gb}
                 unit=" GB"
-                items={res().items}
+                items={themedItems(res().items)}
                 duration={800}
                 spotlight="blur"
                 blurRadius={2}
@@ -243,7 +248,7 @@ export const StorageMapModal: Component = () => {
               <Loader
                 variant="pulse"
                 size="lg"
-                color="blue"
+                color="ink"
                 bloom="low"
                 label="Scanning filesystem"
               />

@@ -84,6 +84,13 @@ export interface MountDriveResult {
   error?: string
 }
 
+export interface WallpaperPalette {
+  primary: string
+  onPrimary: string
+  primaryContainer: string
+  tertiary: string
+}
+
 export interface ExternalEditor {
   id: string
   name: string
@@ -150,6 +157,9 @@ export interface CustomAPI {
   terminalWrite: (id: number, data: string) => Promise<void>
   terminalResize: (id: number, cols: number, rows: number) => Promise<void>
   terminalKill: (id: number) => Promise<void>
+  getWallpaperTheme: () => Promise<WallpaperPalette | null>
+  getWallpaperThemePath: () => Promise<string>
+  onWallpaperTheme: (callback: (theme: WallpaperPalette | null) => void) => () => void
   onTerminalData: (callback: (id: number, data: string) => void) => () => void
   onTerminalExit: (callback: (id: number, exitCode: number) => void) => () => void
   onDrivesChanged: (callback: () => void) => () => void

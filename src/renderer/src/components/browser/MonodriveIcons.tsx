@@ -6,16 +6,16 @@ export const MonodriveIconDefs: Component = () => (
     <defs>
       {/* Back Tab & Body Gradient */}
       <linearGradient id="monoBack" x1="38" y1="4" x2="38" y2="52" gradientUnits="userSpaceOnUse">
-        <stop offset="0%" stop-color="#4AB3F8" />
-        <stop offset="100%" stop-color="#1976D2" />
+        <stop offset="0%" style={{ 'stop-color': 'var(--folder-back-hi, #4AB3F8)' }} />
+        <stop offset="100%" style={{ 'stop-color': 'var(--folder-back-lo, #1976D2)' }} />
       </linearGradient>
 
       {/* Front Flap Main Gradient (Apple Sky-Blue) */}
       <linearGradient id="monoFront" x1="38" y1="18" x2="38" y2="60" gradientUnits="userSpaceOnUse">
-        <stop offset="0%" stop-color="#64CEFF" />
-        <stop offset="25%" stop-color="#45AFF8" />
-        <stop offset="85%" stop-color="#1C7EE0" />
-        <stop offset="100%" stop-color="#1466BE" />
+        <stop offset="0%" style={{ 'stop-color': 'var(--folder-front-1, #64CEFF)' }} />
+        <stop offset="25%" style={{ 'stop-color': 'var(--folder-front-2, #45AFF8)' }} />
+        <stop offset="85%" style={{ 'stop-color': 'var(--folder-front-3, #1C7EE0)' }} />
+        <stop offset="100%" style={{ 'stop-color': 'var(--folder-front-4, #1466BE)' }} />
       </linearGradient>
 
       {/* Top Rim Highlight */}

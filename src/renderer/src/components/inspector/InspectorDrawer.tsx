@@ -448,11 +448,11 @@ export const InspectorDrawer: Component = () => {
                 Open
               </button>
 
-              <div class="flex-1 min-w-0 flex items-stretch h-8 rounded-md bg-white/[0.06] overflow-hidden">
+              <div class="polaris-accent-fill flex-1 min-w-0 flex items-stretch h-8 rounded-md overflow-hidden transition-colors">
                 <button
                   type="button"
                   onClick={() => openWith(activeEditor())}
-                  class="flex-1 min-w-0 flex items-center justify-center gap-2 px-2.5 text-[13px] font-medium text-white/90 hover:bg-white/[0.06] transition-colors cursor-pointer"
+                  class="polaris-accent-fill-hover flex-1 min-w-0 flex items-center justify-center gap-2 px-2.5 text-[13px] font-medium transition-colors cursor-pointer"
                   title={`Open in ${activeEditorName()}`}
                 >
                   <EditorGlyph editor={activeEditor()} />
@@ -467,7 +467,7 @@ export const InspectorDrawer: Component = () => {
                   sideOffset={6}
                 >
                   <DitherDropdownMenuTrigger
-                    class="w-7 shrink-0 flex items-center justify-center border-l border-black/40 text-white/50 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+                    class="w-7 shrink-0 flex items-center justify-center polaris-accent-fill-hover border-l border-black/40 opacity-75 hover:opacity-100 transition-[opacity,background-color] cursor-pointer"
                     aria-label="Choose editor"
                   >
                     <svg

@@ -10,6 +10,7 @@ import { execFile, spawn } from 'child_process'
 import { promisify } from 'util'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { detectEditors, listEditors, openInEditor } from './editors'
+import { startThemeWatcher, getWallpaperTheme, wallpaperThemePath } from './theme'
 
 // Register privileged custom schemes before app is ready
 protocol.registerSchemesAsPrivileged([
@@ -349,6 +350,11 @@ app.whenReady().then(() => {
   })
 
   // Detect installed external editors (Zed, VS Code, …) with their real app icons
+  // Wallpaper-synced palette: watch ~/.config/polaris/theme.json (read-only)
+  startThemeWatcher()
+  ipcMain.handle('theme:get', () => getWallpaperTheme())
+  ipcMain.handle('theme:path', () => wallpaperThemePath())
+
   void detectEditors() // warm the cache so the inspector's first open is instant
   ipcMain.handle('editor:list', () => listEditors())
   ipcMain.handle('editor:open', (_, editorId: string, targetPath: string) =>

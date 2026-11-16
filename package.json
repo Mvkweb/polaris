@@ -11,6 +11,7 @@
     "core:test": "cd core && zig build test",
     "build": "bun run core:build && npm run typecheck && electron-vite build",
     "start": "electron-vite preview",
+    "theme": "bun scripts/theme.ts",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "format": "prettier --write .",

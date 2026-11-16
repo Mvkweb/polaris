@@ -34,7 +34,9 @@ import {
   activeAccentColor,
   openContextMenu,
   workspaceRoot,
-  navigateTo
+  navigateTo,
+  explorerMode,
+  setExplorerMode
 } from '../store'
 import {
   SolarGhostBold,
@@ -197,6 +199,29 @@ const CheckCheckIcon = (props: { class?: string }) => (
   <svg viewBox="0 0 24 24" fill="none" class={props.class ?? 'w-3.5 h-3.5'}>
     <path
       d="M18 6 7 17l-5-5M22 10l-7.5 7.5L13 16"
+      stroke="currentColor"
+      stroke-width="1.75"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </svg>
+)
+
+const PlacesGlyph = (props: { class?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" class={props.class ?? 'w-3.5 h-3.5'}>
+    <path
+      d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+    />
+  </svg>
+)
+
+const TreeGlyph = (props: { class?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" class={props.class ?? 'w-3.5 h-3.5'}>
+    <path
+      d="M4 4v13a2 2 0 0 0 2 2h3M4 9h5M13 7h7M13 17h7M13 12h4"
       stroke="currentColor"
       stroke-width="1.75"
       stroke-linecap="round"
@@ -696,7 +721,7 @@ const DriveItemRow: Component<{
             size="sm"
             fill="gradient"
             bloom="low"
-            color="blue"
+            color="ink"
             hideLabel
             class="w-full"
           />
@@ -1306,20 +1331,64 @@ const Sidebar: Component = () => {
               </div>
 
               <div class="flex items-center gap-0.5">
-                <button
-                  type="button"
-                  aria-label={settledShown() ? 'Show active' : 'Show settled'}
-                  title={settledShown() ? 'Show active' : 'Show settled'}
-                  onClick={() => {
-                    if (currentView() !== 'chat') setCurrentView('chat')
-                    setSettledShown((prev) => !prev)
-                  }}
-                  class="w-6 h-6 rounded flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+                <Show
+                  when={activeSidebarView() === 'files' || activeSidebarView() === 'editor'}
+                  fallback={
+                    <button
+                      type="button"
+                      aria-label={settledShown() ? 'Show active' : 'Show settled'}
+                      title={settledShown() ? 'Show active' : 'Show settled'}
+                      onClick={() => {
+                        if (currentView() !== 'chat') setCurrentView('chat')
+                        setSettledShown((prev) => !prev)
+                      }}
+                      class="w-6 h-6 rounded flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+                    >
+                      <Show when={settledShown()} fallback={<CheckCheckIcon class="w-3.5 h-3.5" />}>
+                        <Undo2Icon class="w-3.5 h-3.5" />
+                      </Show>
+                    </button>
+                  }
                 >
-                  <Show when={settledShown()} fallback={<CheckCheckIcon class="w-3.5 h-3.5" />}>
-                    <Undo2Icon class="w-3.5 h-3.5" />
-                  </Show>
-                </button>
+                  {/* Places | Tree segmented switch with a sliding thumb */}
+                  <div
+                    role="tablist"
+                    aria-label="Explorer mode"
+                    class="relative flex items-center h-6 p-0.5 rounded-md bg-white/[0.04] ring-1 ring-inset ring-white/[0.05]"
+                  >
+                    <span
+                      aria-hidden="true"
+                      class="absolute top-0.5 left-0.5 h-5 w-6 rounded-[5px] bg-white/[0.11] shadow-xs transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                      style={{
+                        transform: explorerMode() === 'tree' ? 'translateX(24px)' : 'none'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={explorerMode() === 'places'}
+                      title="Places"
+                      onClick={() => setExplorerMode('places')}
+                      class={`relative z-10 w-6 h-5 flex items-center justify-center rounded-[5px] transition-colors cursor-pointer ${
+                        explorerMode() === 'places' ? 'text-white' : 'text-white/40 hover:text-white/75'
+                      }`}
+                    >
+                      <PlacesGlyph class="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={explorerMode() === 'tree'}
+                      title="File tree"
+                      onClick={() => setExplorerMode('tree')}
+                      class={`relative z-10 w-6 h-5 flex items-center justify-center rounded-[5px] transition-colors cursor-pointer ${
+                        explorerMode() === 'tree' ? 'text-white' : 'text-white/40 hover:text-white/75'
+                      }`}
+                    >
+                      <TreeGlyph class="w-3 h-3" />
+                    </button>
+                  </div>
+                </Show>
               </div>
             </div>
 
@@ -1344,15 +1413,15 @@ const Sidebar: Component = () => {
               {/* 1. Places & Devices File Explorer View */}
               <Show when={activeSidebarView() === 'files' || activeSidebarView() === 'editor'}>
                 <Show
-                  when={!searchQuery()}
+                  when={!searchQuery() && explorerMode() === 'places'}
                   fallback={
-                    <div class="flex flex-col">
+                    <div class="flex flex-col animate-[explorer-mode-in_220ms_cubic-bezier(0.16,1,0.3,1)]">
                       <FileTree searchQuery={searchQuery()} />
                     </div>
                   }
                 >
                   {/* ── Section: Places ── */}
-                  <div class="flex flex-col">
+                  <div class="flex flex-col animate-[explorer-mode-in_220ms_cubic-bezier(0.16,1,0.3,1)]">
                     <div
                       class="flex items-center justify-between px-2.5 py-1 text-[12px] font-semibold text-white/40 hover:text-white/70 transition-colors cursor-pointer select-none"
                       onClick={() => setPlacesOpen(!placesOpen())}

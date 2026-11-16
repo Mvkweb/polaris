@@ -176,8 +176,8 @@ export const PropertiesModal: Component = () => {
           >
             <Aurora
               class="size-full"
-              color="blue"
-              tipColor="blue"
+              color="ink"
+              tipColor="ink"
               background="transparent"
               curtains={3}
               height={0.5}
@@ -262,7 +262,7 @@ export const PropertiesModal: Component = () => {
                   value={activeTab()}
                   onChange={setActiveTab}
                   variant="pill"
-                  color="blue"
+                  color="ink"
                   cell={2}
                   matrix="bayer4"
                   class="relative z-10 flex flex-col gap-3.5"
@@ -428,7 +428,7 @@ export const PropertiesModal: Component = () => {
                             <div class="flex items-center gap-7">
                               <DitherSwitch
                                 size="sm"
-                                color="blue"
+                                color="ink"
                                 cell={2}
                                 checked={ownerR()}
                                 onChange={setOwnerR}
@@ -436,7 +436,7 @@ export const PropertiesModal: Component = () => {
                               />
                               <DitherSwitch
                                 size="sm"
-                                color="blue"
+                                color="ink"
                                 cell={2}
                                 checked={ownerW()}
                                 onChange={setOwnerW}
@@ -444,7 +444,7 @@ export const PropertiesModal: Component = () => {
                               />
                               <DitherSwitch
                                 size="sm"
-                                color="blue"
+                                color="ink"
                                 cell={2}
                                 checked={ownerX()}
                                 onChange={setOwnerX}
@@ -459,7 +459,7 @@ export const PropertiesModal: Component = () => {
                             <div class="flex items-center gap-7">
                               <DitherSwitch
                                 size="sm"
-                                color="blue"
+                                color="ink"
                                 cell={2}
                                 checked={groupR()}
                                 onChange={setGroupR}
@@ -467,7 +467,7 @@ export const PropertiesModal: Component = () => {
                               />
                               <DitherSwitch
                                 size="sm"
-                                color="blue"
+                                color="ink"
                                 cell={2}
                                 checked={groupW()}
                                 onChange={setGroupW}
@@ -475,7 +475,7 @@ export const PropertiesModal: Component = () => {
                               />
                               <DitherSwitch
                                 size="sm"
-                                color="blue"
+                                color="ink"
                                 cell={2}
                                 checked={groupX()}
                                 onChange={setGroupX}
@@ -490,7 +490,7 @@ export const PropertiesModal: Component = () => {
                             <div class="flex items-center gap-7">
                               <DitherSwitch
                                 size="sm"
-                                color="blue"
+                                color="ink"
                                 cell={2}
                                 checked={otherR()}
                                 onChange={setOtherR}
@@ -498,7 +498,7 @@ export const PropertiesModal: Component = () => {
                               />
                               <DitherSwitch
                                 size="sm"
-                                color="blue"
+                                color="ink"
                                 cell={2}
                                 checked={otherW()}
                                 onChange={setOtherW}
@@ -506,7 +506,7 @@ export const PropertiesModal: Component = () => {
                               />
                               <DitherSwitch
                                 size="sm"
-                                color="blue"
+                                color="ink"
                                 cell={2}
                                 checked={otherX()}
                                 onChange={setOtherX}
@@ -532,7 +532,7 @@ export const PropertiesModal: Component = () => {
 
                   <DitherButton
                     variant="filled"
-                    color="blue"
+                    color="ink"
                     size="sm"
                     cell={2}
                     onClick={closePropertiesModal}

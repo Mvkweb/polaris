@@ -562,15 +562,15 @@ export const ContextMenu: Component = () => {
 
             <DitherDropdownMenuSeparator />
 
-            <DitherDropdownMenuItem variant="dither" onSelect={handleOpenStorageMap} class="text-sky-300 group-hover:text-sky-200">
-              <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-sky-400 shrink-0" stroke="currentColor" stroke-width="1.8">
+            <DitherDropdownMenuItem variant="dither" onSelect={handleOpenStorageMap} class="text-[color-mix(in_oklab,var(--accent)_70%,white)] group-hover:text-white">
+              <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-[var(--accent)] shrink-0" stroke="currentColor" stroke-width="1.8">
                 <rect x="3" y="3" width="7" height="9" rx="1.5" stroke-linecap="round" stroke-linejoin="round" />
                 <rect x="14" y="3" width="7" height="5" rx="1.5" stroke-linecap="round" stroke-linejoin="round" />
                 <rect x="14" y="12" width="7" height="9" rx="1.5" stroke-linecap="round" stroke-linejoin="round" />
                 <rect x="3" y="16" width="7" height="5" rx="1.5" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
               <span class="font-medium">Inspect Storage Map</span>
-              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 ml-auto">Zig</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[color-mix(in_oklab,var(--accent)_20%,transparent)] text-[var(--accent)] ml-auto">Zig</span>
             </DitherDropdownMenuItem>
 
             <DitherDropdownMenuSeparator />

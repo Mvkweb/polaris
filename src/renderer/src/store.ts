@@ -1,5 +1,13 @@
 import { batch, createMemo, createSignal } from 'solid-js'
-import type { ChatSessionSummary, FileNode, EditorTab, GitCommit, GitStatus, SystemDrive } from './types'
+import type {
+  ChatSessionSummary,
+  FileNode,
+  EditorTab,
+  GitCommit,
+  GitStatus,
+  SystemDrive,
+  WallpaperPalette
+} from './types'
 
 export const [currentNote, setCurrentNote] = createSignal('Welcome')
 export const [currentFolder, setCurrentFolder] = createSignal('')
@@ -225,7 +233,49 @@ export const THEME_ACCENTS: Record<ThemePresetId, string> = {
   sunset: '#F43F5E'
 }
 
-export const activeAccentColor = createMemo(() => selectedAccentColor())
+// ── Sidebar explorer mode: Places/Devices list or the workspace file tree ──
+export type ExplorerMode = 'places' | 'tree'
+const readExplorerMode = (): ExplorerMode => {
+  try {
+    return localStorage.getItem('polaris.sidebar.explorerMode') === 'tree' ? 'tree' : 'places'
+  } catch {
+    return 'places'
+  }
+}
+export const [explorerMode, setExplorerModeSignal] = createSignal<ExplorerMode>(readExplorerMode())
+export const setExplorerMode = (mode: ExplorerMode): void => {
+  setExplorerModeSignal(mode)
+  try {
+    localStorage.setItem('polaris.sidebar.explorerMode', mode)
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+// ── Wallpaper-synced palette (written by dithergen/matugen, watched by main) ──
+const readWallpaperSync = (): boolean => {
+  try {
+    return localStorage.getItem('polaris.theme.wallpaperSync') !== '0'
+  } catch {
+    return true
+  }
+}
+export const [wallpaperSync, setWallpaperSyncSignal] = createSignal<boolean>(readWallpaperSync())
+export const setWallpaperSync = (on: boolean): void => {
+  setWallpaperSyncSignal(on)
+  try {
+    localStorage.setItem('polaris.theme.wallpaperSync', on ? '1' : '0')
+  } catch {
+    /* storage unavailable */
+  }
+}
+export const [wallpaperTheme, setWallpaperTheme] = createSignal<WallpaperPalette | null>(null)
+/** The palette actually in effect: wallpaper when synced and available, else null. */
+export const activeWallpaperTheme = createMemo(() => (wallpaperSync() ? wallpaperTheme() : null))
+
+export const activeAccentColor = createMemo(
+  () => activeWallpaperTheme()?.primary ?? selectedAccentColor()
+)
 export const [appearanceContrast, setAppearanceContrast] = createSignal<number>(100)
 export const [glassOpacity, setGlassOpacity] = createSignal<number>(65)
 export const [showSunrays, setShowSunrays] = createSignal<boolean>(true)

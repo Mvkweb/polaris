@@ -51,7 +51,7 @@ export const ditherTheme = EditorView.theme(
     },
     // Selection styling: uniform background, flat internal edges
     '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-selectionLayer .cm-selectionBackground': {
-      backgroundColor: 'rgba(56, 189, 248, 0.22) !important',
+      backgroundColor: 'color-mix(in oklab, var(--accent, #38bdf8) 24%, transparent) !important',
       borderRadius: '0px'
     },
     // Single-line or word selection: clean subtle 3px rounding
@@ -85,12 +85,18 @@ export const ditherTheme = EditorView.theme(
       backgroundColor: 'transparent !important'
     },
     '.cm-selectionMatch': {
-      backgroundColor: 'rgba(56, 189, 248, 0.12)',
-      outline: '1px solid rgba(56, 189, 248, 0.3)',
+      backgroundColor: 'color-mix(in oklab, var(--accent, #38bdf8) 12%, transparent)',
+      outline: '1px solid color-mix(in oklab, var(--accent, #38bdf8) 32%, transparent)',
       borderRadius: '3px'
     },
     '.cm-activeLine': {
-      backgroundColor: 'rgba(255, 255, 255, 0.025)'
+      backgroundColor: 'color-mix(in oklab, var(--accent, #38bdf8) 4%, transparent)'
+    },
+    '&.cm-focused .cm-matchingBracket': {
+      backgroundColor: 'color-mix(in oklab, var(--accent, #38bdf8) 16%, transparent)',
+      outline: '1px solid color-mix(in oklab, var(--accent, #38bdf8) 45%, transparent)',
+      color: 'inherit',
+      borderRadius: '2px'
     },
     '.cm-gutters': {
       backgroundColor: '#0a0a0a',
@@ -110,7 +116,7 @@ export const ditherTheme = EditorView.theme(
     },
     '.cm-activeLineGutter': {
       backgroundColor: 'transparent',
-      color: '#ffffff !important',
+      color: 'color-mix(in oklab, var(--accent, #38bdf8) 55%, #ffffff) !important',
       fontWeight: '500'
     },
     '.cm-foldGutter': {
@@ -123,9 +129,9 @@ export const ditherTheme = EditorView.theme(
       padding: '0 4px'
     },
     '.cm-foldPlaceholder': {
-      backgroundColor: 'rgba(56, 189, 248, 0.12)',
+      backgroundColor: 'color-mix(in oklab, var(--accent, #38bdf8) 14%, transparent)',
       border: 'none',
-      color: '#38bdf8',
+      color: 'var(--accent, #38bdf8)',
       padding: '0 6px',
       margin: '0 4px',
       borderRadius: '3px',
@@ -140,7 +146,7 @@ export const ditherTheme = EditorView.theme(
     },
     '.cm-tooltip-autocomplete': {
       '& > ul > li[aria-selected]': {
-        backgroundColor: 'rgba(56, 189, 248, 0.18)',
+        backgroundColor: 'color-mix(in oklab, var(--accent, #38bdf8) 20%, transparent)',
         color: '#ffffff'
       }
     }
@@ -150,30 +156,30 @@ export const ditherTheme = EditorView.theme(
 
 export const ditherHighlightStyle = HighlightStyle.define([
   // Keywords (export, type, function, return, const, let, class, struct)
-  { tag: [t.keyword, t.definitionKeyword, t.operatorKeyword], color: '#f43f5e', fontWeight: '500' },
+  { tag: [t.keyword, t.definitionKeyword, t.operatorKeyword], color: 'var(--syn-keyword, #f43f5e)', fontWeight: '500' },
   // Types, Interfaces, Classes
-  { tag: [t.typeName, t.className, t.standard(t.name)], color: '#38bdf8' },
+  { tag: [t.typeName, t.className, t.standard(t.name)], color: 'var(--syn-type, #38bdf8)' },
   // Function names and calls
-  { tag: [t.function(t.variableName), t.function(t.propertyName)], color: '#60a5fa' },
+  { tag: [t.function(t.variableName), t.function(t.propertyName)], color: 'var(--syn-function, #60a5fa)' },
   // String literals
-  { tag: [t.string, t.special(t.string)], color: '#34d399' },
+  { tag: [t.string, t.special(t.string)], color: 'var(--syn-string, #34d399)' },
   // Numbers, Booleans
-  { tag: [t.number, t.bool, t.null], color: '#fbbf24' },
+  { tag: [t.number, t.bool, t.null], color: 'var(--syn-number, #fbbf24)' },
   // Comments
-  { tag: [t.comment, t.lineComment, t.blockComment], color: '#64748b', fontStyle: 'italic' },
+  { tag: [t.comment, t.lineComment, t.blockComment], color: 'var(--syn-comment, #64748b)', fontStyle: 'italic' },
   // Properties and variables
-  { tag: [t.propertyName, t.attributeName], color: '#e2e8f0' },
-  { tag: [t.variableName], color: '#f8fafc' },
+  { tag: [t.propertyName, t.attributeName], color: 'var(--syn-property, #e2e8f0)' },
+  { tag: [t.variableName], color: 'var(--syn-variable, #f8fafc)' },
   // Punctuation, brackets, operators
-  { tag: [t.punctuation, t.bracket], color: '#94a3b8' },
-  { tag: [t.operator], color: '#cbd5e1' },
+  { tag: [t.punctuation, t.bracket], color: 'var(--syn-punctuation, #94a3b8)' },
+  { tag: [t.operator], color: 'var(--syn-operator, #cbd5e1)' },
   // HTML/JSX tags
-  { tag: [t.tagName], color: '#f43f5e' },
+  { tag: [t.tagName], color: 'var(--syn-tag, #f43f5e)' },
   // Markdown headings and emphasis
-  { tag: t.heading, color: '#38bdf8', fontWeight: 'bold' },
+  { tag: t.heading, color: 'var(--syn-type, #38bdf8)', fontWeight: 'bold' },
   { tag: t.emphasis, fontStyle: 'italic' },
   { tag: t.strong, fontWeight: 'bold' },
-  { tag: t.link, color: '#60a5fa', textDecoration: 'underline' }
+  { tag: t.link, color: 'var(--syn-function, #60a5fa)', textDecoration: 'underline' }
 ])
 
 export const ditherSyntaxTheme: Extension = [

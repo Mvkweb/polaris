@@ -49,6 +49,13 @@ export interface FileNode {
   last_modified: number
 }
 
+export interface WallpaperPalette {
+  primary: string
+  onPrimary: string
+  primaryContainer: string
+  tertiary: string
+}
+
 export interface ExternalEditor {
   id: string
   name: string

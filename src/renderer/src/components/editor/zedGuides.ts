@@ -6,7 +6,7 @@ import {
   type DecorationSet,
   WidgetType
 } from '@codemirror/view'
-import { RangeSetBuilder, type Extension, type Text } from '@codemirror/state'
+import { type Extension, type Range, type Text } from '@codemirror/state'
 
 /**
  * Authentic Zed Indentation Guides & Whitespace Behavior for CodeMirror 6.
@@ -59,8 +59,8 @@ function injectZedGuideStyles(): void {
       transition: background-color 150ms ease;
     }
     .cm-indent-guide.cm-indent-guide-active {
-      background-color: rgba(255, 255, 255, 0.32);
-      box-shadow: 0 0 1px rgba(255, 255, 255, 0.25);
+      background-color: color-mix(in oklab, var(--accent, #38bdf8) 55%, transparent);
+      box-shadow: 0 0 1px color-mix(in oklab, var(--accent, #38bdf8) 45%, transparent);
     }
     .cm-whitespace-dot {
       position: relative;
@@ -275,7 +275,10 @@ const dotMark = Decoration.mark({ class: 'cm-whitespace-dot' })
 const tabMark = Decoration.mark({ class: 'cm-whitespace-tab' })
 
 function buildDecorations(view: EditorView): DecorationSet {
-  const builder = new RangeSetBuilder<Decoration>()
+  // Collected unsorted (guides, then selection dots, then trailing dots) and
+  // sorted once by Decoration.set — a RangeSetBuilder throws on out-of-order
+  // adds, which killed the whole plugin as soon as anything was selected.
+  const ranges: Range<Decoration>[] = []
   const doc = view.state.doc
   const indentUnit = detectIndentUnit(doc)
   const charWidth = view.defaultCharacterWidth || 7.82
@@ -303,13 +306,11 @@ function buildDecorations(view: EditorView): DecorationSet {
         const isActive = l >= scope.fromLine && l <= scope.toLine
         const activeCol = isActive ? scope.activeCol : -1
 
-        builder.add(
-          line.from,
-          line.from,
+        ranges.push(
           Decoration.widget({
             widget: new IndentGuidesWidget(guideCols, activeCol, charWidth),
             side: -1
-          })
+          }).range(line.from)
         )
       }
     }
@@ -328,9 +329,9 @@ function buildDecorations(view: EditorView): DecorationSet {
       const ch = slice.charCodeAt(i)
       const pos = selFrom + i
       if (ch === 32) {
-        builder.add(pos, pos + 1, dotMark)
+        ranges.push(dotMark.range(pos, pos + 1))
       } else if (ch === 9) {
-        builder.add(pos, pos + 1, tabMark)
+        ranges.push(tabMark.range(pos, pos + 1))
       }
     }
   }
@@ -359,9 +360,9 @@ function buildDecorations(view: EditorView): DecorationSet {
           )
           if (!inSelection) {
             if (text.charCodeAt(p) === 32) {
-              builder.add(absPos, absPos + 1, dotMark)
+              ranges.push(dotMark.range(absPos, absPos + 1))
             } else {
-              builder.add(absPos, absPos + 1, tabMark)
+              ranges.push(tabMark.range(absPos, absPos + 1))
             }
           }
         }
@@ -369,7 +370,7 @@ function buildDecorations(view: EditorView): DecorationSet {
     }
   }
 
-  return builder.finish()
+  return Decoration.set(ranges, true)
 }
 
 class ZedGuidesPlugin {

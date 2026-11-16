@@ -31,7 +31,6 @@ import {
   isSettingsModalOpen,
   closeSettingsModal,
   toggleSettingsModal,
-  activeAccentColor,
   workspaceRoot,
   navigateTo,
   isFilterTabActive,
@@ -40,6 +39,7 @@ import {
   selectedGridEntry
 } from './store'
 import { isModKey } from './shortcuts'
+import { useThemeVariables, useWallpaperTheme } from './theme'
 
 const MIN_EXPANDED_HEIGHT = 100
 const DEFAULT_EXPANDED_HEIGHT = 340
@@ -157,15 +157,8 @@ const App: Component = () => {
     window.addEventListener('pointerup', onUp)
   }
 
-  createEffect(() => {
-    const accent = activeAccentColor()
-    const hex = accent.replace('#', '')
-    const r = parseInt(hex.substring(0, 2), 16) || 255
-    const g = parseInt(hex.substring(2, 4), 16) || 102
-    const b = parseInt(hex.substring(4, 6), 16) || 184
-    document.documentElement.style.setProperty('--accent', accent)
-    document.documentElement.style.setProperty('--accent-rgb', `${r}, ${g}, ${b}`)
-  })
+  useThemeVariables()
+  useWallpaperTheme()
 
   onMount(async () => {
     window.addEventListener('keydown', handleGlobalKeyDown)
@@ -207,7 +200,7 @@ const App: Component = () => {
 
         {/* Canvas row: rounded canvas + inspector drawer sliding out sideways in the dark */}
         <div class="flex-1 min-h-0 min-w-0 flex flex-row">
-          <main class="relative z-10 flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden bg-[#0a0a0a] rounded-[20px]"
+          <main class="polaris-canvas relative z-10 flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden rounded-[20px]"
             style={{
               // Square the corner under the filter tab while it's melted in
               'border-top-right-radius': isFilterTabActive() ? '0px' : '20px',

@@ -401,8 +401,8 @@ class ZedCursorPlugin {
     // Zed cursor polygon trail (clean sky-blue ribbon with subtle boundary definition)
     const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon')
     polygon.setAttribute('class', 'cm-zed-cursor-polygon')
-    polygon.setAttribute('fill', 'rgba(56, 189, 248, 0.90)')
-    polygon.setAttribute('stroke', '#38bdf8')
+    polygon.style.fill = 'color-mix(in oklab, var(--accent, #38bdf8) 90%, transparent)'
+    polygon.style.stroke = 'var(--accent, #38bdf8)'
     polygon.setAttribute('stroke-width', '0.5')
     polygon.setAttribute('stroke-linejoin', 'round')
     polygon.style.opacity = '0'
@@ -410,7 +410,7 @@ class ZedCursorPlugin {
     // Static Caret Bar (2.5px width, sky blue, subtle 1.2px rounding)
     const caret = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
     caret.setAttribute('class', 'cm-zed-cursor-caret')
-    caret.setAttribute('fill', '#38bdf8')
+    caret.style.fill = 'var(--accent, #38bdf8)'
     caret.setAttribute('rx', '1.2')
     caret.setAttribute('ry', '1.2')
     caret.style.opacity = '0'
