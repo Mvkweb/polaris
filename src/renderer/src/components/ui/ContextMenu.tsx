@@ -1,10 +1,4 @@
-import {
-  Component,
-  createMemo,
-  createSignal,
-  onMount,
-  Show
-} from 'solid-js'
+import { Component, createMemo, createSignal, For, onMount, Show } from 'solid-js'
 import {
   contextMenuState,
   closeContextMenu,
@@ -20,13 +14,17 @@ import {
   addTerminal,
   setCurrentView,
   openPropertiesModal,
+  openInspector,
   openStorageMapModal,
   openNewTab,
   navigateTo,
   openFileInEditor
 } from '../../store'
 import { isMac } from '../../shortcuts'
-import { TerminalTileIcon, VsCodeTileIcon } from './Icons'
+import { TerminalTileIcon } from './Icons'
+import { EditorGlyph } from './EditorGlyph'
+import { installedEditors, preferredEditor, rememberEditor, BUILTIN_EDITOR_ID } from '../../editors'
+import type { ExternalEditor } from '../../types'
 import ghosttyIcon from '../../assets/icons/ghostty.png'
 import {
   DitherDropdownMenu,
@@ -36,6 +34,9 @@ import {
   DitherDropdownMenuLabel,
   DitherDropdownMenuSeparator,
   DitherDropdownMenuShortcut,
+  DitherDropdownMenuSub,
+  DitherDropdownMenuSubContent,
+  DitherDropdownMenuSubTrigger,
   DitherDropdownMenuTrigger
 } from '@/components/dithercn/dither-dropdown-menu'
 
@@ -47,7 +48,6 @@ const getParentDir = (p: string): string => {
 
 export const ContextMenu: Component = () => {
   const [hasGhostty, setHasGhostty] = createSignal(false)
-  const [hasCode, setHasCode] = createSignal(false)
 
   const isApple = isMac()
   const modKey = isApple ? 'Cmd' : 'Ctrl'
@@ -63,14 +63,6 @@ export const ContextMenu: Component = () => {
       setHasGhostty(false)
     }
 
-    try {
-      if (window.api?.isCodeInstalled) {
-        const installed = await window.api.isCodeInstalled()
-        setHasCode(installed)
-      }
-    } catch {
-      setHasCode(false)
-    }
   })
 
   const target = createMemo(() => contextMenuState().target)
@@ -122,12 +114,16 @@ export const ContextMenu: Component = () => {
     openFileActionModal('newFolder', dir, '')
   }
 
-  const handleOpenInCode = async (): Promise<void> => {
+  // Open the target with an external editor, or the built-in one when `editor` is null.
+  const handleOpenWith = (editor: ExternalEditor | null): void => {
     const p = targetPath()
+    const name = target()?.name || 'file'
+    const dir = isDirectory() || !isItem()
     closeContextMenu()
-    if (window.api?.openCode) {
-      await window.api.openCode(p)
-    }
+    rememberEditor(editor?.id ?? BUILTIN_EDITOR_ID)
+    if (editor) void window.api?.openInEditor(editor.id, p)
+    else if (dir) navigateTo(p)
+    else openFileInEditor(p, name)
   }
 
   const handleOpenInEditor = (): void => {
@@ -237,6 +233,12 @@ export const ContextMenu: Component = () => {
     navigator.clipboard?.writeText(rel || '.')
   }
 
+  const handleShowDetails = (): void => {
+    const p = targetPath()
+    closeContextMenu()
+    openInspector(p)
+  }
+
   const handleProperties = (): void => {
     const p = targetPath()
     closeContextMenu()
@@ -273,6 +275,61 @@ export const ContextMenu: Component = () => {
     closeContextMenu()
     collapseAllFolders()
   }
+
+  /** "Open With ›" — slides out to the side with every detected editor + terminals. */
+  const OpenWithMenu = (props: { terminalShortcut?: string }) => (
+    <DitherDropdownMenuSub>
+      <DitherDropdownMenuSubTrigger variant="dither">
+        <EditorGlyph editor={preferredEditor()} />
+        <span>Open With</span>
+      </DitherDropdownMenuSubTrigger>
+      <DitherDropdownMenuSubContent class="min-w-[210px] border-0 shadow-[0_4px_16px_rgba(0,0,0,0.45)] bg-[#050506]">
+        <DitherDropdownMenuLabel>Editors</DitherDropdownMenuLabel>
+        <For each={installedEditors()}>
+          {(editor) => (
+            <DitherDropdownMenuItem variant="dither" onSelect={() => handleOpenWith(editor)}>
+              <EditorGlyph editor={editor} />
+              <span>{editor.name}</span>
+              <Show when={preferredEditor()?.id === editor.id}>
+                <DitherDropdownMenuShortcut>default</DitherDropdownMenuShortcut>
+              </Show>
+            </DitherDropdownMenuItem>
+          )}
+        </For>
+        <DitherDropdownMenuItem variant="dither" onSelect={() => handleOpenWith(null)}>
+          <EditorGlyph editor={null} />
+          <span>Polaris</span>
+          <DitherDropdownMenuShortcut>
+            {preferredEditor() === null ? 'default' : 'built-in'}
+          </DitherDropdownMenuShortcut>
+        </DitherDropdownMenuItem>
+
+        <DitherDropdownMenuSeparator />
+        <DitherDropdownMenuLabel>Terminal</DitherDropdownMenuLabel>
+        <DitherDropdownMenuItem variant="dither" onSelect={handleOpenInTerminal}>
+          <TerminalTileIcon class="w-4 h-4 shrink-0 text-white/90" />
+          <span>Polaris Terminal</span>
+          <Show when={props.terminalShortcut}>
+            <DitherDropdownMenuShortcut>{props.terminalShortcut}</DitherDropdownMenuShortcut>
+          </Show>
+        </DitherDropdownMenuItem>
+        <Show when={hasGhostty()}>
+          <DitherDropdownMenuItem variant="dither" onSelect={handleOpenGhostty}>
+            <img src={ghosttyIcon} alt="" class="w-4 h-4 rounded-[3px] shrink-0 shadow-sm" />
+            <span>Ghostty</span>
+          </DitherDropdownMenuItem>
+        </Show>
+
+        <DitherDropdownMenuSeparator />
+        <DitherDropdownMenuItem variant="dither" onSelect={handleOpenInDefaultApp}>
+          <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-white/70 shrink-0" stroke="currentColor" stroke-width="1.8">
+            <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
+          </svg>
+          <span>System Default</span>
+        </DitherDropdownMenuItem>
+      </DitherDropdownMenuSubContent>
+    </DitherDropdownMenuSub>
+  )
 
   return (
     <DitherDropdownMenu
@@ -312,25 +369,7 @@ export const ContextMenu: Component = () => {
 
               <DitherDropdownMenuSeparator />
 
-              <Show when={hasCode()}>
-                <DitherDropdownMenuItem variant="dither" onSelect={handleOpenInCode}>
-                  <VsCodeTileIcon class="w-4 h-4 shrink-0 shadow-sm" />
-                  <span>Open in VS Code</span>
-                </DitherDropdownMenuItem>
-              </Show>
-
-              <DitherDropdownMenuItem variant="dither" onSelect={handleOpenInTerminal}>
-                <TerminalTileIcon class="w-4 h-4 shrink-0 text-white/90" />
-                <span>Open in Terminal</span>
-                <DitherDropdownMenuShortcut>{altKey}+Shift+F4</DitherDropdownMenuShortcut>
-              </DitherDropdownMenuItem>
-
-              <Show when={hasGhostty()}>
-                <DitherDropdownMenuItem variant="dither" onSelect={handleOpenGhostty}>
-                  <img src={ghosttyIcon} alt="" class="w-4 h-4 rounded-[3px] shrink-0 shadow-sm" />
-                  <span>Open Ghostty Here</span>
-                </DitherDropdownMenuItem>
-              </Show>
+              <OpenWithMenu terminalShortcut={`${altKey}+Shift+F4`} />
 
               <DitherDropdownMenuSeparator />
 
@@ -360,6 +399,11 @@ export const ContextMenu: Component = () => {
               </DitherDropdownMenuItem>
 
               <DitherDropdownMenuSeparator />
+
+              <DitherDropdownMenuItem variant="dither" onSelect={handleShowDetails}>
+                <span>Show Details</span>
+                <DitherDropdownMenuShortcut>Space</DitherDropdownMenuShortcut>
+              </DitherDropdownMenuItem>
 
               <DitherDropdownMenuItem variant="dither" onSelect={handleProperties}>
                 <span>Properties</span>
@@ -397,24 +441,7 @@ export const ContextMenu: Component = () => {
               <span>{isDirectory() ? 'Open Folder' : 'Open in Default App'}</span>
             </DitherDropdownMenuItem>
 
-            <Show when={hasCode()}>
-              <DitherDropdownMenuItem variant="dither" onSelect={handleOpenInCode}>
-                <VsCodeTileIcon class="w-4 h-4 shrink-0 shadow-sm" />
-                <span>Open in VS Code</span>
-              </DitherDropdownMenuItem>
-            </Show>
-
-            <DitherDropdownMenuItem variant="dither" onSelect={handleOpenInTerminal}>
-              <TerminalTileIcon class="w-4 h-4 shrink-0 text-white/90" />
-              <span>Open in Terminal</span>
-            </DitherDropdownMenuItem>
-
-            <Show when={hasGhostty()}>
-              <DitherDropdownMenuItem variant="dither" onSelect={handleOpenGhostty}>
-                <img src={ghosttyIcon} alt="" class="w-4 h-4 rounded-[3px] shrink-0 shadow-sm" />
-                <span>Open Ghostty Here</span>
-              </DitherDropdownMenuItem>
-            </Show>
+            <OpenWithMenu />
 
             <Show when={isDirectory()}>
               <DitherDropdownMenuItem variant="dither" onSelect={handleFindInFolder}>
@@ -479,6 +506,11 @@ export const ContextMenu: Component = () => {
             </DitherDropdownMenuItem>
 
             <DitherDropdownMenuSeparator />
+
+            <DitherDropdownMenuItem variant="dither" onSelect={handleShowDetails}>
+              <span>Show Details</span>
+              <DitherDropdownMenuShortcut>Space</DitherDropdownMenuShortcut>
+            </DitherDropdownMenuItem>
 
             <DitherDropdownMenuItem variant="dither" onSelect={handleProperties}>
               <span>Properties</span>

@@ -9,6 +9,7 @@ import { readdir, readFile, writeFile, stat, lstat, realpath, statfs, mkdir, ren
 import { execFile, spawn } from 'child_process'
 import { promisify } from 'util'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { detectEditors, listEditors, openInEditor } from './editors'
 
 // Register privileged custom schemes before app is ready
 protocol.registerSchemesAsPrivileged([
@@ -346,6 +347,13 @@ app.whenReady().then(() => {
       return false
     }
   })
+
+  // Detect installed external editors (Zed, VS Code, …) with their real app icons
+  void detectEditors() // warm the cache so the inspector's first open is instant
+  ipcMain.handle('editor:list', () => listEditors())
+  ipcMain.handle('editor:open', (_, editorId: string, targetPath: string) =>
+    openInEditor(editorId, targetPath)
+  )
 
   // Check if VS Code / code CLI is installed on host
   ipcMain.handle('editor:isCodeInstalled', async () => {

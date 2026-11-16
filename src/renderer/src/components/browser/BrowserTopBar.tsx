@@ -1,4 +1,4 @@
-import { Component, For, Show, createMemo } from 'solid-js'
+import { Component, For, Show, createMemo, onCleanup } from 'solid-js'
 import {
   canNavigateBack,
   canNavigateForward,
@@ -14,10 +14,14 @@ import {
   browserSearchFilter,
   setBrowserSearchFilter,
   isInspectorOpen,
-  toggleInspector
+  toggleInspector,
+  isFilterTabActive,
+  setBrowserFilterFocused,
+  inspectorVisibleWidth,
+  inspectorResizing,
+  INSPECTOR_TRANSITION
 } from '../../store'
 import { SolarInfoCircleLinear } from '../ui/SolarIcons'
-import { fillStyle } from '@/lib/dither'
 
 /* ── Monodrive Exact Hugeicons SVGs ── */
 const ChevronLeftIcon: Component<{ class?: string }> = (props) => (
@@ -106,17 +110,21 @@ export const BrowserTopBar: Component = () => {
 
   const hasMultipleTabs = () => browserTabs().length > 1
 
-  const ditherTrackStyle = createMemo(() =>
-    fillStyle('gradient', {
-      color: 'ink',
-      cell: 2,
-      edge: 'bottom',
-      length: 8
-    })
-  )
+  // "/" focuses the filter from anywhere that isn't already taking text input.
+  let filterInputRef: HTMLInputElement | undefined
+  const focusFilterOnSlash = (e: KeyboardEvent): void => {
+    if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return
+    const el = document.activeElement as HTMLElement | null
+    if (el?.closest('input, textarea, [contenteditable="true"], .cm-editor, .xterm')) return
+    e.preventDefault()
+    filterInputRef?.focus()
+    filterInputRef?.select()
+  }
+  window.addEventListener('keydown', focusFilterOnSlash)
+  onCleanup(() => window.removeEventListener('keydown', focusFilterOnSlash))
 
   return (
-    <header class="shrink-0 h-9 px-2 mb-2 flex items-center justify-between bg-transparent select-none">
+    <header class="relative z-20 shrink-0 h-9 pl-2 mb-2 flex items-center justify-between bg-transparent select-none">
       {/* ── Left: Navigation History Chevrons & Tab Pills ── */}
       <div class="flex items-center gap-1.5">
         {/* Back & Forward Chevrons */}
@@ -218,54 +226,104 @@ export const BrowserTopBar: Component = () => {
         </div>
       </div>
 
-      {/* ── Right: Inspector Toggle & Minimal Dithered Transparent Glass Search Field ── */}
-      <div class="flex items-center gap-1.5 shrink-0">
+      {/* ── Right: filter tab ──
+           Transparent at rest. When the filter is focused or holds a query, a
+           canvas-coloured fill rises out of the canvas below (clip-path wipe), a
+           concave fillet blooms on its left and the canvas' corner squares off, so
+           the field reads as melted into the canvas. Rides along with the
+           inspector drawer so it always caps the canvas edge. */}
+      <div
+        class="relative isolate self-end shrink-0 flex items-start gap-1 h-[45px] -mb-[9px] pt-1 pl-1.5 pr-2"
+        data-active={isFilterTabActive() ? '' : undefined}
+        style={{
+          'margin-right': `${inspectorVisibleWidth()}px`,
+          transition: inspectorResizing() ? 'none' : `margin-right ${INSPECTOR_TRANSITION}`
+        }}
+      >
+        <span
+          aria-hidden="true"
+          class="pointer-events-none absolute inset-0 -z-10 rounded-t-[16px] bg-[#0a0a0a]"
+          style={{
+            'clip-path': isFilterTabActive()
+              ? 'inset(0 0 0 0 round 16px 16px 0 0)'
+              : 'inset(100% 0 0 0 round 16px 16px 0 0)',
+            transition: `clip-path 320ms cubic-bezier(0.16, 1, 0.3, 1)`
+          }}
+        />
+        <span
+          aria-hidden="true"
+          class="pointer-events-none absolute -left-4 bottom-0 w-4 h-4 origin-bottom-right"
+          style={{
+            background: 'radial-gradient(circle at 0 0, transparent 15.5px, #0a0a0a 16px)',
+            opacity: isFilterTabActive() ? 1 : 0,
+            transform: isFilterTabActive() ? 'scale(1)' : 'scale(0)',
+            transition: isFilterTabActive()
+              ? 'opacity 160ms ease-out 120ms, transform 260ms cubic-bezier(0.16, 1, 0.3, 1) 120ms'
+              : 'opacity 120ms ease-in, transform 160ms ease-in'
+          }}
+        />
         <button
           type="button"
           onClick={() => toggleInspector()}
-          class={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+          class={`w-7 h-7 rounded-md flex items-center justify-center transition-colors cursor-pointer ${
             isInspectorOpen()
-              ? 'bg-white/[0.12] text-white shadow-sm'
-              : 'text-white/40 hover:text-white hover:bg-white/[0.06]'
+              ? 'bg-white/[0.08] text-white'
+              : 'text-white/45 hover:text-white hover:bg-white/[0.06]'
           }`}
-          title="File Details & Inspector (Ctrl+I)"
-          aria-label="File Details"
+          title="Details (Space)"
+          aria-label="Toggle details"
+          aria-pressed={isInspectorOpen()}
         >
           <SolarInfoCircleLinear class="w-3.5 h-3.5" />
         </button>
 
-        <div class="group relative flex items-center w-36 focus-within:w-48 transition-all duration-200 rounded-full overflow-hidden isolate">
-          {/* Subtle dither background glass */}
-          <div
-            aria-hidden="true"
-            class="pointer-events-none absolute inset-0 rounded-full bg-white/[0.04] group-hover:bg-white/[0.07] group-focus-within:bg-white/[0.09] transition-colors -z-10"
-          />
-          {/* Authentic Dither Track along bottom */}
-          <div
-            aria-hidden="true"
-            class="pointer-events-none absolute inset-x-2.5 bottom-0 h-[2px] opacity-25 group-hover:opacity-60 group-focus-within:h-[3px] group-focus-within:opacity-100 transition-all duration-200 rounded-b-full overflow-hidden"
-            style={ditherTrackStyle()}
-          />
-          <div class="absolute left-2.5 pointer-events-none text-white/35 group-focus-within:text-[var(--dither-ink)] transition-colors">
-            <SearchIcon class="w-3 h-3" />
-          </div>
+        <label
+          class={`group flex items-center gap-2 h-7 px-2 rounded-md cursor-text transition-[width,background-color] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            isFilterTabActive() ? 'w-56' : 'w-44 hover:bg-white/[0.04]'
+          }`}
+        >
+          <SearchIcon class="w-3.5 h-3.5 shrink-0 text-white/45 group-focus-within:text-white/80 transition-colors" />
           <input
+            ref={(el) => (filterInputRef = el)}
             type="text"
-            placeholder="Search..."
+            placeholder="Filter"
+            aria-label="Filter items in this folder"
+            spellcheck={false}
             value={browserSearchFilter()}
             onInput={(e) => setBrowserSearchFilter(e.currentTarget.value)}
-            class="w-full h-7 pl-7 pr-6 bg-transparent rounded-full text-[12px] text-white placeholder:text-white/30 border border-transparent group-focus-within:border-white/10 outline-none transition-all duration-200"
+            onFocus={() => setBrowserFilterFocused(true)}
+            onBlur={() => setBrowserFilterFocused(false)}
+            onKeyDown={(e) => {
+              if (e.key !== 'Escape') return
+              e.preventDefault()
+              e.stopPropagation()
+              setBrowserSearchFilter('')
+              e.currentTarget.blur()
+            }}
+            class="min-w-0 flex-1 bg-transparent outline-none text-[13px] text-white placeholder:text-white/35"
           />
-          <Show when={browserSearchFilter()}>
+          <Show
+            when={browserSearchFilter()}
+            fallback={
+              <kbd class="group-focus-within:hidden flex items-center justify-center h-[19px] min-w-[19px] px-1 rounded-[4px] bg-white/[0.07] font-sans text-[11px] font-medium text-white/50">
+                /
+              </kbd>
+            }
+          >
             <button
               type="button"
-              onClick={() => setBrowserSearchFilter('')}
-              class="absolute right-2 text-white/40 hover:text-white text-[11px] cursor-pointer"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                setBrowserSearchFilter('')
+                filterInputRef?.focus()
+              }}
+              class="flex items-center justify-center h-[19px] px-1 rounded-[4px] bg-white/[0.07] hover:bg-white/[0.12] font-sans text-[11px] font-medium text-white/50 hover:text-white transition-colors cursor-pointer"
+              title="Clear (Esc)"
             >
-              ×
+              Esc
             </button>
           </Show>
-        </div>
+        </label>
       </div>
     </header>
   )

@@ -84,6 +84,12 @@ export interface MountDriveResult {
   error?: string
 }
 
+export interface ExternalEditor {
+  id: string
+  name: string
+  icon: string | null
+}
+
 export interface FileProperties {
   path: string
   name: string
@@ -130,6 +136,8 @@ export interface CustomAPI {
   openGhostty: (dirPath?: string) => Promise<boolean>
   isCodeInstalled: () => Promise<boolean>
   openCode: (targetPath: string) => Promise<boolean>
+  listEditors: () => Promise<ExternalEditor[]>
+  openInEditor: (editorId: string, targetPath: string) => Promise<boolean>
   getFileProperties: (fullPath: string) => Promise<FileProperties>
   readImage: (filePath: string) => Promise<ImageFileData>
   indexWorkspace: (rootPath?: string) => Promise<{ indexed_count: number; elapsed_ms: number }>

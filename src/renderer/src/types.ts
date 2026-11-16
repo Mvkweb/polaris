@@ -49,6 +49,12 @@ export interface FileNode {
   last_modified: number
 }
 
+export interface ExternalEditor {
+  id: string
+  name: string
+  icon: string | null
+}
+
 export interface FileProperties {
   path: string
   name: string

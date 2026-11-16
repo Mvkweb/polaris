@@ -3,30 +3,63 @@ import {
   createEffect,
   createMemo,
   createSignal,
+  For,
+  on,
   onCleanup,
   Show
 } from 'solid-js'
+import type { JSX } from 'solid-js'
 import {
   isInspectorOpen,
   closeInspector,
   inspectorTargetPath,
   inspectorWidth,
   setAndPersistInspectorWidth,
+  setInspectorTargetPath,
   activeTabPath,
-  selectedFilePath
+  selectedGridEntry,
+  currentView,
+  workspaceRoot,
+  propertiesModalState,
+  inspectorResizing,
+  setInspectorResizing,
+  setInspectorDragWidth,
+  inspectorVisibleWidth,
+  INSPECTOR_TRANSITION,
+  openFileInEditor,
+  navigateTo
 } from '../../store'
-import type { FileProperties } from '../../types'
+import type { ExternalEditor, FileProperties } from '../../types'
+import { installedEditors, preferredEditor, rememberEditor, BUILTIN_EDITOR_ID } from '../../editors'
+import { EditorGlyph } from '../ui/EditorGlyph'
 import {
-  MonodriveFolderIcon,
-  MonodriveFileIcon
-} from '../browser/MonodriveIcons'
-import {
-  SolarInfoCircleLinear,
-  SolarFolderLinear
-} from '../ui/SolarIcons'
+  DitherDropdownMenu,
+  DitherDropdownMenuContent,
+  DitherDropdownMenuItem,
+  DitherDropdownMenuLabel,
+  DitherDropdownMenuSeparator,
+  DitherDropdownMenuTrigger
+} from '@/components/dithercn/dither-dropdown-menu'
+import { MonodriveFolderIcon, MonodriveFileIcon } from '../browser/MonodriveIcons'
+import { SolarFolderLinear } from '../ui/SolarIcons'
 
-// In-memory cache for ultra-fast, zero-latency reopening (<1ms)
+// Bounded LRU cache so repeated selections render instantly without growing forever
+const CACHE_LIMIT = 200
 const fileDetailsCache = new Map<string, FileProperties>()
+const cacheSet = (key: string, value: FileProperties): void => {
+  fileDetailsCache.delete(key)
+  fileDetailsCache.set(key, value)
+  if (fileDetailsCache.size > CACHE_LIMIT) {
+    const oldest = fileDetailsCache.keys().next().value
+    if (oldest !== undefined) fileDetailsCache.delete(oldest)
+  }
+}
+
+const IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.bmp', '.avif'])
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** Below this width while dragging, releasing closes the drawer (mirrors the terminal). */
+const CLOSE_THRESHOLD = 180
 
 function formatBytes(bytes: number): { human: string; exact: string } {
   if (bytes === 0) return { human: '0 B', exact: '0 bytes' }
@@ -46,12 +79,13 @@ function formatDate(ms: number): { relative: string; exact: string } {
   const now = new Date()
   const isToday = d.toDateString() === now.toDateString()
 
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   const pad = (n: number) => n.toString().padStart(2, '0')
   const timeStr = `${pad(d.getHours())}:${pad(d.getMinutes())}`
 
-  const relative = isToday ? `Today at ${timeStr}` : `${months[d.getMonth()]} ${d.getDate()} at ${timeStr}`
-  const exact = `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} at ${timeStr}`
+  const relative = isToday
+    ? `Today at ${timeStr}`
+    : `${MONTHS[d.getMonth()]} ${d.getDate()} at ${timeStr}`
+  const exact = `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} at ${timeStr}`
 
   return { relative, exact }
 }
@@ -96,349 +130,399 @@ function truncateMiddle(str: string, maxLen = 32): string {
   return `${str.slice(0, half)}...${str.slice(-half)}`
 }
 
+const Row = (props: { label: string; title?: string; children: JSX.Element }): JSX.Element => (
+  <div class="flex items-center justify-between gap-3 h-7 px-1.5 rounded-md hover:bg-white/[0.04] transition-colors">
+    <span class="text-[13px] text-white/55 shrink-0">{props.label}</span>
+    <span
+      class="font-mono text-[11px] tabular-nums text-white/80 truncate text-right"
+      title={props.title}
+    >
+      {props.children}
+    </span>
+  </div>
+)
+
+const Section = (props: { title: string; children: JSX.Element }): JSX.Element => (
+  <section>
+    <h3 class="px-1.5 pb-1 text-[13px] font-medium text-white/45">{props.title}</h3>
+    {props.children}
+  </section>
+)
+
 export const InspectorDrawer: Component = () => {
   const [data, setData] = createSignal<FileProperties | null>(null)
   const [loading, setLoading] = createSignal(false)
   const [copied, setCopied] = createSignal(false)
-  const [isResizing, setIsResizing] = createSignal(false)
+  const isResizing = inspectorResizing
+  const setIsResizing = setInspectorResizing
+  const setDragWidth = setInspectorDragWidth
+  let asideRef: HTMLElement | undefined
 
-  // Determine target path: explicit target > active tab > selected grid file
-  const currentPath = createMemo(() => {
-    return inspectorTargetPath() ?? activeTabPath() ?? selectedFilePath() ?? null
-  })
+  // A plain single click / tab switch replaces any explicit (context-menu) target.
+  createEffect(
+    on([selectedGridEntry, activeTabPath], () => setInspectorTargetPath(null), {
+      defer: true
+    })
+  )
 
-  // Load file details whenever target path changes or drawer opens
+  // Explicit target > current selection (editor tab or grid item) > current folder
+  const currentPath = createMemo(
+    () =>
+      inspectorTargetPath() ??
+      (currentView() === 'editor' ? activeTabPath() : selectedGridEntry()) ??
+      (workspaceRoot() || null)
+  )
+
+  // Load details whenever the target changes while open; drop stale responses.
+  let requestId = 0
   createEffect(() => {
     const p = currentPath()
-    const open = isInspectorOpen()
-    if (!open || !p) {
-      if (!open) setData(null)
-      return
-    }
+    if (!isInspectorOpen() || !p) return
 
-    // Warm cache fast-path (<1ms)
+    const id = ++requestId
     const cached = fileDetailsCache.get(p)
-    if (cached) {
-      setData(cached)
-    } else {
-      setLoading(true)
-    }
+    setData(cached ?? null)
+    setLoading(!cached)
 
-    // Fetch fresh properties
     window.api
       ?.getFileProperties(p)
       .then((props) => {
+        if (id !== requestId) return
         if (props) {
-          fileDetailsCache.set(p, props)
+          cacheSet(p, props)
           setData(props)
         }
-        setLoading(false)
       })
-      .catch((err) => {
-        console.error('Failed to load file details:', err)
-        setLoading(false)
+      .catch((err) => console.error('Failed to load file details:', err))
+      .finally(() => {
+        if (id === requestId) setLoading(false)
       })
   })
 
-  // Keyboard shortcut: Escape to close drawer
   const handleKeyDown = (e: KeyboardEvent): void => {
-    if (!isInspectorOpen()) return
-    if (e.key === 'Escape' && !e.defaultPrevented) {
-      const activeEl = document.activeElement
-      const isInput = activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement
-      const isCode = activeEl?.closest('.cm-editor')
-      if (!isInput && !isCode) {
-        e.preventDefault()
-        closeInspector()
-      }
-    }
+    if (!isInspectorOpen() || e.key !== 'Escape' || e.defaultPrevented) return
+    if (propertiesModalState().isOpen) return // the modal on top owns Esc
+    const el = document.activeElement
+    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) return
+    if (el?.closest('.cm-editor, .xterm')) return
+    e.preventDefault()
+    closeInspector()
   }
-
   window.addEventListener('keydown', handleKeyDown)
   onCleanup(() => window.removeEventListener('keydown', handleKeyDown))
 
-  // Horizontal drawer resize drag handling
+  // Sideways twin of the terminal's drag handle: drag the left edge, release
+  // below the threshold to close.
   const startResize = (e: PointerEvent): void => {
     e.preventDefault()
     setIsResizing(true)
     const startX = e.clientX
     const startWidth = inspectorWidth()
+    let current = startWidth
 
-    const onPointerMove = (moveEv: PointerEvent): void => {
-      const deltaX = startX - moveEv.clientX
-      setAndPersistInspectorWidth(startWidth + deltaX)
+    const onMove = (ev: PointerEvent): void => {
+      current = Math.max(0, startWidth + (startX - ev.clientX))
+      setDragWidth(Math.min(480, current))
+      if (current >= CLOSE_THRESHOLD) setAndPersistInspectorWidth(current)
     }
-
-    const onPointerUp = (): void => {
+    const onUp = (): void => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      document.body.style.userSelect = ''
       setIsResizing(false)
-      window.removeEventListener('pointermove', onPointerMove)
-      window.removeEventListener('pointerup', onPointerUp)
+      setDragWidth(null)
+      if (current < CLOSE_THRESHOLD) closeInspector()
     }
 
-    window.addEventListener('pointermove', onPointerMove)
-    window.addEventListener('pointerup', onPointerUp)
+    document.body.style.userSelect = 'none'
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
+
+  // ── Actions ────────────────────────────────────────────────────────────────
+  const editors = installedEditors
+  const activeEditor = preferredEditor
+  const activeEditorName = (): string => activeEditor()?.name ?? 'Polaris'
+
+  const openWith = (editor: ExternalEditor | null): void => {
+    const file = data()
+    if (!file) return
+    rememberEditor(editor?.id ?? BUILTIN_EDITOR_ID)
+    if (editor) {
+      void window.api?.openInEditor(editor.id, file.path)
+    } else if (file.isDirectory) {
+      navigateTo(file.path)
+    } else {
+      openFileInEditor(file.path, file.name)
+    }
   }
 
   const handleCopyPath = (): void => {
     const p = data()?.path
-    if (p) {
-      navigator.clipboard.writeText(p)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1800)
-    }
+    if (!p) return
+    void navigator.clipboard.writeText(p)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1600)
   }
-
-  const handleOpen = (): void => {
+  const handleOpenDefault = (): void => {
     const p = data()?.path
-    if (p) window.api?.openPath(p)
+    if (p) void window.api?.openPath(p)
   }
-
   const handleReveal = (): void => {
     const p = data()?.path
-    if (p) window.api?.showItemInFolder(p)
+    if (p) void window.api?.showItemInFolder(p)
   }
 
-  const isImage = createMemo(() => {
-    const ext = data()?.extension?.toLowerCase()
-    return Boolean(
-      ext && ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.bmp', '.avif'].includes(ext)
-    )
+  // ── Derived display values ───────────────────────────────────────────────
+  const isImage = createMemo(() => IMAGE_EXTS.has(data()?.extension?.toLowerCase() ?? ''))
+  const kind = createMemo(() => {
+    const d = data()
+    return d ? formatKind(d) : ''
   })
+  const size = createMemo(() => formatBytes(data()?.size ?? 0))
+  const created = createMemo(() => formatDate(data()?.createdTime ?? 0))
+  const modified = createMemo(() => formatDate(data()?.modifiedTime ?? 0))
+  const volume = createMemo(() => {
+    const d = data()
+    if (!d) return ''
+    if (d.volume) return d.volume
+    if (d.path.startsWith('/home')) return 'Home'
+    if (d.path.startsWith('/mnt/storage')) return 'Storage'
+    return 'Root (/)'
+  })
+
 
   return (
     <aside
-      class="relative shrink-0 flex flex-col h-full bg-[#0a0a0a] border-l border-white/[0.06] overflow-hidden select-none"
+      ref={(el) => (asideRef = el)}
+      class="relative shrink-0 h-full overflow-hidden bg-[#050505] select-none"
       style={{
-        width: isInspectorOpen() ? `${inspectorWidth()}px` : '0px',
-        transition: isResizing() ? 'none' : 'width 220ms cubic-bezier(0.16, 1, 0.3, 1)'
+        width: `${inspectorVisibleWidth()}px`,
+        transition: isResizing() ? 'none' : `width ${INSPECTOR_TRANSITION}`
+      }}
+      onTransitionEnd={(e) => {
+        if (e.target === asideRef) window.dispatchEvent(new Event('resize'))
       }}
       aria-label="File details"
-      role="complementary"
+      aria-hidden={!isInspectorOpen()}
     >
-      {/* Left-edge horizontal resize handle */}
+      {/* Invisible drag handle on the left edge (terminal handle, rotated) */}
       <div
-        class="absolute top-0 bottom-0 left-0 w-1.5 cursor-col-resize hover:bg-white/[0.18] active:bg-white/[0.28] transition-colors z-30"
+        class="absolute top-0 bottom-0 left-0 w-2 z-20 cursor-col-resize"
         onPointerDown={startResize}
-        title="Drag to resize panel"
       />
 
-      <Show when={isInspectorOpen()}>
-        <div class="flex-1 flex flex-col h-full min-w-[280px] overflow-hidden">
-          {/* Header */}
-          <div class="shrink-0 flex items-center justify-between h-10 px-4 border-b border-white/[0.04]">
-            <span class="text-[11px] font-semibold uppercase tracking-[0.1em] text-white/40">
-              Details
-            </span>
+      {/* Fixed-width inner so content doesn't reflow while the drawer slides */}
+      <div
+        class="absolute top-0 bottom-0 left-0 flex flex-col pl-3 pr-0.5"
+        style={{ width: `${inspectorWidth()}px` }}
+      >
+        <Show when={isInspectorOpen() || isResizing()}>
+          {/* Header — same voice as the sidebar's section labels */}
+          <div class="shrink-0 flex items-center justify-between h-8 px-1.5">
+            <span class="text-[13px] font-medium text-white/45">details</span>
             <button
               type="button"
               onClick={closeInspector}
-              class="w-6 h-6 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
+              class="w-6 h-6 -mr-1 rounded-md flex items-center justify-center text-white/35 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
               title="Close (Esc)"
               aria-label="Close details"
             >
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06z" />
               </svg>
             </button>
           </div>
 
-          {/* Scrollable Content Area */}
-          <div class="flex-1 overflow-y-auto px-4 py-4 space-y-4 no-scrollbar">
+          <div class="flex-1 min-h-0 overflow-y-auto no-scrollbar pt-1 pb-3 space-y-5">
             <Show
               when={data()}
               fallback={
-                <div class="flex flex-col items-center justify-center h-48 text-center text-white/30">
-                  <SolarInfoCircleLinear class="w-8 h-8 mb-2 opacity-40" />
-                  <p class="text-[12px] font-medium text-white/50">No item selected</p>
-                  <p class="text-[11px] text-white/30 mt-0.5">Select a file or tab to inspect</p>
-                </div>
+                <p class="px-1.5 pt-2 font-mono text-[11px] text-white/30">
+                  {loading() ? 'loading…' : 'click a file to inspect it'}
+                </p>
               }
             >
               {(file) => (
-                <div class={`space-y-4 transition-opacity duration-150 ${loading() ? 'opacity-60' : 'opacity-100'}`}>
-                  {/* Hero Preview Card (Monodrive Reference Style) */}
-                  <div class="flex flex-col items-center text-center pt-1 pb-2">
-                    <div class="relative w-24 h-24 rounded-[20px] bg-white/[0.03] ring-1 ring-white/[0.08] shadow-xl flex items-center justify-center overflow-hidden p-2 mb-3">
+                <>
+                  {/* Identity */}
+                  <div class="flex items-center gap-3 px-1.5">
+                    <div class="w-11 h-11 shrink-0 rounded-[10px] bg-white/[0.04] flex items-center justify-center overflow-hidden">
                       <Show
                         when={isImage()}
                         fallback={
                           <Show
                             when={file().isDirectory}
-                            fallback={<MonodriveFileIcon name={file().name} class="w-14 h-14" />}
+                            fallback={<MonodriveFileIcon name={file().name} class="w-7 h-7" />}
                           >
-                            <MonodriveFolderIcon class="w-14 h-14" />
+                            <MonodriveFolderIcon class="w-7 h-7" />
                           </Show>
                         }
                       >
                         <img
                           src={`polaris-media://${encodeURI(file().path)}`}
-                          alt={file().name}
-                          class="w-full h-full object-contain rounded-[14px]"
-                          loading="eager"
+                          alt=""
+                          class="w-full h-full object-cover"
+                          decoding="async"
                         />
                       </Show>
                     </div>
-
-                    <h2 class="text-[14px] font-semibold text-white/90 break-all px-2 leading-tight">
-                      {file().name}
-                    </h2>
-                    <p class="text-[11.5px] text-white/40 mt-1">
-                      {formatKind(file())}
-                    </p>
+                    <div class="min-w-0">
+                      <h2
+                        class="text-[13px] font-semibold text-white/85 leading-snug truncate"
+                        title={file().name}
+                      >
+                        {file().name}
+                      </h2>
+                      <p class="font-mono text-[11px] text-white/40 truncate">
+                        {size().human} · {kind()}
+                      </p>
+                    </div>
                   </div>
 
-                  {/* Section 1: Details */}
-                  <div class="rounded-[14px] bg-white/[0.025] p-3 space-y-2">
-                    <div class="flex items-center gap-1.5 text-white/40 mb-1">
-                      <SolarInfoCircleLinear class="w-3.5 h-3.5 opacity-60" />
-                      <span class="text-[10.5px] font-semibold uppercase tracking-[0.08em]">Details</span>
-                    </div>
-
-                    <div class="flex items-center justify-between text-[11.5px]">
-                      <span class="text-white/40">Size</span>
-                      <span class="text-white/80 font-mono text-[11.5px] tabular-nums" title={formatBytes(file().size).exact}>
-                        {formatBytes(file().size).human}
-                      </span>
-                    </div>
-
-                    <div class="flex items-center justify-between text-[11.5px]">
-                      <span class="text-white/40">Kind</span>
-                      <span class="text-white/80 truncate max-w-[170px]" title={file().mime || formatKind(file())}>
-                        {formatKind(file())}
-                      </span>
-                    </div>
-
+                  <Section title="info">
+                    <Row label="Size" title={size().exact}>
+                      {size().human}
+                    </Row>
+                    <Row label="Kind" title={file().mime || kind()}>
+                      {kind()}
+                    </Row>
                     <Show when={file().imageDimensions}>
                       {(dims) => (
-                        <div class="flex items-center justify-between text-[11.5px]">
-                          <span class="text-white/40">Dimensions</span>
-                          <span class="text-white/80 font-mono text-[11.5px] tabular-nums">
-                            {dims().width} × {dims().height} px
-                          </span>
-                        </div>
+                        <Row label="Dimensions">
+                          {dims().width} × {dims().height}
+                        </Row>
                       )}
                     </Show>
-
                     <Show when={file().itemCount !== undefined}>
-                      <div class="flex items-center justify-between text-[11.5px]">
-                        <span class="text-white/40">Contents</span>
-                        <span class="text-white/80 font-mono text-[11.5px] tabular-nums">
-                          {file().itemCount} items
-                        </span>
-                      </div>
+                      <Row label="Contents">{file().itemCount} items</Row>
                     </Show>
-                  </div>
+                  </Section>
 
-                  {/* Section 2: Dates */}
-                  <div class="rounded-[14px] bg-white/[0.025] p-3 space-y-2">
-                    <div class="flex items-center gap-1.5 text-white/40 mb-1">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="opacity-60">
-                        <circle cx="12" cy="12" r="10" />
-                        <polyline points="12 6 12 12 16 14" />
-                      </svg>
-                      <span class="text-[10.5px] font-semibold uppercase tracking-[0.08em]">Dates</span>
-                    </div>
+                  <Section title="dates">
+                    <Row label="Created" title={created().exact}>
+                      {created().relative}
+                    </Row>
+                    <Row label="Modified" title={modified().exact}>
+                      {modified().relative}
+                    </Row>
+                  </Section>
 
-                    <div class="flex items-center justify-between text-[11.5px]">
-                      <span class="text-white/40">Created</span>
-                      <span class="text-white/80 text-right truncate max-w-[180px]" title={formatDate(file().createdTime).exact}>
-                        {formatDate(file().createdTime).relative}
+                  <Section title="storage">
+                    <button
+                      type="button"
+                      onClick={handleCopyPath}
+                      class="w-full flex items-center justify-between gap-3 h-7 px-1.5 rounded-md hover:bg-white/[0.04] transition-colors cursor-pointer"
+                      title={`${file().path}\nClick to copy`}
+                    >
+                      <span class="text-[13px] text-white/55 shrink-0">Where</span>
+                      <span class="font-mono text-[11px] text-white/80 truncate text-right">
+                        {copied() ? 'copied' : truncateMiddle(file().path, 30)}
                       </span>
-                    </div>
-
-                    <div class="flex items-center justify-between text-[11.5px]">
-                      <span class="text-white/40">Modified</span>
-                      <span class="text-white/80 text-right truncate max-w-[180px]" title={formatDate(file().modifiedTime).exact}>
-                        {formatDate(file().modifiedTime).relative}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Section 3: Storage */}
-                  <div class="rounded-[14px] bg-white/[0.025] p-3 space-y-2">
-                    <div class="flex items-center gap-1.5 text-white/40 mb-1">
-                      <SolarFolderLinear class="w-3.5 h-3.5 opacity-60" />
-                      <span class="text-[10.5px] font-semibold uppercase tracking-[0.08em]">Storage</span>
-                    </div>
-
-                    <div class="flex items-center justify-between text-[11.5px]">
-                      <span class="text-white/40">Where</span>
-                      <button
-                        type="button"
-                        onClick={handleCopyPath}
-                        class="text-white/70 hover:text-white font-mono text-[11px] truncate max-w-[180px] text-right cursor-pointer"
-                        title="Click to copy full path"
-                      >
-                        {truncateMiddle(file().path, 28)}
-                      </button>
-                    </div>
-
-                    <div class="flex items-center justify-between text-[11.5px]">
-                      <span class="text-white/40">Volume</span>
-                      <span class="text-white/80">
-                        {file().path.startsWith('/home') ? 'Home' : file().path.startsWith('/mnt/storage') ? 'Storage' : 'Root (/)'}
-                      </span>
-                    </div>
-
-                    <div class="flex items-center justify-between text-[11.5px]">
-                      <span class="text-white/40">Permissions</span>
-                      <span class="text-white/80 font-mono text-[11px]">
-                        {formatPermissions(file().permissions)}
-                      </span>
-                    </div>
-
+                    </button>
+                    <Row label="Volume">{volume()}</Row>
+                    <Row label="Permissions">{formatPermissions(file().permissions)}</Row>
                     <Show when={file().owner}>
-                      <div class="flex items-center justify-between text-[11.5px]">
-                        <span class="text-white/40">Owner</span>
-                        <span class="text-white/80">
-                          {file().owner}
-                        </span>
-                      </div>
+                      <Row label="Owner">{file().owner}</Row>
                     </Show>
-
                     <Show when={file().isSymbolicLink && file().realPath}>
-                      <div class="flex items-center justify-between text-[11.5px]">
-                        <span class="text-white/40">Target</span>
-                        <span class="text-white/70 font-mono text-[10.5px] truncate max-w-[180px]" title={file().realPath}>
-                          {truncateMiddle(file().realPath || '', 24)}
-                        </span>
-                      </div>
+                      <Row label="Target" title={file().realPath}>
+                        {truncateMiddle(file().realPath || '', 26)}
+                      </Row>
                     </Show>
-                  </div>
-                </div>
+                  </Section>
+                </>
               )}
             </Show>
           </div>
 
-          {/* Footer Quick Actions */}
+          {/* Footer: default-app open + "Open in <editor>" split button */}
           <Show when={data()}>
-            <div class="shrink-0 flex items-center justify-between gap-2 p-3 border-t border-white/[0.04] bg-[#0c0a0d]/60">
+            <div class="shrink-0 flex items-center gap-1.5 pb-2.5 pt-1">
               <button
                 type="button"
-                onClick={handleOpen}
-                class="flex-1 h-8 rounded-[8px] bg-white/[0.06] hover:bg-white/[0.12] text-white/90 text-[11.5px] font-medium transition-colors cursor-pointer"
+                onClick={handleOpenDefault}
+                class="h-8 px-3 rounded-md text-[13px] text-white/70 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+                title="Open with the default app"
               >
                 Open
               </button>
-              <button
-                type="button"
-                onClick={handleReveal}
-                class="flex-1 h-8 rounded-[8px] bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white text-[11.5px] font-medium transition-colors cursor-pointer"
-              >
-                Reveal
-              </button>
-              <button
-                type="button"
-                onClick={handleCopyPath}
-                class="h-8 px-2.5 rounded-[8px] bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white text-[11.5px] font-medium transition-colors cursor-pointer"
-                title="Copy full path"
-              >
-                {copied() ? 'Copied' : 'Copy'}
-              </button>
+
+              <div class="flex-1 min-w-0 flex items-stretch h-8 rounded-md bg-white/[0.06] overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => openWith(activeEditor())}
+                  class="flex-1 min-w-0 flex items-center justify-center gap-2 px-2.5 text-[13px] font-medium text-white/90 hover:bg-white/[0.06] transition-colors cursor-pointer"
+                  title={`Open in ${activeEditorName()}`}
+                >
+                  <EditorGlyph editor={activeEditor()} />
+                  <span class="truncate">Open in {activeEditorName()}</span>
+                </button>
+
+                <DitherDropdownMenu
+                  variant="dither"
+                  menuVariant="card"
+                  side="top"
+                  align="end"
+                  sideOffset={6}
+                >
+                  <DitherDropdownMenuTrigger
+                    class="w-7 shrink-0 flex items-center justify-center border-l border-black/40 text-white/50 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+                    aria-label="Choose editor"
+                  >
+                    <svg
+                      width="10"
+                      height="10"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M4 6l4 4 4-4" />
+                    </svg>
+                  </DitherDropdownMenuTrigger>
+                  <DitherDropdownMenuContent class="min-w-[200px] border-0 shadow-[0_4px_16px_rgba(0,0,0,0.45)] bg-[#050506]">
+                    <DitherDropdownMenuLabel>Open in</DitherDropdownMenuLabel>
+                    <For each={editors()}>
+                      {(editor) => (
+                        <DitherDropdownMenuItem variant="dither" onSelect={() => openWith(editor)}>
+                          <EditorGlyph editor={editor} />
+                          <span>{editor.name}</span>
+                        </DitherDropdownMenuItem>
+                      )}
+                    </For>
+                    <DitherDropdownMenuItem variant="dither" onSelect={() => openWith(null)}>
+                      <EditorGlyph editor={null} />
+                      <span>Polaris</span>
+                      <span class="ml-auto text-[10.5px] font-mono text-white/35">built-in</span>
+                    </DitherDropdownMenuItem>
+                    <DitherDropdownMenuSeparator />
+                    <DitherDropdownMenuItem variant="dither" onSelect={handleReveal}>
+                      <SolarFolderLinear class="w-4 h-4 text-white/70 shrink-0" />
+                      <span>Show in Files</span>
+                    </DitherDropdownMenuItem>
+                    <DitherDropdownMenuItem variant="dither" onSelect={handleCopyPath}>
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        class="w-4 h-4 text-white/70 shrink-0"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                      >
+                        <rect x="9" y="9" width="12" height="12" rx="2" />
+                        <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+                      </svg>
+                      <span>Copy path</span>
+                    </DitherDropdownMenuItem>
+                  </DitherDropdownMenuContent>
+                </DitherDropdownMenu>
+              </div>
             </div>
           </Show>
-        </div>
-      </Show>
+        </Show>
+      </div>
     </aside>
   )
 }

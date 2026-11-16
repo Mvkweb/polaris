@@ -26,6 +26,9 @@ const api = {
   openGhostty: (dirPath?: string) => ipcRenderer.invoke('terminal:openGhostty', dirPath),
   isCodeInstalled: () => ipcRenderer.invoke('editor:isCodeInstalled'),
   openCode: (targetPath: string) => ipcRenderer.invoke('editor:openCode', targetPath),
+  listEditors: () => ipcRenderer.invoke('editor:list'),
+  openInEditor: (editorId: string, targetPath: string) =>
+    ipcRenderer.invoke('editor:open', editorId, targetPath),
   getFileProperties: (fullPath: string) => ipcRenderer.invoke('fs:getFileProperties', fullPath),
   readImage: (filePath: string) => ipcRenderer.invoke('fs:readImage', filePath),
   indexWorkspace: (rootPath?: string) => ipcRenderer.invoke('fs:indexWorkspace', rootPath),

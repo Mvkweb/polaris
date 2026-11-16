@@ -367,6 +367,10 @@ export const [navHistory, setNavHistory] = createSignal<string[]>([])
 export const [historyIndex, setHistoryIndex] = createSignal<number>(-1)
 export const [selectedGridEntry, setSelectedGridEntry] = createSignal<string | null>(null)
 export const [browserSearchFilter, setBrowserSearchFilter] = createSignal<string>('')
+export const [browserFilterFocused, setBrowserFilterFocused] = createSignal(false)
+/** The filter tab "melts" into the canvas while focused or holding a query. */
+export const isFilterTabActive = (): boolean =>
+  browserFilterFocused() || browserSearchFilter().length > 0
 
 export interface BrowserTab {
   id: string
@@ -717,6 +721,15 @@ export const setAndPersistInspectorWidth = (w: number): void => {
   } catch {}
 }
 
+// Live drag state, shared so the top bar's filter tab can track the canvas edge.
+export const [inspectorResizing, setInspectorResizing] = createSignal(false)
+export const [inspectorDragWidth, setInspectorDragWidth] = createSignal<number | null>(null)
+/** Width the drawer currently occupies on screen (0 when closed). */
+export const inspectorVisibleWidth = (): number =>
+  isInspectorOpen() ? (inspectorDragWidth() ?? inspectorWidth()) : 0
+/** Shared slide transition so the drawer and anything aligned to it move in lockstep. */
+export const INSPECTOR_TRANSITION = '250ms cubic-bezier(0.16, 1, 0.3, 1)'
+
 export const openInspector = (path?: string): void => {
   if (path) setInspectorTargetPath(path)
   setIsInspectorOpen(true)
@@ -749,7 +762,6 @@ export const [propertiesModalState, setPropertiesModalState] = createSignal<Prop
 })
 
 export const openPropertiesModal = (targetPath: string): void => {
-  openInspector(targetPath)
   setPropertiesModalState({
     isOpen: true,
     targetPath
@@ -757,7 +769,6 @@ export const openPropertiesModal = (targetPath: string): void => {
 }
 
 export const closePropertiesModal = (): void => {
-  closeInspector()
   setPropertiesModalState((prev) => (prev.isOpen ? { ...prev, isOpen: false } : prev))
 }
 

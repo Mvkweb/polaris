@@ -13,6 +13,7 @@ import { StorageMapModal } from './components/modals/StorageMapModal'
 import { MonodriveIconDefs } from './components/browser/MonodriveIcons'
 import EditorPane from './components/editor/EditorPane'
 import { InspectorDrawer } from './components/inspector/InspectorDrawer'
+import PropertiesModal from './components/modals/PropertiesModal'
 import {
   activeTerminalId,
   addTerminal,
@@ -32,7 +33,11 @@ import {
   toggleSettingsModal,
   activeAccentColor,
   workspaceRoot,
-  navigateTo
+  navigateTo,
+  isFilterTabActive,
+  openPropertiesModal,
+  activeTabPath,
+  selectedGridEntry
 } from './store'
 import { isModKey } from './shortcuts'
 
@@ -48,6 +53,43 @@ const handleGlobalKeyDown = (e: KeyboardEvent): void => {
     return
   }
 
+  // Alt+Enter: full Properties modal for the selection (Explorer / Dolphin convention)
+  if (e.key === 'Enter' && e.altKey && !e.ctrlKey && !e.metaKey && !e.defaultPrevented) {
+    const el = document.activeElement as HTMLElement | null
+    if (!el?.closest('input, textarea, [contenteditable="true"], .cm-editor, .xterm')) {
+      const target =
+        (currentView() === 'editor' ? activeTabPath() : selectedGridEntry()) || workspaceRoot()
+      if (target) {
+        e.preventDefault()
+        openPropertiesModal(target)
+        return
+      }
+    }
+  }
+
+  // Space peeks at the selection (Quick Look style) — only when nothing else wants
+  // the key: not typing, not on a focused control, not in the editor or terminal.
+  if (
+    e.key === ' ' &&
+    !e.ctrlKey &&
+    !e.metaKey &&
+    !e.altKey &&
+    !e.shiftKey &&
+    !e.repeat &&
+    !e.defaultPrevented
+  ) {
+    const el = document.activeElement as HTMLElement | null
+    const busy = el?.closest(
+      'input, textarea, select, button, a[href], [contenteditable="true"], [role="button"], [role="menuitem"], [role="option"], .cm-editor, .xterm'
+    )
+    // Grid tiles are role=button but don't use Space themselves — that's the peek target.
+    if (!busy || busy.hasAttribute('data-grid-item')) {
+      e.preventDefault()
+      toggleInspector()
+      return
+    }
+  }
+
   if (!isModKey(e)) return
 
   if (e.key === '`') {
@@ -59,9 +101,6 @@ const handleGlobalKeyDown = (e: KeyboardEvent): void => {
   } else if (e.key.toLowerCase() === 'f' && e.shiftKey) {
     e.preventDefault()
     setCurrentView('search')
-  } else if (e.key.toLowerCase() === 'i' && !e.shiftKey) {
-    e.preventDefault()
-    toggleInspector()
   } else if (e.key === ',') {
     e.preventDefault()
     toggleSettingsModal()
@@ -156,6 +195,7 @@ const App: Component = () => {
       <ContextMenu />
       <FileActionModal />
       <StorageMapModal />
+      <PropertiesModal />
 
       {/* Ember-style Sidebar */}
       <Sidebar />
@@ -165,15 +205,21 @@ const App: Component = () => {
         {/* Top Navigation Bar sitting directly on the window/workspace base above the canvas */}
         <BrowserTopBar />
 
-        {/* Main Canvas: Monodrive-Style Folder Browser & Code Editor + Right Inspector Drawer */}
-        <main class="relative z-10 flex-1 min-h-0 min-w-0 flex flex-row overflow-hidden bg-[#0a0a0a] rounded-[20px]">
-          <div class="flex-1 min-w-0 min-h-0 flex flex-col h-full overflow-hidden">
+        {/* Canvas row: rounded canvas + inspector drawer sliding out sideways in the dark */}
+        <div class="flex-1 min-h-0 min-w-0 flex flex-row">
+          <main class="relative z-10 flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden bg-[#0a0a0a] rounded-[20px]"
+            style={{
+              // Square the corner under the filter tab while it's melted in
+              'border-top-right-radius': isFilterTabActive() ? '0px' : '20px',
+              transition: 'border-top-right-radius 220ms cubic-bezier(0.16, 1, 0.3, 1)'
+            }}
+          >
             <Show when={currentView() === 'editor'} fallback={<FolderView />}>
               <EditorPane />
             </Show>
-          </div>
+          </main>
           <InspectorDrawer />
-        </main>
+        </div>
 
         {/* Terminal Drawer in the dark below the canvas */}
         <div class="shrink-0 flex flex-col bg-[#050505] overflow-hidden">

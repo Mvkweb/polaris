@@ -313,7 +313,16 @@ const MENU_STYLES = [
   ".dcn-menu-content{transform-origin:var(--kb-menu-content-transform-origin,top)}",
   ".dcn-menu-content[data-state=open]{animation:dcn-menu-in 160ms cubic-bezier(0.16,1,0.3,1) forwards}",
   ".dcn-menu-content[data-state=closed]{animation:dcn-menu-out 100ms cubic-bezier(0.16,1,0.3,1) forwards}",
-  "@media (prefers-reduced-motion:reduce){.dcn-menu-content[data-state=open],.dcn-menu-content[data-state=closed]{animation:none}}",
+  // Side-spawning submenus slide out horizontally from their trigger, and their
+  // rows cascade in so the panel reads as "unfolding" rather than popping.
+  "@keyframes dcn-menu-in-r{from{opacity:0;transform:translateX(-8px) scale(0.97)}to{opacity:1;transform:translateX(0) scale(1)}}",
+  "@keyframes dcn-menu-in-l{from{opacity:0;transform:translateX(8px) scale(0.97)}to{opacity:1;transform:translateX(0) scale(1)}}",
+  "@keyframes dcn-item-in{from{opacity:0;transform:translateX(-4px)}to{opacity:1;transform:translateX(0)}}",
+  ".dcn-menu-content[data-side=right][data-state=open]{animation:dcn-menu-in-r 200ms cubic-bezier(0.16,1,0.3,1) forwards}",
+  ".dcn-menu-content[data-side=left][data-state=open]{animation:dcn-menu-in-l 200ms cubic-bezier(0.16,1,0.3,1) forwards}",
+  ".dcn-sub-content[data-state=open]>div>*{animation:dcn-item-in 220ms cubic-bezier(0.16,1,0.3,1) both}",
+  ...Array.from({ length: 10 }, (_, i) => `.dcn-sub-content[data-state=open]>div>*:nth-child(${i + 1}){animation-delay:${i * 18}ms}`),
+  "@media (prefers-reduced-motion:reduce){.dcn-menu-content[data-state=open],.dcn-menu-content[data-state=closed],.dcn-sub-content[data-state=open]>div>*{animation:none}}",
 ].join("");
 
 const CONTAINER_CLASSES: Record<DitherMenuContainerVariant, string> = {
@@ -1064,7 +1073,7 @@ export const DitherDropdownMenuSubContent = (
         data-state={context.isOpen() ? "open" : "closed"}
         data-side={currentSide()}
         class={cn(
-          "dcn-menu-content relative z-50 min-w-[11rem] p-1.5 outline-none select-none",
+          "dcn-menu-content dcn-sub-content relative z-50 min-w-[11rem] p-1.5 outline-none select-none",
           CONTAINER_CLASSES[look.menuVariant()],
           "origin-(--kb-menu-content-transform-origin)",
           local.class
