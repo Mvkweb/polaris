@@ -1,3 +1,5 @@
+<!-- PRIVATE-PHASE: this whole guide changes when the repo is public; see .docs/distribution.md → "Going public". -->
+
 # Testing Polaris (invite-only)
 
 Polaris is in a private testing phase. If you can see this repo, you're
@@ -55,12 +57,17 @@ Running it again while it's open adds a tab to the same window.
 
 ## 3. Update
 
-Every push to `main` is a new nightly. The bottom-left of the sidebar tells
-you when one is out; hover it to see what changed. To update:
+Every push to `main` is a new nightly. The bottom-left of the sidebar says
+**Update available** when one is out. Hover it to see what changed, then:
 
-```bash
-~/polaris/packaging/arch/install.sh
-```
+1. Click **Update now**. A Polaris terminal tab opens and builds the update.
+   Type your password when pacman asks.
+2. When it's done, the sidebar says **Restart to update**. Click
+   **Restart now**.
+
+You can also update from any terminal: `~/polaris/packaging/arch/install.sh`.
+(After the first install you don't need `~/polaris` anymore. Polaris keeps
+its own copy for updates in `~/.cache/polaris-fm`.)
 
 ## 4. Remove
 

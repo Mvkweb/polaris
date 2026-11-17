@@ -73,4 +73,4 @@ For in-depth architectural guides, refer to:
 - [SolidJS Reactivity Guide](file://.docs/solidjs.md) — Fine-grained reactivity and component patterns.
 - [Zig 0.17 Architecture](file://.docs/zig-architecture.md) — Memory allocators, std.Io, and sidecar IPC.
 - [UI Layout Architecture](file://.docs/ui-layout.md) — Containerized multi-panel layout specifications.
-- [Distribution & Updates](file://.docs/distribution.md) — Package names, private-repo tester setup, and the "when public" TODO list.
+- [Distribution & Updates](file://.docs/distribution.md) — Packaging (`polaris-fm-git`, Arch guidelines), the in-app updater, and the **going-public runbook**. Code that exists only while the repo is private is tagged `PRIVATE-PHASE` (`grep -rn PRIVATE-PHASE`).

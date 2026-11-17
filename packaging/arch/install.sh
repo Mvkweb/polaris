@@ -1,6 +1,9 @@
 #!/bin/sh
 # Install or update the Polaris nightly (polaris-fm-git) from this clone.
 #
+# PRIVATE-PHASE: only needed while the repo is private. Once it's on the AUR,
+# testers just use `paru -S polaris-fm-git` (see .docs/distribution.md).
+#
 #   ~/polaris/packaging/arch/install.sh
 #
 # Pulls the latest packaging, then builds and installs with makepkg as you

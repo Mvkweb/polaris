@@ -196,4 +196,6 @@ export interface UpdateInfo {
   checking: boolean
   checkedAt: number | null
   error: string | null
+  updateCommand: string | null
+  restartReady: boolean
 }

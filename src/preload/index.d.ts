@@ -169,6 +169,7 @@ export interface CustomAPI {
   getUpdateInfo: () => Promise<UpdateInfo>
   checkForUpdates: () => Promise<UpdateInfo>
   onUpdateInfo: (callback: (info: UpdateInfo) => void) => () => void
+  restartToUpdate: () => Promise<void>
   takeStartReveal: () => Promise<string | null>
   onOpenRequest: (callback: (req: { dir: string; reveal: string | null }) => void) => () => void
   listTasks: () => Promise<TaskRecord[]>
@@ -230,6 +231,8 @@ export interface UpdateInfo {
   checking: boolean
   checkedAt: number | null
   error: string | null
+  updateCommand: string | null
+  restartReady: boolean
 }
 
 declare global {

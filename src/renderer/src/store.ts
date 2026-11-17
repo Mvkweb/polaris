@@ -342,6 +342,8 @@ export interface TerminalSessionInfo {
   id: string
   title: string
   cwd?: string
+  /** command typed into the shell once it starts (e.g. the update) */
+  run?: string
 }
 
 export const [terminalSessions, setTerminalSessions] = createSignal<TerminalSessionInfo[]>([])
@@ -371,13 +373,13 @@ export const toggleTerminal = (): void => {
   }
 }
 
-export const addTerminal = (cwdOrEvent?: string | unknown): void => {
+export const addTerminal = (cwdOrEvent?: string | unknown, run?: string): void => {
   const cwd = typeof cwdOrEvent === 'string' ? cwdOrEvent : undefined
   const sessions = terminalSessions()
   const nextNum =
     sessions.length > 0 ? Math.max(...sessions.map((s) => parseInt(s.title, 10) || 0)) + 1 : 1
   const newId = `term-${Date.now()}`
-  setTerminalSessions([...sessions, { id: newId, title: String(nextNum), cwd }])
+  setTerminalSessions([...sessions, { id: newId, title: String(nextNum), cwd, run }])
   setTerminalProcessMap((prev) => ({ ...prev, [newId]: 'fish' }))
   setActiveTerminalId(newId)
   setIsTerminalOpen(true)

@@ -1,6 +1,6 @@
 # Distribution & Updates
 
-> **Status: PRIVATE-REPO PHASE (temporary).** Everything under "Now" exists only
+> **Status: PRIVATE-PHASE (temporary).** Everything under "Now" exists only
 > because the repo is private and the testers are collaborators. When the repo
 > goes public, work through "When public" and delete this banner.
 
@@ -82,6 +82,17 @@ The variants `provide` `polaris-fm` and `conflict` with each other, never with
   through `url."git@github.com:".insteadOf`. We don't ship or store any
   tokens. Everything uses the HTTPS URL, so nothing changes when the repo
   goes public.
+- **License:** GPL-3.0-or-later (`LICENSE`). It's a common SPDX license, so
+  the package doesn't install a copy (Arch packaging guideline).
+- **In-app update** (installed builds):
+  - The footer card's **Update now** opens a Polaris terminal tab and runs
+    `PACKAGE_UPDATE_COMMAND` (`src/main/updates.ts`). That keeps a clone in
+    `~/.cache/polaris-fm/repo` and runs its `install.sh`; makepkg's output and
+    pacman's password prompt show right there.
+  - Main watches `/usr/lib/polaris-fm/app`. When pacman swaps the files,
+    `pacman -Q` reports a new pkgver, the footer flips to **Restart to
+    update**, and **Restart now** relaunches.
+  - From a checkout, Update now runs `git pull --ff-only` instead.
 - **Install, update, remove:** see [TESTING.md](../TESTING.md). Testers clone
   the repo, then run `packaging/arch/install.sh` to install or update.
   - Why a script: makepkg (pacman ≥ 7.1) clones with
@@ -110,25 +121,41 @@ The variants `provide` `polaris-fm` and `conflict` with each other, never with
 
 ## Open items
 
-- [ ] **License:** there is none yet, so the PKGBUILD says
-      `LicenseRef-Proprietary` and namcap reports an error until a LICENSE file
-      exists. Pick a license (or add an "all rights reserved" file) before
-      going public.
 - [ ] `polaris-core` lacks PIE/full RELRO (Zig ignores makepkg's LDFLAGS);
       namcap warns about it. It could be set in `core/build.zig`.
-- [ ] In-app Update button; an opt-in "default file manager" toggle
-      (`xdg-mime`), which should save and restore the previous default.
+- [ ] An opt-in "default file manager" toggle (`xdg-mime`), which should
+      save and restore the previous default.
 
-## When public: TODO
+## Going public: runbook for whoever does it (human or agent)
 
-- [ ] Push `polaris-fm-git` to the AUR (Mvkweb + Evertiro as co-maintainers).
-      `source=` is already the HTTPS URL.
-- [ ] Testers then just run `paru -S polaris-fm-git`; drop the clone steps
-      from TESTING.md.
-- [ ] First tag `v0.1.0` → `polaris-fm` (stable) from the release tarball,
-      with a `sha256sums` checksum.
+Everything that exists only because the repo is private is tagged
+`PRIVATE-PHASE`. Start with `grep -rn PRIVATE-PHASE` and work through this
+list:
+
+1. **Make the repo public** on GitHub. `source=` in the PKGBUILD is already
+   the HTTPS URL, so the PKGBUILD itself needs no change.
+2. **AUR:** in `packaging/arch/polaris-fm-git/`, run
+   `makepkg --printsrcinfo > .SRCINFO`, then push PKGBUILD + `.SRCINFO` to
+   `ssh://aur@aur.archlinux.org/polaris-fm-git.git`. Add Evertiro as
+   co-maintainer, and keep the copy in this repo in sync.
+3. **In-app update:** in `src/main/updates.ts`, change
+   `PACKAGE_UPDATE_COMMAND` to `paru -S polaris-fm-git` (fall back to `yay`
+   if paru is missing). Keep the restart detection as is.
+4. **Remove private-only pieces:**
+   - `packaging/arch/install.sh` and its `MAKEPKG_GIT_CONFIG` workaround.
+   - TESTING.md's "git login" and clone steps: install becomes
+     `paru -S polaris-fm-git`.
+   - "invite-only" wording in TESTING.md and the About page.
+5. **Stable channel:** tag `v0.1.0`, then add
+   `packaging/arch/polaris-fm/PKGBUILD` (release tarball + `sha256sums`,
+   `provides`/`conflicts` with `polaris-fm-git`).
+6. **Delete the PRIVATE-PHASE banner** at the top of this file, and the
+   remaining `PRIVATE-PHASE` comments.
+
+## After going public: later
+
 - [ ] GitHub Actions: on each tag, build a tarball (app + `polaris-core`, no
       Electron) and attach it to the release → `polaris-fm-bin`.
-- [ ] Stable channel: check the GitHub Releases API instead of `ls-remote`.
+- [ ] Stable channel update check: use the GitHub Releases API instead of
+      `ls-remote`.
 - [ ] AppImage for non-Arch Linux; Windows and macOS builds.
-- [ ] Remove the "invite-only" wording from TESTING.md and the About page.

@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
+import { watch } from 'fs'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { BUILD, INSTALLED } from './launch'
@@ -39,6 +40,10 @@ export interface UpdateInfo {
   checking: boolean
   checkedAt: number | null
   error: string | null
+  /** shell command the Update button runs in Polaris's terminal */
+  updateCommand: string | null
+  /** a newer package is installed on disk: restart to use it */
+  restartReady: boolean
 }
 
 let info: UpdateInfo = {
@@ -52,7 +57,9 @@ let info: UpdateInfo = {
   compareUrl: null,
   checking: false,
   checkedAt: null,
-  error: null
+  error: null,
+  updateCommand: null,
+  restartReady: false
 }
 
 const broadcast = (): void => {
@@ -97,6 +104,35 @@ const parseCommits = (out: string): UpdateCommit[] =>
 const NIGHTLY_REMOTE = 'https://github.com/Mvkweb/polaris.git'
 const NIGHTLY_BRANCH = 'main'
 const NIGHTLY_WEB = 'https://github.com/Mvkweb/polaris'
+const PKGNAME = 'polaris-fm-git'
+
+/**
+ * PRIVATE-PHASE: what "Update now" types into Polaris's terminal. Keeps a
+ * clone in ~/.cache/polaris-fm/repo and runs its install.sh (pull, makepkg,
+ * pacman asks for the password right there). Wrapped in `sh -c` so it works
+ * from fish too. Once public this becomes: `paru -S polaris-fm-git`.
+ */
+const PACKAGE_UPDATE_COMMAND =
+  `sh -c 'd="\${XDG_CACHE_HOME:-$HOME/.cache}/polaris-fm/repo"; ` +
+  `[ -d "$d/.git" ] || git clone ${NIGHTLY_REMOTE} "$d"; ` +
+  `exec "$d/packaging/arch/install.sh"'`
+
+/** Installed version per pacman (e.g. r72.gd0d626c-1), or null. */
+const installedPkgver = async (): Promise<string | null> => {
+  try {
+    const { stdout } = await exec('pacman', ['-Q', PKGNAME], { timeout: 5000 })
+    return stdout.trim().split(/\s+/)[1] ?? null
+  } catch {
+    return null
+  }
+}
+
+/** pacman replaced our files: a restart runs the new version. */
+const checkRestartReady = async (): Promise<void> => {
+  const v = await installedPkgver()
+  const ready = Boolean(v && BUILD.pkgver && !v.startsWith(`${BUILD.pkgver}-`))
+  if (ready !== info.restartReady) set({ restartReady: ready, available: ready || info.available })
+}
 
 /** Installed package: compare the baked-in commit with the tip of main. */
 const checkPackage = async (): Promise<void> => {
@@ -111,8 +147,10 @@ const checkPackage = async (): Promise<void> => {
       date: 0
     },
     checking: true,
-    error: null
+    error: null,
+    updateCommand: PACKAGE_UPDATE_COMMAND
   })
+  await checkRestartReady()
   try {
     const out = await exec('git', ['ls-remote', NIGHTLY_REMOTE, `refs/heads/${NIGHTLY_BRANCH}`], {
       timeout: 20_000,
@@ -123,7 +161,7 @@ const checkPackage = async (): Promise<void> => {
       }
     })
     const head = out.stdout.split(/\s/)[0]
-    const available = Boolean(head) && head !== commit
+    const available = info.restartReady || (Boolean(head) && head !== commit)
     set({
       available,
       behind: available ? -1 : 0,
@@ -161,7 +199,13 @@ export const checkForUpdates = (): Promise<void> => {
       set({ checking: true, error: null })
       const branch = await git(['rev-parse', '--abbrev-ref', 'HEAD'])
       const current = parseCommits(await git(['log', '-1', `--format=${FORMAT}`]))[0] ?? null
-      set({ source: 'git', branch, current })
+      set({
+        source: 'git',
+        branch,
+        current,
+        // From a checkout, updating is a pull (restart `bun run dev` after).
+        updateCommand: `git -C '${repo()}' pull --ff-only`
+      })
 
       const upstream = await git([
         'rev-parse',
@@ -219,6 +263,24 @@ export const registerUpdateIpc = (): void => {
     await checkForUpdates()
     return info
   })
+  // Relaunch into the newly installed version (same args, same window state).
+  ipcMain.handle('updates:restart', () => {
+    app.relaunch()
+    app.exit(0)
+  })
+  // Installed: pacman swaps our files during an update. Watch the app folder
+  // so the footer flips to "Restart to update" the moment it's done.
+  if (INSTALLED) {
+    let debounce: NodeJS.Timeout | undefined
+    try {
+      watch(app.getAppPath(), () => {
+        clearTimeout(debounce)
+        debounce = setTimeout(() => void checkRestartReady(), 1500)
+      }).unref()
+    } catch {
+      // No watch (unusual fs): the 30-minute check still notices.
+    }
+  }
   void checkForUpdates()
   setInterval(() => void checkForUpdates(), CHECK_EVERY).unref()
 }

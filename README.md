@@ -25,3 +25,12 @@ bun run check
 # Production build
 bun run build
 ```
+
+## Testing builds
+
+Invited testers on Arch: see [TESTING.md](TESTING.md).
+
+## License
+
+Polaris is free software, licensed under the
+[GNU General Public License v3.0 or later](LICENSE).

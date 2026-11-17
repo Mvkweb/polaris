@@ -10,6 +10,8 @@ interface TerminalProps {
   visible: boolean
   onExit: () => void
   cwd?: string
+  /** typed into the shell once it starts */
+  run?: string
 }
 
 function cleanTerminalTitle(rawTitle: string): string {
@@ -118,6 +120,8 @@ const Terminal: Component<TerminalProps> = (props) => {
         terminalId = id
         // The panel may have been resized while the shell was starting
         window.api.terminalResize(id, currentTerm.cols, currentTerm.rows)
+        // The pty buffers this until the shell reads its first line
+        if (props.run) window.api.terminalWrite(id, props.run + '\r')
       })
       .catch((err) => {
         currentTerm.write(`\r\nFailed to start shell: ${String(err)}\r\n`)

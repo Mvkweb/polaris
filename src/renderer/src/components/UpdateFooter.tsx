@@ -6,10 +6,11 @@ import { DitherButton } from './dithercn/dither-button'
 import { DirtyMark } from './ui/DirtyMark'
 import { UiIcon } from './ui/AppIcons'
 import { updateTrack } from '../store'
-import { checkNow, timeAgo, updateInfo } from '../updates'
+import { checkNow, restartToUpdate, runUpdate, timeAgo, updateInfo } from '../updates'
 import './update-footer.css'
 
 const STATUS_LABEL = {
+  restart: 'Restart to update',
   available: 'Update available',
   checking: 'Checking…',
   latest: 'Up to date',
@@ -49,6 +50,7 @@ export const UpdateFooter: Component = () => {
   const status = (): keyof typeof STATUS_LABEL => {
     const i = info()
     if (!i) return 'checking'
+    if (i.restartReady) return 'restart'
     if (i.available) return 'available'
     if (i.checking && !i.checkedAt) return 'checking'
     if (i.source === 'none') return 'none'
@@ -71,7 +73,7 @@ export const UpdateFooter: Component = () => {
         ref={row}
         class="update-row"
         classList={{
-          'is-available': status() === 'available',
+          'is-available': status() === 'available' || status() === 'restart',
           'is-open': open()
         }}
         onPointerEnter={show}
@@ -89,7 +91,7 @@ export const UpdateFooter: Component = () => {
           >
             <span class="update-channel" title={`${updateTrack()} channel`}>
               <UiIcon name={updateTrack() === 'Nightly' ? 'nightly' : 'stable'} size={14} />
-              <Show when={status() === 'available'}>
+              <Show when={status() === 'available' || status() === 'restart'}>
                 <DirtyMark class="update-badge" title="Update available" />
               </Show>
             </span>
@@ -133,11 +135,13 @@ export const UpdateFooter: Component = () => {
             <div class="relative px-4 pt-[58px] pb-4">
               <div class="flex items-baseline gap-2">
                 <span class="text-[15px] font-medium text-white">
-                  {info()?.available
-                    ? 'Update available'
-                    : info()?.error
-                      ? 'Couldn’t check for updates'
-                      : 'You’re up to date'}
+                  {info()?.restartReady
+                    ? 'Update installed'
+                    : info()?.available
+                      ? 'Update available'
+                      : info()?.error
+                        ? 'Couldn’t check for updates'
+                        : 'You’re up to date'}
                 </span>
                 <Show when={info()?.available && info()!.behind > 0}>
                   <span class="text-[12px] text-white/45 tabular-nums">
@@ -186,20 +190,40 @@ export const UpdateFooter: Component = () => {
                 )}
               </Show>
 
-              <Show when={info()?.source === 'package' && info()?.available}>
-                <div class="update-howto">
-                  <span class="text-white/40">To update, run from your polaris clone:</span>
-                  <code>packaging/arch/install.sh</code>
-                </div>
-              </Show>
-
               <Show when={info()?.error}>
                 <div class="mt-2 text-[11.5px] text-amber-300/80 truncate" title={info()!.error!}>
                   Couldn’t reach the remote — showing the last known state
                 </div>
               </Show>
 
-              <div class="mt-3 flex items-center gap-2">
+              <Show when={info()?.restartReady}>
+                <div class="mt-2 text-[11.5px] text-white/45">
+                  The new version is installed. Restart Polaris to use it.
+                </div>
+              </Show>
+
+              <div class="mt-3 flex flex-wrap items-center gap-2">
+                <Show
+                  when={info()?.restartReady}
+                  fallback={
+                    <Show when={info()?.available && info()?.updateCommand}>
+                      <DitherButton
+                        size="sm"
+                        color="ink"
+                        onClick={() => {
+                          runUpdate()
+                          setOpen(false)
+                        }}
+                      >
+                        Update now
+                      </DitherButton>
+                    </Show>
+                  }
+                >
+                  <DitherButton size="sm" color="ink" onClick={restartToUpdate}>
+                    Restart now
+                  </DitherButton>
+                </Show>
                 <DitherButton
                   size="sm"
                   variant="outline"
@@ -212,6 +236,7 @@ export const UpdateFooter: Component = () => {
                 <Show when={info()?.compareUrl}>
                   <DitherButton
                     size="sm"
+                    variant="outline"
                     color="ink"
                     onClick={() => window.open(info()!.compareUrl!, '_blank')}
                   >

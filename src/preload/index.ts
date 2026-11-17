@@ -61,6 +61,7 @@ const api = {
     return () => ipcRenderer.removeListener('updates:changed', listener)
   },
   /** File Polaris was launched with (`polaris-fm ~/a.txt`), handed out once. */
+  restartToUpdate: () => ipcRenderer.invoke('updates:restart'),
   takeStartReveal: () => ipcRenderer.invoke('app:takeStartReveal'),
   /** Another `polaris-fm <path>` launch: open that folder in a new tab. */
   onOpenRequest: (callback: (req: unknown) => void) => {

@@ -318,6 +318,7 @@ const App: Component = () => {
                       <Terminal
                         sessionId={session.id}
                         cwd={session.cwd}
+                        run={session.run}
                         visible={isTerminalOpen() && activeTerminalId() === session.id}
                         onExit={() => closeTerminal(session.id)}
                       />

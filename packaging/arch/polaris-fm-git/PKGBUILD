@@ -1,6 +1,6 @@
 # Maintainer: Mvkweb <https://github.com/Mvkweb>
 
-# PRIVATE-REPO PHASE: the repo is private, so this clone uses the builder's
+# PRIVATE-PHASE: the repo is private, so this clone uses the builder's
 # own GitHub login (gh auth / git credential helper, or an SSH key via a
 # url.insteadOf rule; see TESTING.md). Nothing here changes when it's public.
 
@@ -11,8 +11,7 @@ pkgrel=1
 pkgdesc='A dithered file manager and editor'
 arch=('x86_64' 'aarch64')
 url='https://github.com/Mvkweb/polaris'
-# No license chosen yet (private repo, all rights reserved).
-license=('LicenseRef-Proprietary')
+license=('GPL-3.0-or-later')
 # electron44, git, util-linux (findmnt, lsblk) and which are run by the app,
 # so namcap can't see them; glibc, libgcc and libstdc++ are for node-pty's pty.node.
 depends=(

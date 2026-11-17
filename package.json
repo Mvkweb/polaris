@@ -4,6 +4,7 @@
   "description": "Ultra-lightweight high-performance file explorer and workspace tool built with SolidJS, Electron, and Zig 0.17",
   "main": "./out/main/index.js",
   "author": "Polaris Team",
+  "license": "GPL-3.0-or-later",
   "scripts": {
     "dev": "bun run core:build:dev && electron-vite dev",
     "core:build": "cd core && zig build -Doptimize=fast",
