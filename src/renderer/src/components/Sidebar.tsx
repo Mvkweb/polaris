@@ -41,6 +41,7 @@ import {
 import { I } from './ui/AppIcons'
 import type { FileNode, ChatSessionSummary, GitCommit, SystemDrive } from '../types'
 import FileTree from './file-tree/FileTree'
+import { UpdateFooter } from './UpdateFooter'
 import SearchPanel from './search/SearchPanel'
 
 import { formatShortcut, isMac, isModKey, matchesShortcut, shortcutKeys } from '../shortcuts'
@@ -91,25 +92,6 @@ const PrBranchIcon = (props: { class?: string }) => (
       stroke="currentColor"
       stroke-width="1.4"
       stroke-linecap="round"
-    />
-  </svg>
-)
-
-const RotateCwIcon = (props: { class?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" class={props.class ?? 'w-3.5 h-3.5'}>
-    <path
-      d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"
-      stroke="currentColor"
-      stroke-width="1.8"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-    <path
-      d="M21 3v5h-5"
-      stroke="currentColor"
-      stroke-width="1.8"
-      stroke-linecap="round"
-      stroke-linejoin="round"
     />
   </svg>
 )
@@ -1691,22 +1673,8 @@ const Sidebar: Component = () => {
               </Show>
             </div>
 
-            {/* ── Bottom Update / Version Row ── */}
-            <div class="shrink-0 px-3 pb-3 pt-1.5 mt-auto">
-              <button
-                type="button"
-                onClick={() => setCurrentView('settings')}
-                class="group w-full flex items-center justify-between py-1 text-[13px] text-white/85 hover:text-white transition-colors cursor-pointer"
-              >
-                <span class="flex items-center gap-2 font-medium">
-                  <RotateCwIcon class="w-3.5 h-3.5 text-white/70 group-hover:rotate-45 transition-transform duration-300" />
-                  <span>Restart to update</span>
-                </span>
-                <span class="font-mono text-[12px] text-white/40 group-hover:text-white/60 transition-colors">
-                  v0.22.3
-                </span>
-              </button>
-            </div>
+            {/* ── Bottom: update status + version (hover for details) ── */}
+            <UpdateFooter />
           </div>
         </aside>
       </div>

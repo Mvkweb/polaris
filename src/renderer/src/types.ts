@@ -175,3 +175,25 @@ export interface TaskRecord {
   startedAt?: number
   finishedAt?: number
 }
+
+/** Git-based update status (mirrors src/main/updates.ts). */
+export interface UpdateCommit {
+  hash: string
+  subject: string
+  author: string
+  date: number
+}
+
+export interface UpdateInfo {
+  version: string
+  source: 'git' | 'none'
+  branch: string | null
+  current: UpdateCommit | null
+  available: boolean
+  behind: number
+  commits: UpdateCommit[]
+  compareUrl: string | null
+  checking: boolean
+  checkedAt: number | null
+  error: string | null
+}

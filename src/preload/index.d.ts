@@ -166,6 +166,9 @@ export interface CustomAPI {
   uploadServices: () => Promise<UploadService[]>
   /** Queue uploads; resolves to the new task ids */
   startUpload: (paths: string[], serviceId: string) => Promise<string[]>
+  getUpdateInfo: () => Promise<UpdateInfo>
+  checkForUpdates: () => Promise<UpdateInfo>
+  onUpdateInfo: (callback: (info: UpdateInfo) => void) => () => void
   listTasks: () => Promise<TaskRecord[]>
   cancelTask: (id: string) => Promise<boolean>
   removeTask: (id: string) => Promise<boolean>
@@ -204,6 +207,27 @@ export interface TaskRecord {
   createdAt: number
   startedAt?: number
   finishedAt?: number
+}
+
+export interface UpdateCommit {
+  hash: string
+  subject: string
+  author: string
+  date: number
+}
+
+export interface UpdateInfo {
+  version: string
+  source: 'git' | 'none'
+  branch: string | null
+  current: UpdateCommit | null
+  available: boolean
+  behind: number
+  commits: UpdateCommit[]
+  compareUrl: string | null
+  checking: boolean
+  checkedAt: number | null
+  error: string | null
 }
 
 declare global {

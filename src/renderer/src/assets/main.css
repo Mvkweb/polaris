@@ -1,6 +1,18 @@
 @import '@fontsource/space-grotesk/index.css';
 @import 'tailwindcss';
 
+/*
+ * FONT NOTE (known, intentionally left as-is for now):
+ * - UI asks for Space Grotesk (bundled via @fontsource), but Tailwind's base
+ *   reset (`--default-font-family` system stack) wins, so the bundled font is
+ *   never loaded and the UI renders in the OS default sans (Noto Sans on the
+ *   main dev machine). It will differ per tester / distro / OS.
+ * - Code & keycaps ask for ui-monospace / "JetBrains Mono"; Nerd Font installs
+ *   are named "JetBrainsMono Nerd Font", so it falls back to the OS mono
+ *   (Noto Sans Mono here).
+ * To make it consistent later: set `--default-font-family` in @theme to the
+ * bundled family and bundle a mono (JetBrains Mono / Geist Mono).
+ */
 @theme {
   --font-sans: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --color-background: #000000;

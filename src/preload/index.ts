@@ -53,6 +53,13 @@ const api = {
   uploadServices: () => ipcRenderer.invoke('upload:services'),
   startUpload: (paths: string[], serviceId: string) =>
     ipcRenderer.invoke('upload:start', paths, serviceId),
+  getUpdateInfo: () => ipcRenderer.invoke('updates:get'),
+  checkForUpdates: () => ipcRenderer.invoke('updates:check'),
+  onUpdateInfo: (callback: (info: unknown) => void) => {
+    const listener = (_: unknown, info: unknown): void => callback(info)
+    ipcRenderer.on('updates:changed', listener)
+    return () => ipcRenderer.removeListener('updates:changed', listener)
+  },
   listTasks: () => ipcRenderer.invoke('tasks:list'),
   cancelTask: (id: string) => ipcRenderer.invoke('tasks:cancel', id),
   removeTask: (id: string) => ipcRenderer.invoke('tasks:remove', id),

@@ -15,6 +15,7 @@ import { MEDIA_SCHEME_PRIVILEGES, registerMediaIpc, registerMediaProtocol } from
 import { registerProjectIconIpc } from './projectIcons'
 import { loadTasks, registerTaskIpc } from './tasks'
 import { registerUploadIpc } from './uploads'
+import { registerUpdateIpc } from './updates'
 
 // Register privileged custom schemes before app is ready
 protocol.registerSchemesAsPrivileged([MEDIA_SCHEME_PRIVILEGES])
@@ -131,6 +132,7 @@ app.whenReady().then(() => {
   registerProjectIconIpc()
   registerTaskIpc()
   registerUploadIpc()
+  registerUpdateIpc()
   void loadTasks()
 
   app.on('browser-window-created', (_, window) => {

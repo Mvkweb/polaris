@@ -5,6 +5,7 @@ import BrowserTopBar from './components/browser/BrowserTopBar'
 import FolderView from './components/browser/FolderView'
 import TasksPanel from './components/tasks/TasksPanel'
 import { initTasks } from './tasks'
+import { initUpdates } from './updates'
 import StatusBar from './components/StatusBar'
 import Terminal from './components/terminal/Terminal'
 import QuickOpenModal from './components/modals/QuickOpenModal'
@@ -170,6 +171,7 @@ const App: Component = () => {
   useThemeVariables()
   useWallpaperTheme()
   onCleanup(initTasks() ?? (() => {}))
+  onCleanup(initUpdates() ?? (() => {}))
 
   // Mouse side buttons (4 = back, 5 = forward → DOM buttons 3 and 4) walk the
   // folder history, like every other file manager and browser.
