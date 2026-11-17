@@ -86,6 +86,12 @@ fi
 
 # ── Build and install ────────────────────────────────────────────────────────
 repo=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
+pkgbuild="packaging/arch/$PKG/PKGBUILD"
+# makepkg writes the new pkgver into the PKGBUILD. Drop that edit (and only
+# that edit) so pulling newer packaging never conflicts with it.
+if git -C "$repo" diff --quiet -I'^pkgver=' -- "$pkgbuild"; then
+	git -C "$repo" checkout --quiet -- "$pkgbuild"
+fi
 if ! GIT_TERMINAL_PROMPT=0 git -C "$repo" pull --ff-only --quiet 2>/dev/null; then
 	note "Couldn't update the packaging in $repo (local changes or another branch?)."
 	note "Continuing with the packaging you have."
@@ -101,6 +107,9 @@ fi
 # makepkg leaves the built package here; remove it so the next update can't
 # reinstall an old file.
 rm -f ./"$PKG"-*.pkg.tar.*
+if git -C "$repo" diff --quiet -I'^pkgver=' -- "$pkgbuild"; then
+	git -C "$repo" checkout --quiet -- "$pkgbuild"
+fi
 
 say "Done! Polaris $(pacman -Q "$PKG" | cut -d' ' -f2) is installed."
 note "Start it from your app launcher, or run: polaris-fm"
