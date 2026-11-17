@@ -41,7 +41,7 @@ import {
   DitherDropdownMenuTrigger
 } from '@/components/dithercn/dither-dropdown-menu'
 import { MonodriveFolderIcon, MonodriveFileIcon } from '../browser/MonodriveIcons'
-import { SolarFolderLinear } from '../ui/SolarIcons'
+import { I } from '../ui/AppIcons'
 
 // Bounded LRU cache so repeated selections render instantly without growing forever
 const CACHE_LIMIT = 200
@@ -500,7 +500,7 @@ export const InspectorDrawer: Component = () => {
                     </DitherDropdownMenuItem>
                     <DitherDropdownMenuSeparator />
                     <DitherDropdownMenuItem variant="dither" onSelect={handleReveal}>
-                      <SolarFolderLinear class="w-4 h-4 text-white/70 shrink-0" />
+                      <I.folder class="w-4 h-4 text-white/70 shrink-0" />
                       <span>Show in Files</span>
                     </DitherDropdownMenuItem>
                     <DitherDropdownMenuItem variant="dither" onSelect={handleCopyPath}>

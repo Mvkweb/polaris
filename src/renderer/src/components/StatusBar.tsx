@@ -13,7 +13,7 @@ import {
   toggleTerminal
 } from '../store'
 import { formatShortcut } from '../shortcuts'
-import { SolarProgrammingLinear } from './ui/SolarIcons'
+import { I } from './ui/AppIcons'
 import { TasksButton } from './tasks/TasksButton'
 
 interface StatusBarProps {
@@ -39,7 +39,7 @@ const StatusBar: Component<StatusBarProps> = (props) => {
             isTerminalOpen() ? 'text-white' : 'text-white/60'
           }`}
         >
-          <SolarProgrammingLinear class="w-4 h-4" />
+          <I.terminal class="w-4 h-4" />
           <span>Terminal</span>
         </button>
 

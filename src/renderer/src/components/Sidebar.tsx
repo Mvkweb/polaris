@@ -38,20 +38,7 @@ import {
   explorerMode,
   setExplorerMode
 } from '../store'
-import {
-  SolarGhostBold,
-  SolarTrashBinTrashLinear,
-  SolarFileTextLinear,
-  SolarChatRoundLineLinear,
-  SolarHome2Linear,
-  SolarDownloadCircleLinear,
-  SolarMusicNoteLinear,
-  SolarGalleryLinear,
-  SolarClapperboardLinear,
-  SolarClockCircleLinear,
-  SolarHardDriveLinear,
-  SolarTuningLinear
-} from './ui/SolarIcons'
+import { I } from './ui/AppIcons'
 import type { FileNode, ChatSessionSummary, GitCommit, SystemDrive } from '../types'
 import FileTree from './file-tree/FileTree'
 import SearchPanel from './search/SearchPanel'
@@ -66,14 +53,14 @@ interface AtlasPlaceItem {
 }
 
 const DEFAULT_PLACES: AtlasPlaceItem[] = [
-  { id: 'home', name: 'Home', path: '', icon: SolarHome2Linear },
-  { id: 'docs', name: 'Documents', path: '', icon: SolarFileTextLinear },
-  { id: 'downloads', name: 'Downloads', path: '', icon: SolarDownloadCircleLinear },
-  { id: 'music', name: 'Music', path: '', icon: SolarMusicNoteLinear },
-  { id: 'pictures', name: 'Pictures', path: '', icon: SolarGalleryLinear },
-  { id: 'videos', name: 'Videos', path: '', icon: SolarClapperboardLinear },
-  { id: 'recent', name: 'Recent', path: '', icon: SolarClockCircleLinear },
-  { id: 'trash', name: 'Trash', path: '', icon: SolarTrashBinTrashLinear }
+  { id: 'home', name: 'Home', path: '', icon: I.home },
+  { id: 'docs', name: 'Documents', path: '', icon: I.documents },
+  { id: 'downloads', name: 'Downloads', path: '', icon: I.downloads },
+  { id: 'music', name: 'Music', path: '', icon: I.music },
+  { id: 'pictures', name: 'Pictures', path: '', icon: I.pictures },
+  { id: 'videos', name: 'Videos', path: '', icon: I.videos },
+  { id: 'recent', name: 'Recent', path: '', icon: I.recent },
+  { id: 'trash', name: 'Trash', path: '', icon: I.trash }
 ]
 
 const ICON_BASE = 'https://unpkg.com/@lobehub/icons-static-svg@latest/icons'
@@ -93,62 +80,6 @@ const formatFreeSpace = (raw?: string): string => {
 }
 
 /* ── Reference Icons ── */
-
-const PanelLeftIcon = (props: { class?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" class={props.class ?? 'w-4 h-4'}>
-    <rect x="3" y="4" width="18" height="16" rx="3" stroke="currentColor" stroke-width="1.75" />
-    <path d="M9 4v16" stroke="currentColor" stroke-width="1.75" />
-    <rect x="4.5" y="5.5" width="3.5" height="13" rx="1" fill="currentColor" />
-  </svg>
-)
-
-const Cog6ToothIcon = (props: { class?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" class={props.class ?? 'w-4 h-4'}>
-    <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.75" />
-    <path
-      d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"
-      stroke="currentColor"
-      stroke-width="1.75"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-  </svg>
-)
-
-const CircleDotIcon = (props: { class?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" class={props.class ?? 'w-3.5 h-3.5'}>
-    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.75" />
-    <circle cx="12" cy="12" r="2.2" fill="currentColor" />
-  </svg>
-)
-
-const UsbDriveIcon = (props: { class?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class={props.class ?? 'w-3.5 h-3.5'}>
-    <path d="M10 2v4h4V2h-4z" />
-    <rect x="7" y="6" width="10" height="15" rx="2" />
-    <path d="M10 11v3" />
-    <path d="M14 11v3" />
-  </svg>
-)
-
-const PlusIcon = (props: { class?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" class={props.class ?? 'w-3.5 h-3.5'}>
-    <path
-      d="M12 5v14M5 12h14"
-      stroke="currentColor"
-      stroke-width="1.8"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-  </svg>
-)
-
-const SearchIcon = (props: { class?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" class={props.class ?? 'w-3.5 h-3.5'}>
-    <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.75" />
-    <path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" />
-  </svg>
-)
 
 const PrBranchIcon = (props: { class?: string }) => (
   <svg viewBox="0 0 16 16" fill="none" class={props.class ?? 'w-3.5 h-3.5 text-[#a855f7]'}>
@@ -401,7 +332,7 @@ const SessionCardBody = (props: {
               fallback={
                 <Show when={props.session.messageCount}>
                   <div class="flex items-center gap-1.5 text-[11px] text-white/40">
-                    <SolarChatRoundLineLinear class="w-3 h-3 text-white/30 shrink-0" />
+                    <I.chat class="w-3 h-3 text-white/30 shrink-0" />
                     <span class="shrink-0">{props.session.messageCount} msgs</span>
                   </div>
                 </Show>
@@ -411,7 +342,7 @@ const SessionCardBody = (props: {
                 class="flex items-center gap-1.5 text-[11px] text-white/45 tracking-tight truncate"
                 title={props.session.preview}
               >
-                <SolarChatRoundLineLinear class="w-3 h-3 text-white/30 shrink-0" />
+                <I.chat class="w-3 h-3 text-white/30 shrink-0" />
                 <span class="truncate">{props.session.preview}</span>
                 <Show when={props.session.messageCount}>
                   <span class="text-white/25 shrink-0">• {props.session.messageCount}</span>
@@ -426,7 +357,7 @@ const SessionCardBody = (props: {
               props.session.preview ? ` — ${props.session.preview}` : ''
             }`}
           >
-            <SolarFileTextLinear class="w-3 h-3 text-white/40 shrink-0" />
+            <I.note class="w-3 h-3 text-white/40 shrink-0" />
             <span class="truncate">
               {props.session.fileRefs![0]}
               {props.session.fileRefs!.length > 1 ? ` +${props.session.fileRefs!.length - 1}` : ''}
@@ -445,7 +376,7 @@ const SessionCardBody = (props: {
           class="opacity-0 group-hover:opacity-40 hover:!opacity-100 p-1 hover:bg-white/10 rounded transition-all text-white/50 hover:text-red-400 cursor-pointer shrink-0"
           title="Delete conversation"
         >
-          <SolarTrashBinTrashLinear class="w-3 h-3" />
+          <I.trash class="w-3 h-3" />
         </button>
       </div>
     </>
@@ -821,15 +752,16 @@ const Sidebar: Component = () => {
       if (window.api?.getUserPlaces) {
         const u = await window.api.getUserPlaces()
         if (u?.home) {
-          const list: AtlasPlaceItem[] = [
-            { id: 'home', name: 'Home', path: u.home, icon: SolarHome2Linear }
-          ]
-          if (u.documents) list.push({ id: 'docs', name: 'Documents', path: u.documents, icon: SolarFileTextLinear })
-          if (u.downloads) list.push({ id: 'downloads', name: 'Downloads', path: u.downloads, icon: SolarDownloadCircleLinear })
-          if (u.music) list.push({ id: 'music', name: 'Music', path: u.music, icon: SolarMusicNoteLinear })
-          if (u.pictures) list.push({ id: 'pictures', name: 'Pictures', path: u.pictures, icon: SolarGalleryLinear })
-          if (u.videos) list.push({ id: 'videos', name: 'Videos', path: u.videos, icon: SolarClapperboardLinear })
-          if (u.trash) list.push({ id: 'trash', name: 'Trash', path: u.trash, icon: SolarTrashBinTrashLinear })
+          const list: AtlasPlaceItem[] = [{ id: 'home', name: 'Home', path: u.home, icon: I.home }]
+          if (u.documents)
+            list.push({ id: 'docs', name: 'Documents', path: u.documents, icon: I.documents })
+          if (u.downloads)
+            list.push({ id: 'downloads', name: 'Downloads', path: u.downloads, icon: I.downloads })
+          if (u.music) list.push({ id: 'music', name: 'Music', path: u.music, icon: I.music })
+          if (u.pictures)
+            list.push({ id: 'pictures', name: 'Pictures', path: u.pictures, icon: I.pictures })
+          if (u.videos) list.push({ id: 'videos', name: 'Videos', path: u.videos, icon: I.videos })
+          if (u.trash) list.push({ id: 'trash', name: 'Trash', path: u.trash, icon: I.trash })
 
           setPlaces(list)
         }
@@ -1137,7 +1069,7 @@ const Sidebar: Component = () => {
                   }
                   class="w-7 h-7 rounded-md flex items-center justify-center text-white/55 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
                 >
-                  <PanelLeftIcon class="w-[16px] h-[16px]" />
+                  <I.panel class="w-[16px] h-[16px]" />
                 </button>
 
                 {/* SettingsButton (Up top beside SidebarToggle) */}
@@ -1152,7 +1084,7 @@ const Sidebar: Component = () => {
                       : 'text-white/55 hover:text-white hover:bg-white/[0.06]'
                   }`}
                 >
-                  <Cog6ToothIcon class="w-[16px] h-[16px]" />
+                  <I.settings class="w-[16px] h-[16px]" />
                 </button>
               </div>
 
@@ -1205,7 +1137,7 @@ const Sidebar: Component = () => {
                 onClick={handleNewAction}
                 class="w-full flex items-center gap-2 px-1.5 h-7 rounded-md text-[13px] font-normal text-white/80 hover:bg-white/[0.06] transition-colors cursor-pointer"
               >
-                <PlusIcon class="w-3.5 h-3.5 text-white/60 shrink-0" />
+                <I.newNote class="w-3.5 h-3.5 text-white/60 shrink-0" />
                 <span>
                   {activeSidebarView() === 'chat'
                     ? 'New Chat'
@@ -1225,7 +1157,7 @@ const Sidebar: Component = () => {
                     : 'text-white/80 hover:bg-white/[0.06]'
                 }`}
               >
-                <CircleDotIcon class="w-3.5 h-3.5 text-white/60 shrink-0" />
+                <I.folder class="w-3.5 h-3.5 text-white/60 shrink-0" />
                 <ScopeCarousel />
                 <KbdHint combo="Mod+I" />
               </button>
@@ -1241,14 +1173,14 @@ const Sidebar: Component = () => {
                     }}
                     class="w-full flex items-center gap-2 px-1.5 h-7 rounded-md text-[13px] font-normal text-white/80 hover:bg-white/[0.06] transition-colors cursor-pointer"
                   >
-                    <SearchIcon class="w-3.5 h-3.5 text-white/60 shrink-0" />
+                    <I.search class="w-3.5 h-3.5 text-white/60 shrink-0" />
                     <span>Search</span>
                     <KbdHint combo="Mod+F" />
                   </button>
                 }
               >
                 <div class="group flex h-7 w-full items-center gap-2 border border-transparent px-1.5 text-[13px]">
-                  <SearchIcon class="w-3.5 h-3.5 text-white/60 shrink-0" />
+                  <I.search class="w-3.5 h-3.5 text-white/60 shrink-0" />
                   <input
                     ref={(el) => {
                       searchInputRef = el
@@ -1370,7 +1302,9 @@ const Sidebar: Component = () => {
                       title="Places"
                       onClick={() => setExplorerMode('places')}
                       class={`relative z-10 w-6 h-5 flex items-center justify-center rounded-[5px] transition-colors cursor-pointer ${
-                        explorerMode() === 'places' ? 'text-white' : 'text-white/40 hover:text-white/75'
+                        explorerMode() === 'places'
+                          ? 'text-white'
+                          : 'text-white/40 hover:text-white/75'
                       }`}
                     >
                       <PlacesGlyph class="w-3 h-3" />
@@ -1382,7 +1316,9 @@ const Sidebar: Component = () => {
                       title="File tree"
                       onClick={() => setExplorerMode('tree')}
                       class={`relative z-10 w-6 h-5 flex items-center justify-center rounded-[5px] transition-colors cursor-pointer ${
-                        explorerMode() === 'tree' ? 'text-white' : 'text-white/40 hover:text-white/75'
+                        explorerMode() === 'tree'
+                          ? 'text-white'
+                          : 'text-white/40 hover:text-white/75'
                       }`}
                     >
                       <TreeGlyph class="w-3 h-3" />
@@ -1427,7 +1363,7 @@ const Sidebar: Component = () => {
                       onClick={() => setPlacesOpen(!placesOpen())}
                     >
                       <span>Places</span>
-                      <SolarTuningLinear class="w-3.5 h-3.5 text-white/30 hover:text-white/70 transition-colors" />
+                      <I.tuning class="w-3.5 h-3.5 text-white/30 hover:text-white/70 transition-colors" />
                     </div>
 
                     <Show when={placesOpen()}>
@@ -1487,7 +1423,7 @@ const Sidebar: Component = () => {
                               mountingDriveId={mountingDriveId}
                               mountError={mountError}
                               openContextMenu={openContextMenu}
-                              icon={SolarHardDriveLinear}
+                              icon={I.drive}
                             />
                           )}
                         </For>
@@ -1519,7 +1455,7 @@ const Sidebar: Component = () => {
                                 mountingDriveId={mountingDriveId}
                                 mountError={mountError}
                                 openContextMenu={openContextMenu}
-                                icon={UsbDriveIcon}
+                                icon={I.usb}
                               />
                             )}
                           </For>
@@ -1592,7 +1528,7 @@ const Sidebar: Component = () => {
                 <div class="px-1 flex flex-col gap-2">
                   <Show when={filteredSessions().length === 0}>
                     <div class="py-8 px-4 text-center flex flex-col items-center gap-2 text-white/35 select-none">
-                      <SolarGhostBold class="w-7 h-7 opacity-40 mb-1 text-[var(--accent)]" />
+                      <I.ghost class="w-7 h-7 opacity-40 mb-1 text-[var(--accent)]" />
                       <p class="text-[13px] font-medium text-white/60">No conversations yet</p>
                       <p class="text-[11.5px] leading-relaxed max-w-[200px]">
                         Start a new conversation to brainstorm, draft, or code.
@@ -1604,7 +1540,7 @@ const Sidebar: Component = () => {
                         onClick={handleNewChatGlobal}
                         class="mt-2 gap-1.5"
                       >
-                        <PlusIcon class="w-3.5 h-3.5" />
+                        <I.newNote class="w-3.5 h-3.5" />
                         <span>Start Chat</span>
                       </DitherButton>
                     </div>
@@ -1712,7 +1648,7 @@ const Sidebar: Component = () => {
                                   title={session.fileRefs!.join(', ')}
                                   class="flex items-center gap-1 text-[10.5px] font-mono text-white/30 shrink-0 max-w-[90px]"
                                 >
-                                  <SolarFileTextLinear class="w-2.5 h-2.5 shrink-0 opacity-70" />
+                                  <I.note class="w-2.5 h-2.5 shrink-0 opacity-70" />
                                   <span class="truncate">{session.fileRefs![0]}</span>
                                 </span>
                               </Show>

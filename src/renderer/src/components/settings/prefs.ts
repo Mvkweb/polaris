@@ -13,6 +13,8 @@ export interface Prefs {
   // appearance
   syntaxFromWallpaper: boolean
   iconPack: 'pierre' | 'jetbrains'
+  /** interface (chrome) icon set */
+  uiIcons: 'solar' | 'dinkie'
   reduceMotion: boolean
   ditherDensity: number
   // editor
@@ -41,6 +43,7 @@ export const PREF_DEFAULTS: Prefs = {
   confirmTrash: true,
   syntaxFromWallpaper: true,
   iconPack: 'pierre',
+  uiIcons: 'solar',
   reduceMotion: false,
   ditherDensity: 50,
   fontSize: 13,

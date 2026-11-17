@@ -11,6 +11,7 @@ import { DitherButton } from '../dithercn/dither-button'
 import { PAGES } from './schema'
 import { resetPrefs } from './prefs'
 import { SettingTile } from './SettingTile'
+import { UiIcon } from '../ui/AppIcons'
 import './settings.css'
 
 /** Contour palette from the live accent: near-black paper, two quiet ink steps. */
@@ -83,7 +84,7 @@ export const SettingsModal: Component = () => {
                     class="settings-nav h-10 px-3 rounded-[13px] flex items-center gap-3 text-[13.5px]"
                     classList={{ 'is-active': page().id === p.id }}
                   >
-                    {p.icon()}
+                    <UiIcon name={p.icon} size={20} />
                     <span>{p.label}</span>
                   </button>
                 )}
@@ -132,7 +133,9 @@ export const SettingsModal: Component = () => {
                     <For each={p.hero.chips()}>{(c) => <span class="settings-chip">{c}</span>}</For>
                   </div>
 
-                  <div class="settings-hero-glyph mx-auto my-auto">{p.icon()}</div>
+                  <div class="settings-hero-glyph mx-auto my-auto">
+                    <UiIcon name={p.icon} size={44} />
+                  </div>
 
                   <div class="text-[12.5px] text-white/55">{p.hero.eyebrow()}</div>
                   <h2 class="mt-0.5 text-[40px] leading-[1.05] font-semibold tracking-[-0.02em] text-white">

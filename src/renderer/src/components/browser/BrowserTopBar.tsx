@@ -23,7 +23,7 @@ import {
   inspectorResizing,
   INSPECTOR_TRANSITION
 } from '../../store'
-import { SolarInfoCircleLinear } from '../ui/SolarIcons'
+import { I } from '../ui/AppIcons'
 import { EditorPill } from './EditorPill'
 
 /* ── Monodrive Exact Hugeicons SVGs ── */
@@ -283,7 +283,7 @@ export const BrowserTopBar: Component = () => {
           aria-label="Toggle details"
           aria-pressed={isInspectorOpen()}
         >
-          <SolarInfoCircleLinear class="w-3.5 h-3.5" />
+          <I.info class="w-3.5 h-3.5" />
         </button>
 
         <label

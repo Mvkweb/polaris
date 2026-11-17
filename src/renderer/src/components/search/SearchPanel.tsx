@@ -18,7 +18,7 @@ import {
   openFileAtLocation
 } from '../../store'
 import type { TextMatch, TextSearchResult } from '../../types'
-import { SolarMagniferLinear } from '../ui/SolarIcons'
+import { I } from '../ui/AppIcons'
 
 interface FileGroup {
   file: string
@@ -206,7 +206,7 @@ export const SearchPanel: Component = () => {
       {/* Search Input Box */}
       <div class="flex flex-col gap-1.5 px-2 pt-1 pb-2">
         <div class="relative flex items-center">
-          <SolarMagniferLinear class="absolute left-2.5 w-3.5 h-3.5 text-white/35 pointer-events-none" />
+          <I.search class="absolute left-2.5 w-3.5 h-3.5 text-white/35 pointer-events-none" />
           <input
             ref={(el) => (searchInputRef = el)}
             type="text"

@@ -23,6 +23,8 @@ import { setTasksPanelOpen, uploadServices } from '../../tasks'
 import { prefs, setPref, type Prefs } from './prefs'
 import { KeyboardPage } from './pages/KeyboardPage'
 import { AboutPanel } from './AboutPanel'
+import { IconSetPicker } from './IconSetPicker'
+import type { IconName } from '../ui/AppIcons'
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -72,7 +74,7 @@ export interface HeroAction {
 export interface PageDef {
   id: SettingsPage
   label: string
-  icon: () => JSX.Element
+  icon: IconName
   hero: {
     eyebrow: () => string
     title: string
@@ -99,35 +101,20 @@ const opts =
   () =>
     pairs.map(([value, label]) => ({ value, label }))
 
-const Icon = (d: string) => () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    stroke-width="1.7"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    class="w-[18px] h-[18px]"
-    aria-hidden="true"
-  >
-    <path d={d} />
-  </svg>
-)
-
 // ── Pages ───────────────────────────────────────────────────────────────────
 
 export const PAGES: PageDef[] = [
   {
     id: 'General',
     label: 'General',
-    icon: Icon('M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4'),
+    icon: 'settings',
     hero: {
       eyebrow: () => 'Polaris',
       title: 'General',
       blurb: 'How Polaris starts, what it opens with, and which tools it hands off to.',
       chips: () => [
         prefs.startupFolder === 'last' ? 'Reopens last folder' : `Starts in ${prefs.startupFolder}`,
-        `${defaultTerminal()} terminal`,
+        defaultTerminal() === 'Terminal' ? 'Built-in terminal' : `Opens ${defaultTerminal()}`,
         `${updateTrack()} channel`
       ]
     },
@@ -188,9 +175,7 @@ export const PAGES: PageDef[] = [
   {
     id: 'Appearance',
     label: 'Appearance',
-    icon: Icon(
-      'M12 3a9 9 0 1 0 0 18c1.1 0 1.5-.8 1.5-1.6 0-1.2-1-1.6-1-2.6 0-.9.7-1.6 1.7-1.6H16a5 5 0 0 0 5-5c0-4-4-7.2-9-7.2ZM7.5 11.5h0M10 7.5h0M14.5 7.5h0'
-    ),
+    icon: 'palette',
     hero: {
       eyebrow: () => (wallpaperSync() ? 'Synced with wallpaper' : 'Manual accent'),
       title: 'Appearance',
@@ -198,7 +183,7 @@ export const PAGES: PageDef[] = [
       chips: () => [
         wallpaperSync() ? 'Wallpaper palette' : 'Custom accent',
         prefs.syntaxFromWallpaper ? 'Syntax follows wallpaper' : 'Classic syntax',
-        prefs.iconPack === 'pierre' ? 'Pierre icons' : 'JetBrains icons'
+        prefs.uiIcons === 'dinkie' ? 'Dinkie pixel icons' : 'Solar icons'
       ],
       primary: () => ({
         label: wallpaperSync() ? 'Use my accent' : 'Sync with wallpaper',
@@ -243,6 +228,14 @@ export const PAGES: PageDef[] = [
         title: 'Texture & motion',
         tiles: [
           {
+            kind: 'custom',
+            id: 'ui-icons',
+            title: 'Interface icons',
+            live: true,
+            render: () => <IconSetPicker />,
+            wide: true
+          },
+          {
             kind: 'choice',
             id: 'icons',
             title: 'File icons',
@@ -272,12 +265,12 @@ export const PAGES: PageDef[] = [
         ]
       }
     ],
-    prefKeys: ['syntaxFromWallpaper', 'iconPack', 'reduceMotion', 'ditherDensity']
+    prefKeys: ['syntaxFromWallpaper', 'iconPack', 'uiIcons', 'reduceMotion', 'ditherDensity']
   },
   {
     id: 'Editor',
     label: 'Editor',
-    icon: Icon('m8 8-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14'),
+    icon: 'code',
     hero: {
       eyebrow: () => 'CodeMirror · Zed-style',
       title: 'Editor',
@@ -367,9 +360,7 @@ export const PAGES: PageDef[] = [
   {
     id: 'Files',
     label: 'Files',
-    icon: Icon(
-      'M3 7.5A2.5 2.5 0 0 1 5.5 5H10l2 2h6.5A2.5 2.5 0 0 1 21 9.5v7a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5Z'
-    ),
+    icon: 'folder',
     hero: {
       eyebrow: () => (explorerMode() === 'tree' ? 'Tree sidebar' : 'Places sidebar'),
       title: 'Files',
@@ -438,9 +429,7 @@ export const PAGES: PageDef[] = [
   {
     id: 'Media',
     label: 'Media',
-    icon: Icon(
-      'M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5ZM4 15l4.5-4.5L13 15m-1-1 2.5-2.5L20 17M15.5 8.5h0'
-    ),
+    icon: 'media',
     hero: {
       eyebrow: () => 'Viewer · Studio',
       title: 'Media',
@@ -502,9 +491,7 @@ export const PAGES: PageDef[] = [
   {
     id: 'Uploads',
     label: 'Uploads',
-    icon: Icon(
-      'M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 8.5a4 4 0 0 1-.5 9.5M12 12v8m-3-5 3-3 3 3'
-    ),
+    icon: 'upload',
     hero: {
       eyebrow: () => 'Upload to…',
       title: 'Uploads',
@@ -572,9 +559,7 @@ export const PAGES: PageDef[] = [
   {
     id: 'Keyboard',
     label: 'Keyboard',
-    icon: Icon(
-      'M3.5 7.5A2 2 0 0 1 5.5 5.5h13a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2ZM7 9.5h0M10 9.5h0M13 9.5h0M16 9.5h0M8 15h8'
-    ),
+    icon: 'keyboard',
     hero: {
       eyebrow: () => 'Shortcuts',
       title: 'Keyboard',
@@ -594,7 +579,7 @@ export const PAGES: PageDef[] = [
   {
     id: 'About',
     label: 'About',
-    icon: Icon('M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 16v-4.5M12 8h0'),
+    icon: 'info',
     hero: {
       eyebrow: () => 'Polaris',
       title: 'About',

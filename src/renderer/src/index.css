@@ -408,3 +408,9 @@ textarea {
 .editor-pill {
   white-space: nowrap;
 }
+
+/* Dinkie (pixel) interface icons: whole-pixel scaling only */
+.ui-icon-pixel {
+  flex-shrink: 0;
+  image-rendering: pixelated;
+}

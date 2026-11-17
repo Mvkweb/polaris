@@ -1,4 +1,5 @@
 import { Show, type Component } from 'solid-js'
+import { I } from '../ui/AppIcons'
 import { activeTasks, overallProgress, setTasksPanelOpen, tasksPanelOpen } from '../../tasks'
 
 const R = 6
@@ -14,22 +15,7 @@ export const TasksButton: Component = () => (
       tasksPanelOpen() ? 'text-white' : 'text-white/55'
     }`}
   >
-    <Show
-      when={overallProgress() !== null}
-      fallback={
-        <svg
-          viewBox="0 0 16 16"
-          class="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          aria-hidden="true"
-        >
-          <path d="M3 4.5h10M3 8h10M3 11.5h6" />
-        </svg>
-      }
-    >
+    <Show when={overallProgress() !== null} fallback={<I.tasks class="w-4 h-4" />}>
       <svg
         viewBox="0 0 16 16"
         class="w-4 h-4 -rotate-90"

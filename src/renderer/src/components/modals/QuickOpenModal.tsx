@@ -21,7 +21,7 @@ import {
   workspaceRoot
 } from '../../store'
 import type { SearchResult } from '../../types'
-import { SolarMagniferLinear } from '../ui/SolarIcons'
+import { I } from '../ui/AppIcons'
 import { FileIcon } from '../file-tree/FileIcon'
 
 /* ─────────────────────────── Constants ─────────────────────────── */
@@ -118,19 +118,6 @@ const tabsAsResults = (): SearchResult[] =>
 
 /* ─────────────────────────── Small components ─────────────────────────── */
 
-const SolarFileSearchLinear: Component<{ class?: string }> = (props) => (
-  <svg viewBox="0 0 24 24" fill="none" class={props.class ?? 'w-5 h-5'} aria-hidden="true">
-    <path
-      d="M14 2.5H8C5.79086 2.5 4 4.29086 4 6.5V17.5C4 19.7091 5.79086 21.5 8 21.5H11.5"
-      stroke="currentColor"
-      stroke-width="1.6"
-      stroke-linecap="round"
-    />
-    <path d="M8 8H13M8 12H11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-    <circle cx="16.5" cy="16.5" r="3.2" stroke="currentColor" stroke-width="1.6" />
-    <path d="M19 19L21 21" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
-  </svg>
-)
 
 const ArrowIcon: Component<{ dir: 'up' | 'down' }> = (props) => (
   <svg
@@ -539,7 +526,7 @@ export const QuickOpenModal: Component = () => {
         >
           {/* Search input with gliding caret */}
           <div class="relative flex items-center gap-3 px-4 pt-3.5 pb-2">
-            <SolarMagniferLinear class="h-[18px] w-[18px] shrink-0 text-white/45" />
+            <I.search class="h-[18px] w-[18px] shrink-0 text-white/45" />
             <div class="relative flex min-w-0 flex-1 items-center">
               <input
                 ref={(el) => (inputRef = el)}
@@ -603,7 +590,7 @@ export const QuickOpenModal: Component = () => {
                 when={results().length > 0}
                 fallback={
                   <div class="flex flex-col items-center justify-center gap-2.5 py-12 text-center">
-                    <SolarFileSearchLinear class="h-7 w-7 text-white/25" />
+                    <I.search class="w-7 h-7 text-white/25" />
                     <span class="text-[12.5px] text-white/35">
                       {query().trim()
                         ? 'No matching files'
