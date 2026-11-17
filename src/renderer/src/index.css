@@ -352,8 +352,11 @@ textarea {
 }
 
 /* ── Files ↔ editor view swap ────────────────────────────────────────────── */
+/* `backwards`, not `both`: once the slide ends nothing (no translate) stays on
+   the wrapper. A lingering transform/translate makes it the containing block
+   for position:fixed descendants — that offset the folder marquee selection. */
 .view-swap {
-  animation: view-swap-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: view-swap-in 260ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 .view-swap.is-editor {
   animation-name: view-swap-in-editor;
