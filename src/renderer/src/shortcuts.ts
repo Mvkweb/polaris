@@ -82,6 +82,13 @@ export const DEFAULT_SHORTCUTS: ShortcutItem[] = [
     keys: ['Mod', 'E']
   },
   {
+    id: 'edit_path',
+    title: 'Edit Location',
+    description: 'Type or paste a path; Tab completes folders',
+    group: 'General & Navigation',
+    keys: ['Mod', 'L']
+  },
+  {
     id: 'settings',
     title: 'Preferences / Settings',
     description: 'Open or close the settings view',

@@ -441,3 +441,158 @@ textarea {
 .sort-menu {
   transform-origin: top right;
 }
+
+/* ── Location bar: pills melt into an editable path ───────────────────── */
+.path-morph {
+  display: inline-flex;
+  overflow: hidden;
+  border-radius: 999px;
+  transition: width 250ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.path-morph.is-editing {
+  border-radius: 10px;
+}
+.path-swap {
+  flex-shrink: 0;
+  transition:
+    transform 140ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 140ms ease-out,
+    opacity 140ms ease-out;
+}
+.path-swap.is-exit {
+  transition-duration: 90ms;
+}
+.path-swap.is-exit {
+  transform: translateY(-4px);
+  filter: blur(2px);
+  opacity: 0;
+}
+.path-swap.is-enter-start {
+  transform: translateY(4px);
+  filter: blur(2px);
+  opacity: 0;
+  transition: none;
+}
+/* The field sits on the melted tab: no pill of its own, just text */
+.path-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  width: clamp(220px, 42vw, 680px);
+  padding: 0 6px 0 8px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: transparent;
+  transition: background-color 200ms ease;
+}
+.path-field:focus-within {
+  background: rgb(255 255 255 / 0.03);
+}
+.path-input {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  font-size: 13px;
+  color: #fff;
+  caret-color: var(--accent, #4da3f5);
+}
+.path-input::selection {
+  background: color-mix(in oklab, var(--accent, #4da3f5) 38%, transparent);
+}
+.path-hint {
+  position: relative;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: rgb(255 255 255 / 0.4);
+  background: rgb(255 255 255 / 0.06);
+}
+.path-field-error {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  clip-path: inset(0 100% 0 0);
+  transition:
+    opacity 250ms cubic-bezier(0.22, 1, 0.36, 1),
+    clip-path 350ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.path-field.is-error .path-field-error {
+  opacity: 0.45;
+  clip-path: inset(0 0 0 0);
+}
+.path-field.is-error {
+  animation: kbd-shake-recipe 280ms both;
+}
+.path-menu {
+  transform-origin: top left;
+  background: #0f0f10 !important;
+  backdrop-filter: none !important;
+  box-shadow: 0 14px 30px -12px rgb(0 0 0 / 0.7) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .path-morph,
+  .path-swap,
+  .path-field-error {
+    transition: none !important;
+  }
+}
+
+/* Location tab: the canvas' top-left accent glow, continued in canvas
+   coordinates (centre = canvas top-left = this tab's bottom-left corner), so
+   the melted tab and its fillet are the same colour as the canvas below. */
+.location-tab {
+  --cw: 1200px;
+  --ch: 800px;
+  --tw: 600px;
+}
+.location-tab-fill {
+  background:
+    radial-gradient(
+      calc(var(--cw) * 1.2) calc(var(--ch) * 0.7) at 0 100%,
+      color-mix(in oklab, var(--accent) 7%, transparent) 0%,
+      transparent 60%
+    ),
+    #0a0a0a;
+  /* closing: sink, and fade out the last rows so no hairline lingers */
+  clip-path: inset(100% 0 0 0 round 16px 16px 0 0);
+  opacity: 0;
+  transition:
+    clip-path 220ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 120ms ease-in 110ms;
+}
+.location-tab.is-open .location-tab-fill {
+  clip-path: inset(0 0 0 0 round 16px 16px 0 0);
+  opacity: 1;
+  transition:
+    clip-path 260ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 80ms ease-out;
+}
+.location-tab-fillet {
+  /* same glow, centred one tab-width to the left so it lines up exactly */
+  background:
+    radial-gradient(
+      calc(var(--cw) * 1.2) calc(var(--ch) * 0.7) at calc(-1 * var(--tw)) 100%,
+      color-mix(in oklab, var(--accent) 7%, transparent) 0%,
+      transparent 60%
+    ),
+    #0a0a0a;
+  -webkit-mask-image: radial-gradient(circle at 100% 0, transparent 15.5px, #000 16px);
+  mask-image: radial-gradient(circle at 100% 0, transparent 15.5px, #000 16px);
+  opacity: 0;
+  transform: scale(0);
+  transition:
+    opacity 100ms ease-in,
+    transform 140ms ease-in;
+}
+.location-tab.is-open .location-tab-fillet {
+  opacity: 1;
+  transform: scale(1);
+  transition:
+    opacity 140ms ease-out 90ms,
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1) 90ms;
+}

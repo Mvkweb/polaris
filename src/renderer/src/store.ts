@@ -457,6 +457,8 @@ export const [openFiles, setOpenFiles] = createSignal<string[]>([])
 export const [navHistory, setNavHistory] = createSignal<string[]>([])
 export const [historyIndex, setHistoryIndex] = createSignal<number>(-1)
 export const [selectedGridEntry, setSelectedGridEntry] = createSignal<string | null>(null)
+/** Ask the folder view to select (and scroll to) this path once it's listed. */
+export const [revealRequest, setRevealRequest] = createSignal<string | null>(null)
 export const [browserSearchFilter, setBrowserSearchFilter] = createSignal<string>('')
 export const [browserFilterFocused, setBrowserFilterFocused] = createSignal(false)
 /** The filter tab "melts" into the canvas while focused or holding a query. */
@@ -514,6 +516,13 @@ export const switchTab = (id: string): void => {
 // navigation, so any folder navigation reveals the files view: what you click
 // is what you see. The editor keeps its tabs and comes back in one click
 // (editor pill in the top bar, or Mod+E).
+
+/** Location bar: the folder pills melt into an editable path field. */
+export const [pathEditing, setPathEditing] = createSignal(false)
+export const startPathEdit = (): void => {
+  revealFiles()
+  setPathEditing(true)
+}
 
 /** Show the folder view if the editor is covering it. */
 export const revealFiles = (): void => {

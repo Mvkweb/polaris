@@ -1,5 +1,5 @@
 import { tasksVisibleWidth } from '../../tasks'
-import { Component, For, Show, createMemo, onCleanup } from 'solid-js'
+import { Component, For, Show, createMemo, onCleanup, onMount } from 'solid-js'
 import {
   canNavigateBack,
   canNavigateForward,
@@ -12,6 +12,9 @@ import {
   closeBrowserTab,
   switchTab,
   revealFiles,
+  startPathEdit,
+  pathEditing,
+  currentView,
   workspaceRoot,
   browserSearchFilter,
   setBrowserSearchFilter,
@@ -26,6 +29,7 @@ import {
 import { I } from '../ui/AppIcons'
 import { EditorPill } from './EditorPill'
 import { SortControl } from './SortControl'
+import { PathBar } from './PathBar'
 
 /* ── Monodrive Exact Hugeicons SVGs ── */
 const ChevronLeftIcon: Component<{ class?: string }> = (props) => (
@@ -124,13 +128,47 @@ export const BrowserTopBar: Component = () => {
     filterInputRef?.focus()
     filterInputRef?.select()
   }
+  // The location tab paints the canvas' corner glow in canvas coordinates, so
+  // it needs the canvas size and its own width as CSS variables.
+  let locationTab: HTMLDivElement | undefined
+  onMount(() => {
+    const canvas = document.querySelector<HTMLElement>('.polaris-canvas')
+    if (!canvas || !locationTab) return
+    const sync = (): void => {
+      locationTab!.style.setProperty('--cw', `${canvas.offsetWidth}px`)
+      locationTab!.style.setProperty('--ch', `${canvas.offsetHeight}px`)
+      locationTab!.style.setProperty('--tw', `${locationTab!.offsetWidth}px`)
+    }
+    const ro = new ResizeObserver(sync)
+    ro.observe(canvas)
+    ro.observe(locationTab)
+    sync()
+    onCleanup(() => ro.disconnect())
+  })
+
   window.addEventListener('keydown', focusFilterOnSlash)
   onCleanup(() => window.removeEventListener('keydown', focusFilterOnSlash))
 
   return (
     <header class="relative z-20 shrink-0 h-9 pl-2 mb-2 flex items-center justify-between bg-transparent select-none">
-      {/* ── Left: Navigation History Chevrons & Tab Pills ── */}
-      <div class="flex items-center gap-1.5">
+      {/* ── Left: Navigation History Chevrons & Tab Pills ──
+           Mirrors the filter tab: while the location is being edited, a
+           canvas-coloured fill rises out of the canvas below, a concave fillet
+           blooms on its right and the canvas' top-left corner squares off, so
+           the path field reads as melted into the canvas. Same position at rest. */}
+      <div
+        ref={locationTab}
+        class="location-tab relative isolate self-end shrink-0 flex items-start gap-1.5 h-[45px] -mb-[9px] pt-1 -ml-2 pl-2 pr-2"
+        classList={{ 'is-open': pathEditing() }}
+      >
+        <span
+          aria-hidden="true"
+          class="location-tab-fill pointer-events-none absolute inset-0 -z-10 rounded-t-[16px]"
+        />
+        <span
+          aria-hidden="true"
+          class="location-tab-fillet pointer-events-none absolute -right-4 bottom-0 w-4 h-4 origin-bottom-left"
+        />
         {/* Back & Forward Chevrons */}
         <div class="flex items-center gap-0.5 mr-1">
           <button
@@ -164,64 +202,72 @@ export const BrowserTopBar: Component = () => {
 
         {/* Tabs / Pills (Sitting directly on window base above canvas) */}
         <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-          <Show
-            when={hasMultipleTabs()}
-            fallback={
-              /* Single Tab View: Shows Parent Pill + Active Pill */
-              <>
-                <Show when={parentFolder()}>
-                  {(parent) => (
-                    <button
-                      type="button"
-                      onClick={() => navigateTo(parent().path)}
-                      class="px-2.5 py-1 rounded-full text-[13px] font-medium text-white/45 hover:text-white/80 hover:bg-white/[0.05] transition-all cursor-pointer"
-                      title={`Up to ${parent().name}`}
-                    >
-                      {parent().name}
-                    </button>
-                  )}
-                </Show>
+          <PathBar>
+            <Show
+              when={hasMultipleTabs()}
+              fallback={
+                /* Single Tab View: Shows Parent Pill + Active Pill */
+                <>
+                  <Show when={parentFolder()}>
+                    {(parent) => (
+                      <button
+                        type="button"
+                        onClick={() => navigateTo(parent().path)}
+                        class="px-2.5 py-1 rounded-full text-[13px] font-medium text-white/45 hover:text-white/80 hover:bg-white/[0.05] transition-all cursor-pointer"
+                        title={`Up to ${parent().name}`}
+                      >
+                        {parent().name}
+                      </button>
+                    )}
+                  </Show>
 
-                {/* Active Tab Pill */}
-                <button
-                  type="button"
-                  onClick={revealFiles}
-                  title="Show this folder"
-                  class="px-3.5 py-1 rounded-full bg-white/[0.10] text-white text-[13px] font-medium shadow-sm flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span>{browserTabs()[0]?.name || 'folder'}</span>
-                </button>
-              </>
-            }
-          >
-            {/* Multi-Tab View: Shows all open tabs */}
-            <For each={browserTabs()}>
-              {(tab) => {
-                const isActive = () => activeTabId() === tab.id
-
-                return (
-                  <div
-                    onClick={() => switchTab(tab.id)}
-                    class={`group px-3 py-1 rounded-full text-[13px] font-medium transition-all cursor-pointer flex items-center gap-2 ${
-                      isActive()
-                        ? 'bg-white/[0.10] text-white shadow-sm'
-                        : 'text-white/45 hover:bg-white/[0.04] hover:text-white/80'
-                    }`}
+                  {/* Active Tab Pill */}
+                  <button
+                    type="button"
+                    onClick={() => (currentView() === 'editor' ? revealFiles() : startPathEdit())}
+                    title={
+                      currentView() === 'editor' ? 'Show this folder' : 'Edit location (Ctrl+L)'
+                    }
+                    class="px-3.5 py-1 rounded-full bg-white/[0.10] text-white text-[13px] font-medium shadow-sm flex items-center gap-1.5 cursor-pointer"
                   >
-                    <span>{tab.name}</span>
-                    <button
-                      type="button"
-                      onClick={(e) => closeBrowserTab(tab.id, e)}
-                      class="opacity-0 group-hover:opacity-60 hover:!opacity-100 text-[11px] text-white/60 hover:text-white transition-opacity leading-none"
-                      title="Close Tab"
+                    <span>{browserTabs()[0]?.name || 'folder'}</span>
+                  </button>
+                </>
+              }
+            >
+              {/* Multi-Tab View: Shows all open tabs */}
+              <For each={browserTabs()}>
+                {(tab) => {
+                  const isActive = () => activeTabId() === tab.id
+
+                  return (
+                    <div
+                      onClick={() =>
+                        isActive() && currentView() !== 'editor'
+                          ? startPathEdit()
+                          : switchTab(tab.id)
+                      }
+                      class={`group px-3 py-1 rounded-full text-[13px] font-medium transition-all cursor-pointer flex items-center gap-2 ${
+                        isActive()
+                          ? 'bg-white/[0.10] text-white shadow-sm'
+                          : 'text-white/45 hover:bg-white/[0.04] hover:text-white/80'
+                      }`}
                     >
-                      ×
-                    </button>
-                  </div>
-                )
-              }}
-            </For>
-          </Show>
+                      <span>{tab.name}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => closeBrowserTab(tab.id, e)}
+                        class="opacity-0 group-hover:opacity-60 hover:!opacity-100 text-[11px] text-white/60 hover:text-white transition-opacity leading-none"
+                        title="Close Tab"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )
+                }}
+              </For>
+            </Show>
+          </PathBar>
 
           {/* New Tab Button */}
           <button
@@ -256,7 +302,11 @@ export const BrowserTopBar: Component = () => {
             'clip-path': isFilterTabActive()
               ? 'inset(0 0 0 0 round 16px 16px 0 0)'
               : 'inset(100% 0 0 0 round 16px 16px 0 0)',
-            transition: `clip-path 320ms cubic-bezier(0.16, 1, 0.3, 1)`
+            opacity: isFilterTabActive() ? 1 : 0,
+            // closing: sink and fade the last rows so no hairline lingers
+            transition: isFilterTabActive()
+              ? 'clip-path 320ms cubic-bezier(0.16, 1, 0.3, 1), opacity 80ms ease-out'
+              : 'clip-path 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 120ms ease-in 110ms'
           }}
         />
         <span

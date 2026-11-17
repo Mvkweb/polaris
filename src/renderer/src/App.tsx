@@ -40,7 +40,9 @@ import {
   activeTabPath,
   selectedGridEntry,
   toggleEditorView,
-  setSort
+  setSort,
+  startPathEdit,
+  pathEditing
 } from './store'
 import { matchesShortcut } from './shortcuts'
 import { useThemeVariables, useWallpaperTheme } from './theme'
@@ -98,6 +100,7 @@ const handleGlobalKeyDown = (e: KeyboardEvent): void => {
     ['settings', toggleSettingsModal],
     // Not inside the terminal: shells use Ctrl+E (end of line).
     ['toggle_editor_view', () => !inTerminal && toggleEditorView()],
+    ['edit_path', startPathEdit],
     ['sort_name', () => setSort('name')],
     ['sort_modified', () => setSort('modified')],
     ['sort_size', () => setSort('size')],
@@ -215,7 +218,14 @@ const App: Component = () => {
             style={{
               // Square the corner under the filter tab while it's melted in
               'border-top-right-radius': isFilterTabActive() ? '0px' : '20px',
-              transition: 'border-top-right-radius 220ms cubic-bezier(0.16, 1, 0.3, 1)'
+              // …and the top-left one under the location field
+              'border-top-left-radius': pathEditing() ? '0px' : '20px',
+              // Square instantly on open; on close wait until the tab has sunk,
+              // so no sliver of background shows between tab and corner.
+              transition: [
+                `border-top-right-radius 200ms cubic-bezier(0.16, 1, 0.3, 1) ${isFilterTabActive() ? 0 : 240}ms`,
+                `border-top-left-radius 200ms cubic-bezier(0.16, 1, 0.3, 1) ${pathEditing() ? 0 : 240}ms`
+              ].join(', ')
             }}
           >
             {/* Files ↔ editor: each side slides in from where it "lives" */}

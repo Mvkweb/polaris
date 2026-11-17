@@ -15,6 +15,8 @@ import {
   navigateBack,
   selectedGridEntry,
   setSelectedGridEntry,
+  revealRequest,
+  setRevealRequest,
   explorerRefreshTrigger,
   browserSearchFilter,
   showHiddenFiles,
@@ -28,11 +30,7 @@ import {
   openPropertiesModal,
   openFileInEditor
 } from '../../store'
-import {
-  MonodriveFolderIcon,
-  MonodriveFileIcon,
-  ImageThumbnail
-} from './MonodriveIcons'
+import { MonodriveFolderIcon, MonodriveFileIcon, ImageThumbnail } from './MonodriveIcons'
 import type { FsEntry, SystemDrive } from '../../types'
 import emberLogo from '../../assets/ember-logo.svg'
 
@@ -178,6 +176,23 @@ export const FolderView: Component = () => {
 
       return desc ? -cmp : cmp
     })
+  })
+
+  // A typed/pasted file path asks to be revealed: select + scroll to it as soon
+  // as it shows up in the listing (it may still be loading after navigation).
+  createEffect(() => {
+    const want = revealRequest()
+    if (!want || !filteredEntries().some((e) => e.path === want)) return
+    batch(() => {
+      setSelectedPaths(new Set([want]))
+      setSelectedGridEntry(want)
+      setRevealRequest(null)
+    })
+    requestAnimationFrame(() =>
+      document
+        .querySelector(`[data-grid-item][data-path="${CSS.escape(want)}"]`)
+        ?.scrollIntoView({ block: 'nearest' })
+    )
   })
 
   // Keep multi-selection limited to entries that still exist in the current view
@@ -334,9 +349,7 @@ export const FolderView: Component = () => {
       .map((el) => ({ path: el.dataset.path || '', rect: el.getBoundingClientRect() }))
       .filter(
         (item) =>
-          item.path !== '' &&
-          item.rect.bottom > viewport.top &&
-          item.rect.top < viewport.bottom
+          item.path !== '' && item.rect.bottom > viewport.top && item.rect.top < viewport.bottom
       )
 
     if (items.length === 0) return
@@ -542,13 +555,15 @@ export const FolderView: Component = () => {
         <Show
           when={filteredEntries().length > 0}
           fallback={
-            <Show
-              when={!isLoading()}
-              fallback={null}
-            >
+            <Show when={!isLoading()} fallback={null}>
               {/* Empty Folder State */}
               <div class="h-full flex flex-col items-center justify-center text-center p-6 select-none animate-[fadeIn_200ms_ease-out]">
-                <img src={emberLogo} alt="Ember" draggable={false} class="w-16 h-16 opacity-20 mb-3" />
+                <img
+                  src={emberLogo}
+                  alt="Ember"
+                  draggable={false}
+                  class="w-16 h-16 opacity-20 mb-3"
+                />
                 <span class="text-[14px] font-medium text-white/40">Empty Folder</span>
                 <span class="text-[12px] text-white/25 mt-1">
                   {browserSearchFilter()
@@ -600,9 +615,7 @@ export const FolderView: Component = () => {
                       })
                     }}
                     class={`group relative flex flex-col items-center pt-2 pb-2.5 px-1.5 rounded-xl transition-colors duration-100 cursor-pointer select-none outline-none ${
-                      isSelected()
-                        ? 'polaris-tile-selected'
-                        : 'hover:bg-white/[0.04]'
+                      isSelected() ? 'polaris-tile-selected' : 'hover:bg-white/[0.04]'
                     }`}
                   >
                     {/* Icon / Image Thumbnail Container */}
@@ -619,10 +632,7 @@ export const FolderView: Component = () => {
                           <Show
                             when={showThumbnails() && isImage()}
                             fallback={
-                              <MonodriveFileIcon
-                                name={entry.name}
-                                extension={entry.extension}
-                              />
+                              <MonodriveFileIcon name={entry.name} extension={entry.extension} />
                             }
                           >
                             <ImageThumbnail path={entry.path} name={entry.name} />
@@ -636,7 +646,9 @@ export const FolderView: Component = () => {
                     {/* Filename Label (Centered, 2-line clamp with ellipsis) */}
                     <span
                       class={`w-full text-center ${labelSizeClass()} leading-tight px-1 break-words line-clamp-2 transition-colors ${
-                        isSelected() ? 'text-white font-semibold' : 'text-white/80 group-hover:text-white'
+                        isSelected()
+                          ? 'text-white font-semibold'
+                          : 'text-white/80 group-hover:text-white'
                       }`}
                       title={entry.name}
                     >
@@ -662,9 +674,7 @@ export const FolderView: Component = () => {
           border: '1px solid color-mix(in srgb, var(--accent, #4da3f5) 72%, transparent)',
           'background-color': 'color-mix(in srgb, var(--accent, #4da3f5) 10%, transparent)',
           opacity: marqueeActive() && marqueeRect() ? '1' : '0',
-          transition: prefersReducedMotion
-            ? 'none'
-            : 'opacity 110ms cubic-bezier(0.2, 0, 0, 1)',
+          transition: prefersReducedMotion ? 'none' : 'opacity 110ms cubic-bezier(0.2, 0, 0, 1)',
           'will-change': 'transform, width, height, opacity'
         }}
       />
