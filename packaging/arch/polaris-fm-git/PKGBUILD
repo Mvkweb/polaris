@@ -13,10 +13,16 @@ arch=('x86_64' 'aarch64')
 url='https://github.com/Mvkweb/polaris'
 # No license chosen yet (private repo, all rights reserved).
 license=('LicenseRef-Proprietary')
+# electron44, git, util-linux (findmnt, lsblk) and which are run by the app,
+# so namcap can't see them; glibc, libgcc and libstdc++ are for node-pty's pty.node.
 depends=(
 	"$_electron"
+	'bash'
 	'git'
+	'glibc'
 	'hicolor-icon-theme'
+	'libgcc'
+	'libstdc++'
 	'util-linux'
 	'which'
 )
@@ -100,7 +106,7 @@ package() {
 	done
 	install -d "$app/node_modules/node-pty/build/Release"
 	cp -r node_modules/node-pty/lib "$app/node_modules/node-pty/"
-	find "$app/node_modules/node-pty/lib" -name '*.test.js' -delete
+	find "$app/node_modules/node-pty/lib" \( -name '*.test.js' -o -name '*.map' \) -delete
 	install -m644 node_modules/node-pty/package.json node_modules/node-pty/LICENSE "$app/node_modules/node-pty/"
 	install -m755 node_modules/node-pty/build/Release/pty.node "$app/node_modules/node-pty/build/Release/"
 
