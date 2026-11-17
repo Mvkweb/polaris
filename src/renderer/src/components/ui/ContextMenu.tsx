@@ -34,6 +34,13 @@ import type { ExternalEditor } from '../../types'
 import ghosttyIcon from '../../assets/icons/ghostty.png'
 import { uploadFiles, uploadServices } from '../../tasks'
 import { directionLabel } from '../browser/SortControl'
+import { protectedMount, type ProtectedReason } from '../../systemMounts'
+
+const lockLabel = (r: ProtectedReason): string => (r === 'home' ? 'Home drive' : 'System drive')
+const lockReason = (r: ProtectedReason): string =>
+  r === 'home'
+    ? 'Your home folder lives on this drive — unmounting it would end your session.'
+    : 'Linux runs from this drive — it can never be unmounted or ejected.'
 import {
   DitherDropdownMenu,
   DitherDropdownMenuContent,
@@ -75,6 +82,8 @@ export const ContextMenu: Component = () => {
   const target = createMemo(() => contextMenuState().target)
   const isDrive = createMemo(() => Boolean(target()?.isDrive))
   const drive = createMemo(() => target()?.drive)
+  /** System / home drives: Unmount and Eject are shown but can never be used. */
+  const driveLock = createMemo(() => protectedMount(drive()?.mountPoint))
   const isItem = createMemo(() => Boolean(target()?.path && target()?.name))
   const isDirectory = createMemo(() => Boolean(target()?.isDirectory))
   const targetPath = createMemo(() => target()?.path || workspaceRoot())
@@ -787,8 +796,14 @@ export const ContextMenu: Component = () => {
 
             <DitherDropdownMenuItem
               variant="dither"
-              onSelect={() => closeContextMenu()}
-              class="text-rose-400/90 group-hover:text-rose-300"
+              disabled={!!driveLock()}
+              onSelect={() => !driveLock() && closeContextMenu()}
+              class={
+                driveLock()
+                  ? 'opacity-40 cursor-not-allowed'
+                  : 'text-rose-400/90 group-hover:text-rose-300'
+              }
+              title={driveLock() ? lockReason(driveLock()) : undefined}
             >
               <svg
                 viewBox="0 0 24 24"
@@ -804,9 +819,18 @@ export const ContextMenu: Component = () => {
                 />
               </svg>
               <span>Unmount</span>
+              <Show when={driveLock()}>
+                <DitherDropdownMenuShortcut>{lockLabel(driveLock())}</DitherDropdownMenuShortcut>
+              </Show>
             </DitherDropdownMenuItem>
 
-            <DitherDropdownMenuItem variant="dither" onSelect={() => closeContextMenu()}>
+            <DitherDropdownMenuItem
+              variant="dither"
+              disabled={!!driveLock()}
+              onSelect={() => !driveLock() && closeContextMenu()}
+              class={driveLock() ? 'opacity-40 cursor-not-allowed' : undefined}
+              title={driveLock() ? lockReason(driveLock()) : undefined}
+            >
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -821,6 +845,9 @@ export const ContextMenu: Component = () => {
                 />
               </svg>
               <span>Eject & Power Off</span>
+              <Show when={driveLock()}>
+                <DitherDropdownMenuShortcut>{lockLabel(driveLock())}</DitherDropdownMenuShortcut>
+              </Show>
             </DitherDropdownMenuItem>
 
             <DitherDropdownMenuSeparator />
