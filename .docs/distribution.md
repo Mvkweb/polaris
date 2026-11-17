@@ -48,9 +48,25 @@ The variants `provide` `polaris-fm` and `conflict` with each other, never with
     No electron-builder is needed.
 - **`polaris-core`** is built with `zig` from `extra` (`zig>=0.17`), using
   `-Dcpu=baseline` so a binary built on one machine runs on any x86_64/aarch64.
-- **Clean builds:** `pkgctl build` (devtools) builds in a fresh chroot every
-  time, which catches missing `depends`/`makedepends` that happen to be
-  installed on the dev machine.
+- **Clean builds:** build in a fresh chroot every time. That catches missing
+  `depends`/`makedepends` that happen to be installed on the dev machine. On
+  CachyOS, give the chroot **its own package cache** (`-c`): the shared cache
+  holds CachyOS builds with the same filenames as Arch's, and those fail Arch's
+  signature check.
+  ```bash
+  # once
+  sudo mkdir -p /var/lib/archbuild/polaris-test
+  sudo mkdir -p /var/lib/archbuild/polaris-test/pkgcache
+  sudo mkarchroot -c /var/lib/archbuild/polaris-test/pkgcache \
+    -C /usr/share/devtools/pacman.conf.d/extra.conf \
+    -M /usr/share/devtools/makepkg.conf.d/x86_64.conf \
+    /var/lib/archbuild/polaris-test/root base-devel
+  # every build, from packaging/arch/polaris-fm-git
+  sudo makechrootpkg -c -r /var/lib/archbuild/polaris-test
+  ```
+  To test a branch before it's on `main`, point `source=` at
+  `git+file:///path/to/polaris#branch=<branch>` in a scratch copy of the
+  PKGBUILD.
 - **Lint before every push:**
   ```bash
   shellcheck --shell=bash --exclude=SC2034,SC2154,SC2164 PKGBUILD
@@ -63,15 +79,17 @@ The variants `provide` `polaris-fm` and `conflict` with each other, never with
 
 - **Access:** testers (and Evertiro) are GitHub collaborators and authenticate
   with their own SSH key. There are no tokens anywhere.
-- **Install:**
-  ```bash
-  git clone git@github.com:Mvkweb/polaris.git
-  cd polaris/packaging/arch/polaris-fm-git && makepkg -si
-  ```
-  To update, run `git pull && makepkg -si` again, or later use the in-app
-  Update button, which runs this in Polaris's terminal.
-- **Remove:** `sudo pacman -R polaris-fm-git`. pacman owns every file;
-  settings stay in `~/.config/polaris`.
+- **Install, update, remove:** see [TESTING.md](../TESTING.md) (clone +
+  `makepkg -si`). A one-click in-app Update button (running makepkg in
+  Polaris's terminal) is still to do.
+- **Installed builds vs the repo:** installed builds keep their own profile in
+  `~/.config/polaris-fm`, so they run next to `bun run dev` without sharing
+  Chromium's locks. They start in `$HOME` (dev still starts in the launch
+  folder), keep a single window, and `polaris-fm <path>` opens that path in a
+  new tab. See `src/main/launch.ts`.
+- **Build stamp:** the PKGBUILD exports `POLARIS_CHANNEL`, `POLARIS_COMMIT` and
+  `POLARIS_PKGVER`, which electron-vite bakes into the main bundle. They're
+  unset in the repo.
 - **No `-bin` package yet:** release assets of a private repo need a token to
   download.
 - **In-app update check:** `src/main/updates.ts` runs `git fetch` and
@@ -81,6 +99,17 @@ The variants `provide` `polaris-fm` and `conflict` with each other, never with
 - **Safety:** the app never writes outside `$HOME` and never needs root.
   Making Polaris the default file manager (`xdg-mime`) will be an opt-in,
   reversible toggle.
+
+## Open items
+
+- [ ] **License:** there is none yet, so the PKGBUILD says
+      `LicenseRef-Proprietary` and namcap reports an error until a LICENSE file
+      exists. Pick a license (or add an "all rights reserved" file) before
+      going public.
+- [ ] `polaris-core` lacks PIE/full RELRO (Zig ignores makepkg's LDFLAGS);
+      namcap warns about it. It could be set in `core/build.zig`.
+- [ ] In-app Update button; an opt-in "default file manager" toggle
+      (`xdg-mime`), which should save and restore the previous default.
 
 ## When public: TODO
 

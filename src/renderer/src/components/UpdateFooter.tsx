@@ -13,6 +13,7 @@ const STATUS_LABEL = {
   available: 'Update available',
   checking: 'Checking…',
   latest: 'Up to date',
+  unknown: 'Couldn’t check for updates',
   none: 'Polaris'
 } as const
 
@@ -45,12 +46,14 @@ export const UpdateFooter: Component = () => {
   onCleanup(() => window.clearTimeout(timer))
 
   const info = updateInfo
-  const status = (): 'checking' | 'available' | 'latest' | 'none' => {
+  const status = (): keyof typeof STATUS_LABEL => {
     const i = info()
     if (!i) return 'checking'
     if (i.available) return 'available'
     if (i.checking && !i.checkedAt) return 'checking'
-    return i.source === 'none' ? 'none' : 'latest'
+    if (i.source === 'none') return 'none'
+    // Never claim "up to date" when the remote couldn't be reached.
+    return i.error ? 'unknown' : 'latest'
   }
 
   const cardStyle = (): JSX.CSSProperties => {
@@ -130,7 +133,11 @@ export const UpdateFooter: Component = () => {
             <div class="relative px-4 pt-[58px] pb-4">
               <div class="flex items-baseline gap-2">
                 <span class="text-[15px] font-medium text-white">
-                  {info()?.available ? 'Update available' : 'You’re up to date'}
+                  {info()?.available
+                    ? 'Update available'
+                    : info()?.error
+                      ? 'Couldn’t check for updates'
+                      : 'You’re up to date'}
                 </span>
                 <Show when={info()?.available && info()!.behind > 0}>
                   <span class="text-[12px] text-white/45 tabular-nums">

@@ -1,0 +1,7 @@
+# makepkg output when building from this folder
+*/src/
+*/pkg/
+*/*.pkg.tar.*
+*/*.log
+# makepkg's clone of the repo (named after pkgname)
+*/polaris-fm*/
