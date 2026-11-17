@@ -114,6 +114,9 @@ package() {
 		install -Dm755 /dev/stdin "$pkgdir/usr/bin/polaris-fm"
 	install -Dm644 packaging/linux/io.github.mvkweb.Polaris.desktop \
 		"$pkgdir/usr/share/applications/io.github.mvkweb.Polaris.desktop"
-	install -Dm644 resources/icon.png \
-		"$pkgdir/usr/share/icons/hicolor/512x512/apps/io.github.mvkweb.Polaris.png"
+	local size
+	for size in 16 24 32 48 64 128 256 512; do
+		install -Dm644 "resources/icons/$size.png" \
+			"$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps/io.github.mvkweb.Polaris.png"
+	done
 }

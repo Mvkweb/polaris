@@ -1,3 +1,5 @@
+<p align="center"><img src="logo.png" width="128" alt="Polaris"></p>
+
 # Polaris
 
 Fast, lightweight workspace file explorer built with SolidJS, Electron, and a native Zig sidecar.
