@@ -1,8 +1,8 @@
 # Maintainer: Mvkweb <https://github.com/Mvkweb>
 
-# PRIVATE-REPO PHASE: source= clones over SSH, so collaborators build with
-# their own GitHub key (no tokens). When the repo goes public, switch it to
-# "$pkgname::git+$url.git" (see .docs/distribution.md, "When public").
+# PRIVATE-REPO PHASE: the repo is private, so this clone uses the builder's
+# own GitHub login (gh auth / git credential helper, or an SSH key via a
+# url.insteadOf rule; see TESTING.md). Nothing here changes when it's public.
 
 pkgname=polaris-fm-git
 _electron=electron44
@@ -38,7 +38,7 @@ makedepends=(
 )
 provides=('polaris-fm')
 conflicts=('polaris-fm')
-source=("$pkgname::git+ssh://git@github.com/Mvkweb/polaris.git")
+source=("$pkgname::git+$url.git")
 sha256sums=('SKIP')
 
 pkgver() {

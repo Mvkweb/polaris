@@ -9,21 +9,37 @@ EndeavourOS, …). Other systems come later.
 ## 1. Before you start (once)
 
 - Accept the GitHub collaborator invite.
-- Have an SSH key on your GitHub account. Check with
-  `ssh -T git@github.com`: it should greet you by name. If it doesn't, see
-  [GitHub's SSH guide](https://docs.github.com/en/authentication/connecting-to-github-with-ssh).
+- Let git reach the private repo with **your own** GitHub login. Pick one:
+  - **GitHub CLI** (easiest): `sudo pacman -S github-cli`, then
+    `gh auth login` and `gh auth setup-git`.
+  - **SSH key** already on GitHub (`ssh -T git@github.com` greets you): tell
+    git to use it for GitHub links:
+    `git config --global url."git@github.com:".insteadOf "https://github.com/"`
+- Check it works: `git ls-remote https://github.com/Mvkweb/polaris.git` should
+  print a line, not ask for a password.
 - You need `git` and `base-devel`, which Arch-based systems already have.
 
 ## 2. Install
 
 ```bash
-git clone git@github.com:Mvkweb/polaris.git ~/polaris
-cd ~/polaris/packaging/arch/polaris-fm-git
-makepkg -si
+git clone https://github.com/Mvkweb/polaris.git ~/polaris
+~/polaris/packaging/arch/install.sh
 ```
 
-`makepkg` builds Polaris on your machine (a minute or two) and asks for your
-password once, to install it with pacman. You never run `makepkg` as root.
+The script builds Polaris on your machine with `makepkg` (a few minutes the
+first time), then asks for your password once, so pacman can install it. Don't
+run it with sudo.
+
+<details><summary>Without the script</summary>
+
+makepkg ignores your personal git config while cloning, so point it at
+yours (that's where your GitHub login lives):
+
+```bash
+cd ~/polaris/packaging/arch/polaris-fm-git
+MAKEPKG_GIT_CONFIG=~/.gitconfig makepkg -sic
+```
+</details>
 
 Then start **Polaris** from your app launcher, or run `polaris-fm` in a terminal:
 
@@ -43,8 +59,7 @@ Every push to `main` is a new nightly. The bottom-left of the sidebar tells
 you when one is out; hover it to see what changed. To update:
 
 ```bash
-cd ~/polaris && git pull
-cd packaging/arch/polaris-fm-git && makepkg -si
+~/polaris/packaging/arch/install.sh
 ```
 
 ## 4. Remove
@@ -63,7 +78,7 @@ pacman removes every file it installed. Your settings stay in
 - **It doesn't make itself your default file manager.** Your current one keeps
   opening folders.
 - **No root, no background services.** It only checks for updates (with your
-  own SSH key) while it's open.
+  own GitHub login) while it's open.
 
 ## Reporting problems
 

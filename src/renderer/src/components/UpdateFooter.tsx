@@ -188,9 +188,8 @@ export const UpdateFooter: Component = () => {
 
               <Show when={info()?.source === 'package' && info()?.available}>
                 <div class="update-howto">
-                  <span class="text-white/40">To update, in your polaris clone:</span>
-                  <code>git pull &amp;&amp; makepkg -si</code>
-                  <span class="text-white/30">in packaging/arch/polaris-fm-git</span>
+                  <span class="text-white/40">To update, run from your polaris clone:</span>
+                  <code>packaging/arch/install.sh</code>
                 </div>
               </Show>
 

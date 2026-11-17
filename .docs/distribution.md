@@ -77,10 +77,17 @@ The variants `provide` `polaris-fm` and `conflict` with each other, never with
 
 ## Now: private repo, invited testers
 
-- **Access:** testers (and Evertiro) are GitHub collaborators and authenticate
-  with their own SSH key. There are no tokens anywhere.
-- **Install, update, remove:** see [TESTING.md](../TESTING.md) (clone +
-  `makepkg -si`). A one-click in-app Update button (running makepkg in
+- **Access:** testers (and Evertiro) are GitHub collaborators. git reaches the
+  private repo with their own login: the `gh` credential helper, or an SSH key
+  through `url."git@github.com:".insteadOf`. We don't ship or store any
+  tokens. Everything uses the HTTPS URL, so nothing changes when the repo
+  goes public.
+- **Install, update, remove:** see [TESTING.md](../TESTING.md). Testers clone
+  the repo, then run `packaging/arch/install.sh` to install or update.
+  - Why a script: makepkg (pacman ≥ 7.1) clones with
+    `GIT_CONFIG_GLOBAL=/dev/null`, which hides the tester's GitHub login. The
+    script passes their git config via `MAKEPKG_GIT_CONFIG`.
+  - Not needed once public: `paru -S polaris-fm-git`. A one-click in-app Update button (running makepkg in
   Polaris's terminal) is still to do.
 - **Installed builds vs the repo:** installed builds keep their own profile in
   `~/.config/polaris-fm`, so they run next to `bun run dev` without sharing
@@ -92,10 +99,11 @@ The variants `provide` `polaris-fm` and `conflict` with each other, never with
   unset in the repo.
 - **No `-bin` package yet:** release assets of a private repo need a token to
   download.
-- **In-app update check:** `src/main/updates.ts` runs `git fetch` and
-  `rev-list` over the user's SSH (prompts disabled). This works for git
-  checkouts. Packaged builds will compare an embedded build commit against
-  `git ls-remote`.
+- **In-app update check** (`src/main/updates.ts`, prompts disabled):
+  - Checkouts run `git fetch` + `rev-list`.
+  - Installed builds compare the baked-in commit with
+    `git ls-remote https://github.com/Mvkweb/polaris.git main`.
+  - If the check fails, the footer says so; it never claims "up to date".
 - **Safety:** the app never writes outside `$HOME` and never needs root.
   Making Polaris the default file manager (`xdg-mime`) will be an opt-in,
   reversible toggle.
@@ -113,15 +121,14 @@ The variants `provide` `polaris-fm` and `conflict` with each other, never with
 
 ## When public: TODO
 
-- [ ] Push `polaris-fm-git` to the AUR (Mvkweb + Evertiro as co-maintainers)
-      and switch `source=` to the HTTPS URL.
+- [ ] Push `polaris-fm-git` to the AUR (Mvkweb + Evertiro as co-maintainers).
+      `source=` is already the HTTPS URL.
 - [ ] Testers then just run `paru -S polaris-fm-git`; drop the clone steps
       from TESTING.md.
 - [ ] First tag `v0.1.0` → `polaris-fm` (stable) from the release tarball,
       with a `sha256sums` checksum.
 - [ ] GitHub Actions: on each tag, build a tarball (app + `polaris-core`, no
       Electron) and attach it to the release → `polaris-fm-bin`.
-- [ ] Update check: use the GitHub Releases / tags API over HTTPS instead of
-      SSH `git fetch` and `ls-remote`.
+- [ ] Stable channel: check the GitHub Releases API instead of `ls-remote`.
 - [ ] AppImage for non-Arch Linux; Windows and macOS builds.
 - [ ] Remove the "invite-only" wording from TESTING.md and the About page.

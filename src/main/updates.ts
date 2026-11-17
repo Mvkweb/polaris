@@ -90,11 +90,11 @@ const parseCommits = (out: string): UpdateCommit[] =>
     })
 
 /**
- * The repo nightly packages are built from. While the repo is private this
- * goes over the tester's own SSH key (they're collaborators); see
- * .docs/distribution.md → "When public" for the HTTPS switch.
+ * The repo nightly packages are built from. While the repo is private, git
+ * uses the tester's own GitHub login (gh credential helper, or SSH through a
+ * url.insteadOf rule), non-interactively. Public later: works for anyone.
  */
-const NIGHTLY_REMOTE = 'git@github.com:Mvkweb/polaris.git'
+const NIGHTLY_REMOTE = 'https://github.com/Mvkweb/polaris.git'
 const NIGHTLY_BRANCH = 'main'
 const NIGHTLY_WEB = 'https://github.com/Mvkweb/polaris'
 
