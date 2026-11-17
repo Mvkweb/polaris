@@ -24,6 +24,7 @@ import { prefs, setPref, type Prefs } from './prefs'
 import { KeyboardPage } from './pages/KeyboardPage'
 import { AboutPanel } from './AboutPanel'
 import { IconSetPicker } from './IconSetPicker'
+import { NightlyBackdrop } from './NightlyBackdrop'
 import type { IconName } from '../ui/AppIcons'
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -35,6 +36,8 @@ interface TileBase {
   /** true when the setting already drives the app; false = saved, feature in progress */
   live?: boolean
   wide?: boolean
+  /** decorative layer behind the tile's content */
+  backdrop?: () => JSX.Element
 }
 export type Tile =
   | (TileBase & { kind: 'toggle'; get: () => boolean; set: (v: boolean) => void })
@@ -143,6 +146,8 @@ export const PAGES: PageDef[] = [
             id: 'updates',
             title: 'Updates',
             hint: 'Release channel',
+            // Nightly literally looks less stable
+            backdrop: () => <NightlyBackdrop active={updateTrack() === 'Nightly'} />,
             options: opts(['Stable', 'Stable'], ['Nightly', 'Nightly']),
             get: updateTrack,
             set: (v) => setUpdateTrack(v as 'Stable' | 'Nightly')
