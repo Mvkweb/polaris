@@ -108,19 +108,28 @@
     scale: 0.92;
   }
 }
-.task-row.is-running .task-icon::after {
-  content: '';
+/* Dithered ring (40px) centred around the 32px file icon while uploading */
+.task-loader {
   position: absolute;
-  inset: -2px;
-  border-radius: 10px;
-  border: 1.5px solid transparent;
-  border-top-color: var(--accent, #fff);
-  animation: task-spin 0.9s linear infinite;
+  inset: -4px;
+  pointer-events: none;
+  animation: task-loader-in 260ms ease both;
 }
-@keyframes task-spin {
-  to {
-    rotate: 360deg;
+@keyframes task-loader-in {
+  from {
+    opacity: 0;
+    scale: 0.85;
   }
+}
+.task-row.is-running .task-icon .task-thumb,
+.task-row.is-queued .task-icon .task-thumb {
+  scale: 0.62;
+  border-radius: 999px;
+}
+.task-thumb {
+  transition:
+    scale 240ms var(--ease-out),
+    border-radius 240ms ease;
 }
 .task-row.is-done .task-status {
   color: rgb(255 255 255 / 0.3);
@@ -236,15 +245,6 @@
 .task-action:hover {
   color: #fff;
   background: rgb(255 255 255 / 0.06);
-}
-
-/* ── Status-bar button ────────────────────────────────────────────────── */
-.tasks-ring-track {
-  stroke: rgb(255 255 255 / 0.12);
-}
-.tasks-ring-fill {
-  stroke: var(--accent, #fff);
-  transition: stroke-dashoffset 220ms linear;
 }
 
 @media (prefers-reduced-motion: reduce) {

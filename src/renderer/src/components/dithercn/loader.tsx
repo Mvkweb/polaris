@@ -49,6 +49,15 @@ export type LoaderProps = Omit<
   cell?: number;
   /** Speed multiplier. Default 1. */
   speed?: number;
+  /**
+   * Determinate mode (ring only): 0–1. The ring fills to this value instead of
+   * spinning; the shown value eases toward it so progress creeps, never jumps.
+   */
+  progress?: number;
+  /** Explicit height in px, overriding `size` (e.g. 16 for inline use). */
+  height?: number;
+  /** Determinate: ease toward `progress` (default) or follow it exactly. */
+  ease?: boolean;
 };
 
 const HEIGHT = { lg: 64, md: 40, sm: 24 } as const satisfies Record<
@@ -159,6 +168,37 @@ const barField =
     return Math.max(TRACK, (1 - behind / 0.45) ** 1.1);
   };
 
+/**
+ * Determinate ring: the arc up to `progress` is inked (with a slow shimmer
+ * travelling through it), a short dithered glow breathes just ahead of the
+ * head, and the rest keeps the faint track.
+ */
+const progressRingField =
+  ({ cols, rows }: Grid, shown: () => number): ToneField =>
+  (x, y, t) => {
+    const dx = (x + 0.5 - cols / 2) / (cols / 2);
+    const dy = (y + 0.5 - rows / 2) / (rows / 2);
+    const radius = Math.hypot(dx, dy);
+    if (radius > 1 || radius < 0.58) {
+      return 0;
+    }
+    const angle = fract(Math.atan2(dx, -dy) / TAU);
+    const p = clamp01(shown());
+    if (p >= 0.999) {
+      return 1;
+    }
+    if (angle <= p) {
+      const shimmer = 0.88 + 0.12 * Math.sin((angle * 3 - t * 0.6) * TAU);
+      return Math.max(TRACK, shimmer);
+    }
+    const ahead = angle - p;
+    const glow = 0.06 + 0.025 * Math.sin(t * 3.2);
+    if (ahead < glow) {
+      return Math.max(TRACK, (1 - ahead / glow) ** 1.3 * 0.6);
+    }
+    return TRACK;
+  };
+
 const FIELDS = {
   bar: barField,
   dots: dotsField,
@@ -260,6 +300,9 @@ export const Loader = (props: LoaderProps) => {
     "cell",
     "speed",
     "class",
+    "progress",
+    "height",
+    "ease",
   ]);
 
   const [rootRef, setRootRef] = createSignal<HTMLDivElement>();
@@ -273,9 +316,18 @@ export const Loader = (props: LoaderProps) => {
   const step = () =>
     Math.max(1, Math.round(local.cell ?? DEFAULT_CELL[local.size]));
   const grid = createMemo(() =>
-    gridFor(local.variant, HEIGHT[local.size], step())
+    gridFor(local.variant, local.height ?? HEIGHT[local.size], step())
   );
-  const field = createMemo(() => FIELDS[local.variant](grid()));
+  // Determinate: the drawn value eases toward `progress` every frame.
+  let shown = clamp01(local.progress ?? 0);
+  let lastTime: number | null = null;
+  const determinate = () =>
+    local.progress !== undefined && local.variant === "ring";
+  const field = createMemo(() =>
+    determinate()
+      ? progressRingField(grid(), () => shown)
+      : FIELDS[local.variant](grid())
+  );
 
   const draw = (time: number) => {
     const currentInk = ink();
@@ -308,13 +360,27 @@ export const Loader = (props: LoaderProps) => {
   createFrameLoop(
     (time) => {
       timeVal = time * local.speed + STILL_TIME[local.variant];
+      if (determinate()) {
+        const dt = lastTime === null ? 0 : Math.max(0, time - lastTime);
+        lastTime = time;
+        const target = clamp01(local.progress ?? 0);
+        // ~0.4 s to close most of a gap: creeps up, settles exactly.
+        shown =
+          local.ease === false
+            ? target
+            : shown + (target - shown) * (1 - Math.exp(-dt * 6));
+        if (Math.abs(target - shown) < 0.002) shown = target;
+      }
       draw(timeVal);
     },
     { stillTime: 0, target: rootRef }
   );
 
   createEffect(() => {
-    // Redraw when ink, field, grid, or matrix updates
+    // Redraw when ink, field, grid, matrix or progress updates
+    const target = local.progress;
+    // No frame loop yet (or reduced motion): show the value directly.
+    if (target !== undefined && lastTime === null) shown = clamp01(target);
     draw(timeVal);
   });
 
@@ -342,7 +408,11 @@ export const Loader = (props: LoaderProps) => {
           ...bloomStyle(local.color, local.bloom),
         }}
       />
-      <span class="sr-only">{local.label}</span>
+      <span class="sr-only">
+        {local.progress !== undefined
+          ? `${local.label} ${Math.round(clamp01(local.progress) * 100)}%`
+          : local.label}
+      </span>
     </div>
   );
 };

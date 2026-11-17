@@ -1,9 +1,7 @@
 import { Show, type Component } from 'solid-js'
 import { I } from '../ui/AppIcons'
+import { Loader } from '../dithercn/loader'
 import { activeTasks, overallProgress, setTasksPanelOpen, tasksPanelOpen } from '../../tasks'
-
-const R = 6
-const C = 2 * Math.PI * R
 
 /** Status-bar entry for the Tasks panel; a ring fills while work is in flight. */
 export const TasksButton: Component = () => (
@@ -16,24 +14,13 @@ export const TasksButton: Component = () => (
     }`}
   >
     <Show when={overallProgress() !== null} fallback={<I.tasks class="w-4 h-4" />}>
-      <svg
-        viewBox="0 0 16 16"
-        class="w-4 h-4 -rotate-90"
-        fill="none"
-        stroke-width="2"
-        aria-hidden="true"
-      >
-        <circle class="tasks-ring-track" cx="8" cy="8" r={R} />
-        <circle
-          class="tasks-ring-fill"
-          cx="8"
-          cy="8"
-          r={R}
-          stroke-linecap="round"
-          stroke-dasharray={`${C}`}
-          stroke-dashoffset={`${C * (1 - (overallProgress() ?? 0))}`}
-        />
-      </svg>
+      <Loader
+        variant="ring"
+        height={16}
+        cell={1}
+        progress={overallProgress() ?? 0}
+        label="Uploading"
+      />
     </Show>
     <span>Tasks</span>
     <Show when={activeTasks().length}>

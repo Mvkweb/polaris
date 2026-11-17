@@ -3,6 +3,7 @@ import type { TaskRecord } from '../../types'
 import { FileIcon } from '../file-tree/FileIcon'
 import { formatBytes } from '../media/studio/formats'
 import { uploadFiles } from '../../tasks'
+import { Loader } from '../dithercn/loader'
 import { mediaKind, mediaUrl } from '../media/mediaKind'
 
 /** Thumbnails only for images small enough to decode cheaply. */
@@ -67,6 +68,18 @@ export const TaskRow: Component<{ task: TaskRecord }> = (props) => {
       classList={{ [`is-${t().status}`]: true, 'is-expired': expired() }}
     >
       <div class="task-icon relative w-8 h-8 shrink-0 rounded-[8px] flex items-center justify-center">
+        {/* Dithered progress ring around the file while it uploads */}
+        <Show when={t().status === 'running' || t().status === 'queued'}>
+          <Loader
+            class="task-loader"
+            variant="ring"
+            size="md"
+            cell={2}
+            progress={t().status === 'running' ? pct() : undefined}
+            speed={t().status === 'queued' ? 0.6 : 1}
+            label={t().status === 'queued' ? 'Queued' : 'Uploading'}
+          />
+        </Show>
         <Show
           when={thumb()}
           fallback={<FileIcon name={t().fileName} isDirectory={false} class="w-4 h-4" />}
