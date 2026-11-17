@@ -144,3 +144,34 @@ export interface ChatSessionSummary {
   fileRefs?: string[]
   agent?: string
 }
+
+/** Anonymous file host offered under "Upload to" (mirrors src/main/uploads.ts). */
+export interface UploadService {
+  id: string
+  name: string
+  retention: string
+  maxBytes: number
+  group: 'permanent' | 'temporary'
+}
+
+export type TaskStatus = 'queued' | 'running' | 'done' | 'error' | 'canceled'
+
+/** Background task as broadcast by src/main/tasks.ts. */
+export interface TaskRecord {
+  id: string
+  kind: 'upload'
+  /** producer-specific id, e.g. the upload service (used for Retry) */
+  serviceId: string
+  fileName: string
+  filePath: string
+  target: string
+  status: TaskStatus
+  sent: number
+  total: number
+  url?: string
+  error?: string
+  expiresAt?: number
+  createdAt: number
+  startedAt?: number
+  finishedAt?: number
+}

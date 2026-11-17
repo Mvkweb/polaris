@@ -47,6 +47,21 @@ const api = {
   terminalKill: (id: number) => ipcRenderer.invoke('terminal:kill', id),
   getWallpaperTheme: () => ipcRenderer.invoke('theme:get'),
   getWallpaperThemePath: () => ipcRenderer.invoke('theme:path'),
+  exportImage: (sourcePath: string, stem: string, ext: string, bytes: Uint8Array) =>
+    ipcRenderer.invoke('media:exportImage', sourcePath, stem, ext, bytes),
+  projectIcons: (dirs: string[]) => ipcRenderer.invoke('fs:projectIcons', dirs),
+  uploadServices: () => ipcRenderer.invoke('upload:services'),
+  startUpload: (paths: string[], serviceId: string) =>
+    ipcRenderer.invoke('upload:start', paths, serviceId),
+  listTasks: () => ipcRenderer.invoke('tasks:list'),
+  cancelTask: (id: string) => ipcRenderer.invoke('tasks:cancel', id),
+  removeTask: (id: string) => ipcRenderer.invoke('tasks:remove', id),
+  clearTasks: () => ipcRenderer.invoke('tasks:clear'),
+  onTasksChanged: (callback: (tasks: unknown[]) => void) => {
+    const listener = (_: unknown, tasks: unknown[]): void => callback(tasks)
+    ipcRenderer.on('tasks:changed', listener)
+    return () => ipcRenderer.removeListener('tasks:changed', listener)
+  },
   onWallpaperTheme: (callback: (theme: unknown) => void) => {
     const listener = (_: unknown, theme: unknown): void => callback(theme)
     ipcRenderer.on('theme:changed', listener)

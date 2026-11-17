@@ -14,6 +14,7 @@ import {
 } from '../store'
 import { formatShortcut } from '../shortcuts'
 import { SolarProgrammingLinear } from './ui/SolarIcons'
+import { TasksButton } from './tasks/TasksButton'
 
 interface StatusBarProps {
   onDragStart?: (e: PointerEvent) => void
@@ -133,6 +134,8 @@ const StatusBar: Component<StatusBarProps> = (props) => {
           </button>
         </div>
       </div>
+
+      <TasksButton />
     </div>
   )
 }

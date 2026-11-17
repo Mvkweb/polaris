@@ -1,3 +1,4 @@
+import { tasksVisibleWidth } from '../../tasks'
 import { Component, For, Show, createMemo, onCleanup } from 'solid-js'
 import {
   canNavigateBack,
@@ -236,7 +237,7 @@ export const BrowserTopBar: Component = () => {
         class="relative isolate self-end shrink-0 flex items-start gap-1 h-[45px] -mb-[9px] pt-1 pl-1.5 pr-2"
         data-active={isFilterTabActive() ? '' : undefined}
         style={{
-          'margin-right': `${inspectorVisibleWidth()}px`,
+          'margin-right': `${inspectorVisibleWidth() + tasksVisibleWidth()}px`,
           transition: inspectorResizing() ? 'none' : `margin-right ${INSPECTOR_TRANSITION}`
         }}
       >

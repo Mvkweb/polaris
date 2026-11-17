@@ -1,7 +1,7 @@
-import { protocol } from 'electron'
+import { ipcMain, protocol } from 'electron'
 import { createReadStream } from 'fs'
-import { stat } from 'fs/promises'
-import { extname } from 'path'
+import { stat, writeFile } from 'fs/promises'
+import { basename, dirname, extname, join } from 'path'
 import { Readable } from 'stream'
 
 /**
@@ -99,6 +99,8 @@ export const registerMediaProtocol = (): void => {
       const headers: Record<string, string> = {
         'Content-Type': type,
         'Accept-Ranges': 'bytes',
+        // Lets the studio read pixels back from canvases (untainted CORS image)
+        'Access-Control-Allow-Origin': '*',
         'Cache-Control': 'public, max-age=86400'
       }
 
@@ -130,4 +132,51 @@ export const registerMediaProtocol = (): void => {
       return new Response(null, { status: 404 })
     }
   })
+}
+
+// ── Image studio export ───────────────────────────────────────────────────
+
+const EXPORT_EXTENSIONS = new Set(['png', 'jpg', 'webp', 'avif', 'gif', 'ico'])
+const MAX_EXPORT_BYTES = 512 * 1024 * 1024
+
+/**
+ * Write encoded bytes as a NEW file beside `sourcePath`. Never overwrites:
+ * the write uses the exclusive `wx` flag and walks `name (1).ext`, `name (2).ext`…
+ * until a free name is found, so even a race can't clobber a user file.
+ */
+export const exportBesideSource = async (
+  sourcePath: string,
+  stem: string,
+  ext: string,
+  bytes: Uint8Array
+): Promise<string> => {
+  if (!EXPORT_EXTENSIONS.has(ext)) throw new Error(`Unsupported export format: ${ext}`)
+  if (!(bytes instanceof Uint8Array) || bytes.byteLength === 0) throw new Error('Empty export')
+  if (bytes.byteLength > MAX_EXPORT_BYTES) throw new Error('Export too large')
+  // The stem comes from the renderer: keep it a plain file name.
+  const safeStem =
+    basename(stem)
+      .replace(/[\\/\0]/g, '')
+      .trim() || 'export'
+  const dir = dirname(sourcePath)
+  if (!(await stat(dir)).isDirectory()) throw new Error('Source folder not found')
+
+  for (let i = 0; i < 1000; i++) {
+    const target = join(dir, `${safeStem}${i === 0 ? '' : ` (${i})`}.${ext}`)
+    try {
+      await writeFile(target, bytes, { flag: 'wx' })
+      return target
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err
+    }
+  }
+  throw new Error('No free file name')
+}
+
+export const registerMediaIpc = (): void => {
+  ipcMain.handle(
+    'media:exportImage',
+    (_e, sourcePath: string, stem: string, ext: string, bytes: Uint8Array) =>
+      exportBesideSource(sourcePath, stem, ext, bytes)
+  )
 }

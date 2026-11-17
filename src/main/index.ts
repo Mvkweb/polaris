@@ -11,7 +11,10 @@ import { promisify } from 'util'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { detectEditors, listEditors, openInEditor } from './editors'
 import { startThemeWatcher, getWallpaperTheme, wallpaperThemePath } from './theme'
-import { MEDIA_SCHEME_PRIVILEGES, registerMediaProtocol } from './media'
+import { MEDIA_SCHEME_PRIVILEGES, registerMediaIpc, registerMediaProtocol } from './media'
+import { registerProjectIconIpc } from './projectIcons'
+import { loadTasks, registerTaskIpc } from './tasks'
+import { registerUploadIpc } from './uploads'
 
 // Register privileged custom schemes before app is ready
 protocol.registerSchemesAsPrivileged([MEDIA_SCHEME_PRIVILEGES])
@@ -124,6 +127,11 @@ app.whenReady().then(() => {
 
   // Stream local media (Range-aware) for thumbnails, inspector and the media viewer
   registerMediaProtocol()
+  registerMediaIpc()
+  registerProjectIconIpc()
+  registerTaskIpc()
+  registerUploadIpc()
+  void loadTasks()
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)

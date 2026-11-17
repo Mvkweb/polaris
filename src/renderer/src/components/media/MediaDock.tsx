@@ -1,4 +1,4 @@
-import { For, type JSX, type ParentComponent } from 'solid-js'
+import { For, createSignal, onCleanup, onMount, type JSX, type ParentComponent } from 'solid-js'
 
 /**
  * The floating control dock shared by every media view: a dark, borderless
@@ -85,6 +85,33 @@ export function DockSegments<T extends string>(props: {
           </button>
         )}
       </For>
+    </div>
+  )
+}
+
+/**
+ * Morphing container: measures its content and animates its own width/height
+ * to match, so the dock reshapes as one surface when rows/controls appear.
+ * Content is clipped while it morphs (menus render in a portal, so they escape).
+ */
+export const MorphBox: ParentComponent<{ class?: string }> = (props) => {
+  let inner: HTMLDivElement | undefined
+  const [size, setSize] = createSignal<{ w: number; h: number } | null>(null)
+  onMount(() => {
+    const ro = new ResizeObserver(() => {
+      if (inner) setSize({ w: inner.offsetWidth, h: inner.offsetHeight })
+    })
+    ro.observe(inner!)
+    onCleanup(() => ro.disconnect())
+  })
+  return (
+    <div
+      class={`media-morph ${props.class ?? ''}`}
+      style={size() ? { width: `${size()!.w}px`, height: `${size()!.h}px` } : undefined}
+    >
+      <div ref={inner} class="media-morph-inner">
+        {props.children}
+      </div>
     </div>
   )
 }

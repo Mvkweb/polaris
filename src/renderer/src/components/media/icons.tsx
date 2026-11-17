@@ -82,3 +82,12 @@ export const CheckerIcon = (p: P) =>
       />
     </>
   )
+export const StudioIcon = (p: P) =>
+  base(
+    p,
+    <>
+      <path d="M2.5 4.5h6M11.5 4.5h2M2.5 11.5h2M7.5 11.5h6" />
+      <circle cx="10" cy="4.5" r="1.5" />
+      <circle cx="6" cy="11.5" r="1.5" />
+    </>
+  )

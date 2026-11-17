@@ -20,6 +20,7 @@ import {
   activeTabPath
 } from '../../store'
 import { FileIcon } from './FileIcon'
+import { folderIconUrl, refreshFolderIcons } from '../../projectIcons'
 
 interface FileTreeItemProps {
   entry: FsEntry
@@ -229,6 +230,8 @@ const FileTreeItem: Component<FileTreeItemProps> = (props) => {
   const isSelected = () => selectedFilePath() === props.entry.path
 
   const isActiveScope = () => props.entry.isDirectory && activeScopeDir() === props.entry.path
+  // Project logo (favicon/logo.svg…) for folders; resolved in batches by main.
+  const projectIcon = () => (props.entry.isDirectory ? folderIconUrl(props.entry.path) : null)
 
   return (
     <div class="ft-item flex flex-col select-none">
@@ -250,11 +253,15 @@ const FileTreeItem: Component<FileTreeItemProps> = (props) => {
           fallback={<FileIcon name={props.entry.name} isDirectory={false} class="mr-2" />}
         >
           <span
-            class={`w-4 h-4 mr-2 flex items-center justify-center shrink-0 transition-colors ${
+            class={`relative w-4 h-4 mr-2 flex items-center justify-center shrink-0 transition-colors ${
               isOpen() ? 'text-white/70' : 'text-white/35 group-hover:text-white/70'
             }`}
+            classList={{ 'ft-has-logo': !!projectIcon(), 'ft-logo-open': isOpen() }}
           >
             <ChevronIcon open={isOpen()} />
+            <Show when={projectIcon()}>
+              {(src) => <img src={src()} alt="" draggable={false} class="ft-logo" />}
+            </Show>
           </span>
         </Show>
 
@@ -322,7 +329,11 @@ const FileTreeItem: Component<FileTreeItemProps> = (props) => {
             />
             <For each={children()}>
               {(child) => (
-                <FileTreeItem entry={child} depth={props.depth + 1} onFileClick={props.onFileClick} />
+                <FileTreeItem
+                  entry={child}
+                  depth={props.depth + 1}
+                  onFileClick={props.onFileClick}
+                />
               )}
             </For>
           </div>
@@ -527,6 +538,7 @@ export const FileTree: Component<FileTreeProps> = (props) => {
   // Watch for external explorer refresh triggers (new file, rename, trash, paste, etc.)
   createEffect(() => {
     if (explorerRefreshTrigger() > 0) {
+      refreshFolderIcons()
       refreshWorkspace()
     }
   })
@@ -587,6 +599,16 @@ export const FileTree: Component<FileTreeProps> = (props) => {
       <style>{`
         .ft-chevron { transform: rotate(-90deg); transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1); }
         .ft-chevron-open { transform: rotate(0deg); }
+        .ft-logo {
+          position: absolute; inset: 0; width: 16px; height: 16px; object-fit: contain;
+          border-radius: 3px; pointer-events: none;
+          transition: opacity 160ms ease, scale 200ms cubic-bezier(0.16, 1, 0.3, 1);
+          animation: ft-logo-in 220ms ease both;
+        }
+        @keyframes ft-logo-in { from { opacity: 0; scale: 0.7; } }
+        .ft-has-logo .ft-chevron { opacity: 0; transition: opacity 160ms ease, transform 180ms cubic-bezier(0.16, 1, 0.3, 1); }
+        .group:hover .ft-has-logo .ft-chevron, .ft-has-logo.ft-logo-open .ft-chevron { opacity: 1; }
+        .group:hover .ft-has-logo .ft-logo, .ft-has-logo.ft-logo-open .ft-logo { opacity: 0; scale: 0.7; }
         .ft-row-selected {
           background: color-mix(in oklab, var(--accent, #fff) 14%, rgb(255 255 255 / 0.05));
           box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent, #fff) 22%, transparent);
@@ -642,6 +664,16 @@ export const FileTree: Component<FileTreeProps> = (props) => {
             when={isSearchActive()}
             fallback={
               <>
+                <Show when={workspaceRoot() && folderIconUrl(workspaceRoot()!)}>
+                  {(src) => (
+                    <img
+                      src={src()}
+                      alt=""
+                      draggable={false}
+                      class="w-3.5 h-3.5 rounded-[3px] object-contain shrink-0"
+                    />
+                  )}
+                </Show>
                 <span class="truncate text-white/70">{rootFolderTitle()}</span>
               </>
             }

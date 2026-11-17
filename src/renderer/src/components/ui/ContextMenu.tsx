@@ -26,6 +26,7 @@ import { EditorGlyph } from './EditorGlyph'
 import { installedEditors, preferredEditor, rememberEditor, BUILTIN_EDITOR_ID } from '../../editors'
 import type { ExternalEditor } from '../../types'
 import ghosttyIcon from '../../assets/icons/ghostty.png'
+import { uploadFiles, uploadServices } from '../../tasks'
 import {
   DitherDropdownMenu,
   DitherDropdownMenuContent,
@@ -62,7 +63,6 @@ export const ContextMenu: Component = () => {
     } catch {
       setHasGhostty(false)
     }
-
   })
 
   const target = createMemo(() => contextMenuState().target)
@@ -277,6 +277,66 @@ export const ContextMenu: Component = () => {
   }
 
   /** "Open With ›" — slides out to the side with every detected editor + terminals. */
+  const UploadIcon = (props: { temporary?: boolean }) => (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      class="w-4 h-4 text-white/70 shrink-0"
+      stroke="currentColor"
+      stroke-width="1.8"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <Show
+        when={props.temporary}
+        fallback={
+          <path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 8.5a4 4 0 0 1-.5 9.5M12 12v8m-3-5 3-3 3 3" />
+        }
+      >
+        <circle cx="12" cy="13" r="7" />
+        <path d="M12 9.5V13l2 1.5M10 3h4" />
+      </Show>
+    </svg>
+  )
+
+  const UploadMenu = () => (
+    <DitherDropdownMenuSub>
+      <DitherDropdownMenuSubTrigger variant="dither">
+        <UploadIcon />
+        <span>Upload to</span>
+      </DitherDropdownMenuSubTrigger>
+      <DitherDropdownMenuSubContent class="min-w-[230px] border-0 shadow-[0_4px_16px_rgba(0,0,0,0.45)] bg-[#050506]">
+        <DitherDropdownMenuLabel>Long-lived</DitherDropdownMenuLabel>
+        <For each={uploadServices().filter((s) => s.group === 'permanent')}>
+          {(svc) => (
+            <DitherDropdownMenuItem
+              variant="dither"
+              onSelect={() => void uploadFiles([targetPath()], svc.id)}
+            >
+              <UploadIcon />
+              <span>{svc.name}</span>
+              <DitherDropdownMenuShortcut>{svc.retention}</DitherDropdownMenuShortcut>
+            </DitherDropdownMenuItem>
+          )}
+        </For>
+        <DitherDropdownMenuSeparator />
+        <DitherDropdownMenuLabel>Temporary</DitherDropdownMenuLabel>
+        <For each={uploadServices().filter((s) => s.group === 'temporary')}>
+          {(svc) => (
+            <DitherDropdownMenuItem
+              variant="dither"
+              onSelect={() => void uploadFiles([targetPath()], svc.id)}
+            >
+              <UploadIcon temporary />
+              <span>{svc.name}</span>
+              <DitherDropdownMenuShortcut>{svc.retention}</DitherDropdownMenuShortcut>
+            </DitherDropdownMenuItem>
+          )}
+        </For>
+      </DitherDropdownMenuSubContent>
+    </DitherDropdownMenuSub>
+  )
+
   const OpenWithMenu = (props: { terminalShortcut?: string }) => (
     <DitherDropdownMenuSub>
       <DitherDropdownMenuSubTrigger variant="dither">
@@ -322,7 +382,13 @@ export const ContextMenu: Component = () => {
 
         <DitherDropdownMenuSeparator />
         <DitherDropdownMenuItem variant="dither" onSelect={handleOpenInDefaultApp}>
-          <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-white/70 shrink-0" stroke="currentColor" stroke-width="1.8">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            class="w-4 h-4 text-white/70 shrink-0"
+            stroke="currentColor"
+            stroke-width="1.8"
+          >
             <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
           </svg>
           <span>System Default</span>
@@ -355,200 +421,256 @@ export const ContextMenu: Component = () => {
             <Show
               when={isItem()}
               fallback={
-            <DitherDropdownMenuGroup>
-              <DitherDropdownMenuLabel>Workspace Actions</DitherDropdownMenuLabel>
-              <DitherDropdownMenuItem variant="dither" onSelect={handleNewFile}>
-                <span>New File</span>
-                <DitherDropdownMenuShortcut>{modKey}+N</DitherDropdownMenuShortcut>
-              </DitherDropdownMenuItem>
+                <DitherDropdownMenuGroup>
+                  <DitherDropdownMenuLabel>Workspace Actions</DitherDropdownMenuLabel>
+                  <DitherDropdownMenuItem variant="dither" onSelect={handleNewFile}>
+                    <span>New File</span>
+                    <DitherDropdownMenuShortcut>{modKey}+N</DitherDropdownMenuShortcut>
+                  </DitherDropdownMenuItem>
 
-              <DitherDropdownMenuItem variant="dither" onSelect={handleNewFolder}>
-                <span>New Folder</span>
-                <DitherDropdownMenuShortcut>{modKey}+{altKey}+N</DitherDropdownMenuShortcut>
-              </DitherDropdownMenuItem>
+                  <DitherDropdownMenuItem variant="dither" onSelect={handleNewFolder}>
+                    <span>New Folder</span>
+                    <DitherDropdownMenuShortcut>
+                      {modKey}+{altKey}+N
+                    </DitherDropdownMenuShortcut>
+                  </DitherDropdownMenuItem>
 
-              <DitherDropdownMenuSeparator />
+                  <DitherDropdownMenuSeparator />
 
-              <OpenWithMenu terminalShortcut={`${altKey}+Shift+F4`} />
+                  <OpenWithMenu terminalShortcut={`${altKey}+Shift+F4`} />
 
-              <DitherDropdownMenuSeparator />
+                  <DitherDropdownMenuSeparator />
 
-              <DitherDropdownMenuItem
-                variant="dither"
-                disabled={!fileClipboard()}
-                onSelect={handlePaste}
-              >
-                <span>Paste</span>
-                <DitherDropdownMenuShortcut>{modKey}+V</DitherDropdownMenuShortcut>
-              </DitherDropdownMenuItem>
+                  <DitherDropdownMenuItem
+                    variant="dither"
+                    disabled={!fileClipboard()}
+                    onSelect={handlePaste}
+                  >
+                    <span>Paste</span>
+                    <DitherDropdownMenuShortcut>{modKey}+V</DitherDropdownMenuShortcut>
+                  </DitherDropdownMenuItem>
 
-              <DitherDropdownMenuSeparator />
+                  <DitherDropdownMenuSeparator />
 
-              <DitherDropdownMenuItem variant="dither" onSelect={handleCopyPath}>
-                <span>Copy Path</span>
-              </DitherDropdownMenuItem>
+                  <DitherDropdownMenuItem variant="dither" onSelect={handleCopyPath}>
+                    <span>Copy Path</span>
+                  </DitherDropdownMenuItem>
 
-              <DitherDropdownMenuSeparator />
+                  <DitherDropdownMenuSeparator />
 
-              <DitherDropdownMenuItem variant="dither" onSelect={handleRefresh}>
-                <span>Refresh Explorer</span>
-              </DitherDropdownMenuItem>
+                  <DitherDropdownMenuItem variant="dither" onSelect={handleRefresh}>
+                    <span>Refresh Explorer</span>
+                  </DitherDropdownMenuItem>
 
-              <DitherDropdownMenuItem variant="dither" onSelect={handleCollapseAll}>
-                <span>Collapse All</span>
-              </DitherDropdownMenuItem>
+                  <DitherDropdownMenuItem variant="dither" onSelect={handleCollapseAll}>
+                    <span>Collapse All</span>
+                  </DitherDropdownMenuItem>
 
-              <DitherDropdownMenuSeparator />
+                  <DitherDropdownMenuSeparator />
 
-              <DitherDropdownMenuItem variant="dither" onSelect={handleShowDetails}>
-                <span>Show Details</span>
-                <DitherDropdownMenuShortcut>Space</DitherDropdownMenuShortcut>
-              </DitherDropdownMenuItem>
+                  <DitherDropdownMenuItem variant="dither" onSelect={handleShowDetails}>
+                    <span>Show Details</span>
+                    <DitherDropdownMenuShortcut>Space</DitherDropdownMenuShortcut>
+                  </DitherDropdownMenuItem>
 
-              <DitherDropdownMenuItem variant="dither" onSelect={handleProperties}>
-                <span>Properties</span>
-                <DitherDropdownMenuShortcut>{altKey}+Enter</DitherDropdownMenuShortcut>
-              </DitherDropdownMenuItem>
-            </DitherDropdownMenuGroup>
+                  <DitherDropdownMenuItem variant="dither" onSelect={handleProperties}>
+                    <span>Properties</span>
+                    <DitherDropdownMenuShortcut>{altKey}+Enter</DitherDropdownMenuShortcut>
+                  </DitherDropdownMenuItem>
+                </DitherDropdownMenuGroup>
+              }
+            >
+              <DitherDropdownMenuGroup>
+                <DitherDropdownMenuLabel>
+                  {isDirectory() ? 'Directory Actions' : 'File Operations'}
+                </DitherDropdownMenuLabel>
+
+                <Show when={isDirectory()}>
+                  <DitherDropdownMenuItem variant="dither" onSelect={handleNewFile}>
+                    <span>New File</span>
+                    <DitherDropdownMenuShortcut>{modKey}+N</DitherDropdownMenuShortcut>
+                  </DitherDropdownMenuItem>
+
+                  <DitherDropdownMenuItem variant="dither" onSelect={handleNewFolder}>
+                    <span>New Folder</span>
+                    <DitherDropdownMenuShortcut>
+                      {modKey}+{altKey}+N
+                    </DitherDropdownMenuShortcut>
+                  </DitherDropdownMenuItem>
+
+                  <DitherDropdownMenuSeparator />
+                </Show>
+
+                <Show when={!isDirectory()}>
+                  <DitherDropdownMenuItem variant="dither" onSelect={handleOpenInEditor}>
+                    <span>Open in Editor</span>
+                  </DitherDropdownMenuItem>
+                </Show>
+
+                <DitherDropdownMenuItem variant="dither" onSelect={handleOpenInDefaultApp}>
+                  <span>{isDirectory() ? 'Open Folder' : 'Open in Default App'}</span>
+                </DitherDropdownMenuItem>
+
+                <OpenWithMenu />
+
+                <Show when={!isDirectory() && uploadServices().length}>
+                  <UploadMenu />
+                </Show>
+
+                <Show when={isDirectory()}>
+                  <DitherDropdownMenuItem variant="dither" onSelect={handleFindInFolder}>
+                    <span>Find in Folder...</span>
+                  </DitherDropdownMenuItem>
+                </Show>
+
+                <DitherDropdownMenuSeparator />
+
+                <DitherDropdownMenuItem variant="dither" onSelect={handleCut}>
+                  <span>Cut</span>
+                  <DitherDropdownMenuShortcut>{modKey}+X</DitherDropdownMenuShortcut>
+                </DitherDropdownMenuItem>
+
+                <DitherDropdownMenuItem variant="dither" onSelect={handleCopy}>
+                  <span>Copy</span>
+                  <DitherDropdownMenuShortcut>{modKey}+C</DitherDropdownMenuShortcut>
+                </DitherDropdownMenuItem>
+
+                <DitherDropdownMenuItem variant="dither" onSelect={handleDuplicate}>
+                  <span>Duplicate</span>
+                  <DitherDropdownMenuShortcut>{modKey}+D</DitherDropdownMenuShortcut>
+                </DitherDropdownMenuItem>
+
+                <Show when={isDirectory()}>
+                  <DitherDropdownMenuItem
+                    variant="dither"
+                    disabled={!fileClipboard()}
+                    onSelect={handlePaste}
+                  >
+                    <span>Paste</span>
+                    <DitherDropdownMenuShortcut>{modKey}+V</DitherDropdownMenuShortcut>
+                  </DitherDropdownMenuItem>
+                </Show>
+
+                <DitherDropdownMenuSeparator />
+
+                <DitherDropdownMenuItem variant="dither" onSelect={handleCopyPath}>
+                  <span>Copy Path</span>
+                  <DitherDropdownMenuShortcut>
+                    {modKey}+{altKey}+C
+                  </DitherDropdownMenuShortcut>
+                </DitherDropdownMenuItem>
+
+                <DitherDropdownMenuItem variant="dither" onSelect={handleCopyRelativePath}>
+                  <span>Copy Relative Path</span>
+                  <DitherDropdownMenuShortcut>{modKey}+Shift+C</DitherDropdownMenuShortcut>
+                </DitherDropdownMenuItem>
+
+                <DitherDropdownMenuSeparator />
+
+                <DitherDropdownMenuItem variant="dither" onSelect={handleRename}>
+                  <span>Rename</span>
+                  <DitherDropdownMenuShortcut>F2</DitherDropdownMenuShortcut>
+                </DitherDropdownMenuItem>
+
+                <DitherDropdownMenuItem variant="dither" destructive onSelect={handleTrash}>
+                  <span>Move to Trash</span>
+                  <DitherDropdownMenuShortcut>Del</DitherDropdownMenuShortcut>
+                </DitherDropdownMenuItem>
+
+                <DitherDropdownMenuSeparator />
+
+                <DitherDropdownMenuItem variant="dither" onSelect={handleShowDetails}>
+                  <span>Show Details</span>
+                  <DitherDropdownMenuShortcut>Space</DitherDropdownMenuShortcut>
+                </DitherDropdownMenuItem>
+
+                <DitherDropdownMenuItem variant="dither" onSelect={handleProperties}>
+                  <span>Properties</span>
+                  <DitherDropdownMenuShortcut>{altKey}+Enter</DitherDropdownMenuShortcut>
+                </DitherDropdownMenuItem>
+              </DitherDropdownMenuGroup>
+            </Show>
           }
         >
           <DitherDropdownMenuGroup>
             <DitherDropdownMenuLabel>
-              {isDirectory() ? 'Directory Actions' : 'File Operations'}
+              {drive()?.name || 'Device Operations'}
             </DitherDropdownMenuLabel>
 
-            <Show when={isDirectory()}>
-              <DitherDropdownMenuItem variant="dither" onSelect={handleNewFile}>
-                <span>New File</span>
-                <DitherDropdownMenuShortcut>{modKey}+N</DitherDropdownMenuShortcut>
-              </DitherDropdownMenuItem>
-
-              <DitherDropdownMenuItem variant="dither" onSelect={handleNewFolder}>
-                <span>New Folder</span>
-                <DitherDropdownMenuShortcut>{modKey}+{altKey}+N</DitherDropdownMenuShortcut>
-              </DitherDropdownMenuItem>
-
-              <DitherDropdownMenuSeparator />
-            </Show>
-
-            <Show when={!isDirectory()}>
-              <DitherDropdownMenuItem variant="dither" onSelect={handleOpenInEditor}>
-                <span>Open in Editor</span>
-              </DitherDropdownMenuItem>
-            </Show>
-
-            <DitherDropdownMenuItem variant="dither" onSelect={handleOpenInDefaultApp}>
-              <span>{isDirectory() ? 'Open Folder' : 'Open in Default App'}</span>
-            </DitherDropdownMenuItem>
-
-            <OpenWithMenu />
-
-            <Show when={isDirectory()}>
-              <DitherDropdownMenuItem variant="dither" onSelect={handleFindInFolder}>
-                <span>Find in Folder...</span>
-              </DitherDropdownMenuItem>
-            </Show>
-
-            <DitherDropdownMenuSeparator />
-
-            <DitherDropdownMenuItem variant="dither" onSelect={handleCut}>
-              <span>Cut</span>
-              <DitherDropdownMenuShortcut>{modKey}+X</DitherDropdownMenuShortcut>
-            </DitherDropdownMenuItem>
-
-            <DitherDropdownMenuItem variant="dither" onSelect={handleCopy}>
-              <span>Copy</span>
-              <DitherDropdownMenuShortcut>{modKey}+C</DitherDropdownMenuShortcut>
-            </DitherDropdownMenuItem>
-
-            <DitherDropdownMenuItem variant="dither" onSelect={handleDuplicate}>
-              <span>Duplicate</span>
-              <DitherDropdownMenuShortcut>{modKey}+D</DitherDropdownMenuShortcut>
-            </DitherDropdownMenuItem>
-
-            <Show when={isDirectory()}>
-              <DitherDropdownMenuItem
-                variant="dither"
-                disabled={!fileClipboard()}
-                onSelect={handlePaste}
-              >
-                <span>Paste</span>
-                <DitherDropdownMenuShortcut>{modKey}+V</DitherDropdownMenuShortcut>
-              </DitherDropdownMenuItem>
-            </Show>
-
-            <DitherDropdownMenuSeparator />
-
-            <DitherDropdownMenuItem variant="dither" onSelect={handleCopyPath}>
-              <span>Copy Path</span>
-              <DitherDropdownMenuShortcut>{modKey}+{altKey}+C</DitherDropdownMenuShortcut>
-            </DitherDropdownMenuItem>
-
-            <DitherDropdownMenuItem variant="dither" onSelect={handleCopyRelativePath}>
-              <span>Copy Relative Path</span>
-              <DitherDropdownMenuShortcut>{modKey}+Shift+C</DitherDropdownMenuShortcut>
-            </DitherDropdownMenuItem>
-
-            <DitherDropdownMenuSeparator />
-
-            <DitherDropdownMenuItem variant="dither" onSelect={handleRename}>
-              <span>Rename</span>
-              <DitherDropdownMenuShortcut>F2</DitherDropdownMenuShortcut>
-            </DitherDropdownMenuItem>
-
-            <DitherDropdownMenuItem
-              variant="dither"
-              destructive
-              onSelect={handleTrash}
-            >
-              <span>Move to Trash</span>
-              <DitherDropdownMenuShortcut>Del</DitherDropdownMenuShortcut>
-            </DitherDropdownMenuItem>
-
-            <DitherDropdownMenuSeparator />
-
-            <DitherDropdownMenuItem variant="dither" onSelect={handleShowDetails}>
-              <span>Show Details</span>
-              <DitherDropdownMenuShortcut>Space</DitherDropdownMenuShortcut>
-            </DitherDropdownMenuItem>
-
-            <DitherDropdownMenuItem variant="dither" onSelect={handleProperties}>
-              <span>Properties</span>
-              <DitherDropdownMenuShortcut>{altKey}+Enter</DitherDropdownMenuShortcut>
-            </DitherDropdownMenuItem>
-          </DitherDropdownMenuGroup>
-        </Show>
-          }
-        >
-          <DitherDropdownMenuGroup>
-            <DitherDropdownMenuLabel>{drive()?.name || 'Device Operations'}</DitherDropdownMenuLabel>
-
             <DitherDropdownMenuItem variant="dither" onSelect={handleOpenDrive}>
-              <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-white/80 shrink-0" stroke="currentColor" stroke-width="1.8">
-                <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" stroke-linecap="round" stroke-linejoin="round" />
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                class="w-4 h-4 text-white/80 shrink-0"
+                stroke="currentColor"
+                stroke-width="1.8"
+              >
+                <path
+                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
               </svg>
               <span>Open</span>
             </DitherDropdownMenuItem>
 
             <DitherDropdownMenuItem variant="dither" onSelect={handleOpenDriveNewTab}>
-              <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-white/80 shrink-0" stroke="currentColor" stroke-width="1.8">
-                <path d="M19 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6M12 3h9v9M21 3l-10 10" stroke-linecap="round" stroke-linejoin="round" />
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                class="w-4 h-4 text-white/80 shrink-0"
+                stroke="currentColor"
+                stroke-width="1.8"
+              >
+                <path
+                  d="M19 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6M12 3h9v9M21 3l-10 10"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
               </svg>
               <span>Open in New Tab</span>
               <DitherDropdownMenuShortcut>{modKey}+T</DitherDropdownMenuShortcut>
             </DitherDropdownMenuItem>
 
             <DitherDropdownMenuItem variant="dither" onSelect={handleOpenDriveNewTab}>
-              <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-white/80 shrink-0" stroke="currentColor" stroke-width="1.8">
-                <rect x="3" y="3" width="18" height="18" rx="2" stroke-linecap="round" stroke-linejoin="round" />
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                class="w-4 h-4 text-white/80 shrink-0"
+                stroke="currentColor"
+                stroke-width="1.8"
+              >
+                <rect
+                  x="3"
+                  y="3"
+                  width="18"
+                  height="18"
+                  rx="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
                 <path d="M3 9h18M9 21V9" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
               <span>Open in New Window</span>
             </DitherDropdownMenuItem>
 
             <DitherDropdownMenuItem variant="dither" onSelect={handleOpenDriveNewTab}>
-              <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-white/80 shrink-0" stroke="currentColor" stroke-width="1.8">
-                <rect x="3" y="3" width="18" height="18" rx="2" stroke-linecap="round" stroke-linejoin="round" />
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                class="w-4 h-4 text-white/80 shrink-0"
+                stroke="currentColor"
+                stroke-width="1.8"
+              >
+                <rect
+                  x="3"
+                  y="3"
+                  width="18"
+                  height="18"
+                  rx="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
                 <path d="M12 3v18" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
               <span>Open in Split View</span>
@@ -562,29 +684,97 @@ export const ContextMenu: Component = () => {
 
             <DitherDropdownMenuSeparator />
 
-            <DitherDropdownMenuItem variant="dither" onSelect={handleOpenStorageMap} class="text-[color-mix(in_oklab,var(--accent)_70%,white)] group-hover:text-white">
-              <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-[var(--accent)] shrink-0" stroke="currentColor" stroke-width="1.8">
-                <rect x="3" y="3" width="7" height="9" rx="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                <rect x="14" y="3" width="7" height="5" rx="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                <rect x="14" y="12" width="7" height="9" rx="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                <rect x="3" y="16" width="7" height="5" rx="1.5" stroke-linecap="round" stroke-linejoin="round" />
+            <DitherDropdownMenuItem
+              variant="dither"
+              onSelect={handleOpenStorageMap}
+              class="text-[color-mix(in_oklab,var(--accent)_70%,white)] group-hover:text-white"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                class="w-4 h-4 text-[var(--accent)] shrink-0"
+                stroke="currentColor"
+                stroke-width="1.8"
+              >
+                <rect
+                  x="3"
+                  y="3"
+                  width="7"
+                  height="9"
+                  rx="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <rect
+                  x="14"
+                  y="3"
+                  width="7"
+                  height="5"
+                  rx="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <rect
+                  x="14"
+                  y="12"
+                  width="7"
+                  height="9"
+                  rx="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <rect
+                  x="3"
+                  y="16"
+                  width="7"
+                  height="5"
+                  rx="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
               </svg>
               <span class="font-medium">Inspect Storage Map</span>
-              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[color-mix(in_oklab,var(--accent)_20%,transparent)] text-[var(--accent)] ml-auto">Zig</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[color-mix(in_oklab,var(--accent)_20%,transparent)] text-[var(--accent)] ml-auto">
+                Zig
+              </span>
             </DitherDropdownMenuItem>
 
             <DitherDropdownMenuSeparator />
 
-            <DitherDropdownMenuItem variant="dither" onSelect={() => closeContextMenu()} class="text-rose-400/90 group-hover:text-rose-300">
-              <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-rose-400 shrink-0" stroke="currentColor" stroke-width="1.8">
-                <path d="M12 3l8 12H4l8-12zM4 19h16" stroke-linecap="round" stroke-linejoin="round" />
+            <DitherDropdownMenuItem
+              variant="dither"
+              onSelect={() => closeContextMenu()}
+              class="text-rose-400/90 group-hover:text-rose-300"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                class="w-4 h-4 text-rose-400 shrink-0"
+                stroke="currentColor"
+                stroke-width="1.8"
+              >
+                <path
+                  d="M12 3l8 12H4l8-12zM4 19h16"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
               </svg>
               <span>Unmount</span>
             </DitherDropdownMenuItem>
 
             <DitherDropdownMenuItem variant="dither" onSelect={() => closeContextMenu()}>
-              <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-white/60 shrink-0" stroke="currentColor" stroke-width="1.8">
-                <path d="M18.36 6.64a9 9 0 11-12.73 0M12 2v10" stroke-linecap="round" stroke-linejoin="round" />
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                class="w-4 h-4 text-white/60 shrink-0"
+                stroke="currentColor"
+                stroke-width="1.8"
+              >
+                <path
+                  d="M18.36 6.64a9 9 0 11-12.73 0M12 2v10"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
               </svg>
               <span>Eject & Power Off</span>
             </DitherDropdownMenuItem>
@@ -592,15 +782,35 @@ export const ContextMenu: Component = () => {
             <DitherDropdownMenuSeparator />
 
             <DitherDropdownMenuItem variant="dither" onSelect={() => closeContextMenu()}>
-              <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-white/60 shrink-0" stroke="currentColor" stroke-width="1.8">
-                <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24M1 1l22 22" stroke-linecap="round" stroke-linejoin="round" />
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                class="w-4 h-4 text-white/60 shrink-0"
+                stroke="currentColor"
+                stroke-width="1.8"
+              >
+                <path
+                  d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24M1 1l22 22"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
               </svg>
               <span>Hide from Sidebar</span>
             </DitherDropdownMenuItem>
 
             <DitherDropdownMenuItem variant="dither" onSelect={() => closeContextMenu()}>
-              <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 text-white/60 shrink-0" stroke="currentColor" stroke-width="1.8">
-                <path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" stroke-linecap="round" stroke-linejoin="round" />
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                class="w-4 h-4 text-white/60 shrink-0"
+                stroke="currentColor"
+                stroke-width="1.8"
+              >
+                <path
+                  d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
               </svg>
               <span>Manage Places & Devices...</span>
             </DitherDropdownMenuItem>

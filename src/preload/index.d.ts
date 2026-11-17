@@ -159,10 +159,51 @@ export interface CustomAPI {
   terminalKill: (id: number) => Promise<void>
   getWallpaperTheme: () => Promise<WallpaperPalette | null>
   getWallpaperThemePath: () => Promise<string>
+  /** Write an image studio export as a new file beside the source; resolves to its path. */
+  exportImage: (sourcePath: string, stem: string, ext: string, bytes: Uint8Array) => Promise<string>
+  /** Project icon (favicon/logo) per folder, null when none */
+  projectIcons: (dirs: string[]) => Promise<Record<string, string | null>>
+  uploadServices: () => Promise<UploadService[]>
+  /** Queue uploads; resolves to the new task ids */
+  startUpload: (paths: string[], serviceId: string) => Promise<string[]>
+  listTasks: () => Promise<TaskRecord[]>
+  cancelTask: (id: string) => Promise<boolean>
+  removeTask: (id: string) => Promise<boolean>
+  clearTasks: () => Promise<boolean>
+  onTasksChanged: (callback: (tasks: TaskRecord[]) => void) => () => void
   onWallpaperTheme: (callback: (theme: WallpaperPalette | null) => void) => () => void
   onTerminalData: (callback: (id: number, data: string) => void) => () => void
   onTerminalExit: (callback: (id: number, exitCode: number) => void) => () => void
   onDrivesChanged: (callback: () => void) => () => void
+}
+
+export interface UploadService {
+  id: string
+  name: string
+  retention: string
+  maxBytes: number
+  group: 'permanent' | 'temporary'
+}
+
+export type TaskStatus = 'queued' | 'running' | 'done' | 'error' | 'canceled'
+
+export interface TaskRecord {
+  id: string
+  kind: 'upload'
+  /** producer-specific id, e.g. the upload service (used for Retry) */
+  serviceId: string
+  fileName: string
+  filePath: string
+  target: string
+  status: TaskStatus
+  sent: number
+  total: number
+  url?: string
+  error?: string
+  expiresAt?: number
+  createdAt: number
+  startedAt?: number
+  finishedAt?: number
 }
 
 declare global {

@@ -3,6 +3,8 @@ import type { Component } from 'solid-js'
 import Sidebar from './components/Sidebar'
 import BrowserTopBar from './components/browser/BrowserTopBar'
 import FolderView from './components/browser/FolderView'
+import TasksPanel from './components/tasks/TasksPanel'
+import { initTasks } from './tasks'
 import StatusBar from './components/StatusBar'
 import Terminal from './components/terminal/Terminal'
 import QuickOpenModal from './components/modals/QuickOpenModal'
@@ -159,6 +161,7 @@ const App: Component = () => {
 
   useThemeVariables()
   useWallpaperTheme()
+  onCleanup(initTasks() ?? (() => {}))
 
   onMount(async () => {
     window.addEventListener('keydown', handleGlobalKeyDown)
@@ -200,7 +203,8 @@ const App: Component = () => {
 
         {/* Canvas row: rounded canvas + inspector drawer sliding out sideways in the dark */}
         <div class="flex-1 min-h-0 min-w-0 flex flex-row">
-          <main class="polaris-canvas relative z-10 flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden rounded-[20px]"
+          <main
+            class="polaris-canvas relative z-10 flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden rounded-[20px]"
             style={{
               // Square the corner under the filter tab while it's melted in
               'border-top-right-radius': isFilterTabActive() ? '0px' : '20px',
@@ -212,6 +216,7 @@ const App: Component = () => {
             </Show>
           </main>
           <InspectorDrawer />
+          <TasksPanel />
         </div>
 
         {/* Terminal Drawer in the dark below the canvas */}

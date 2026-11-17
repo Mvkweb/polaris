@@ -1,0 +1,256 @@
+/* Tasks panel — floating card over the window, same surface language as the
+   media dock: near-black, borderless (1px inner light only), accent progress. */
+
+.tasks-drawer {
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* Content settles in just after the hole opens */
+.tasks-drawer-inner {
+  opacity: 0;
+  translate: 12px 0;
+  transition:
+    opacity 160ms ease,
+    translate 260ms var(--ease-out);
+}
+.tasks-drawer-inner.is-open {
+  opacity: 1;
+  translate: 0 0;
+  transition-delay: 60ms;
+}
+
+.tasks-text-btn {
+  color: rgb(255 255 255 / 0.45);
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    background-color 120ms ease;
+}
+.tasks-text-btn:hover:not(:disabled) {
+  color: #fff;
+  background: rgb(255 255 255 / 0.06);
+}
+.tasks-text-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Edge fades: registered so they can animate; each edge only fades when
+   there is something hidden behind it. */
+@property --fade-top {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --fade-bottom {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+.tasks-body {
+  scrollbar-width: none;
+  --fade-top: 0px;
+  --fade-bottom: 0px;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--fade-top),
+    #000 calc(100% - var(--fade-bottom)),
+    transparent 100%
+  );
+  transition:
+    --fade-top 220ms ease,
+    --fade-bottom 220ms ease;
+}
+.tasks-body.fade-top {
+  --fade-top: 28px;
+}
+.tasks-body.fade-bottom {
+  --fade-bottom: 40px;
+}
+.tasks-section {
+  padding: 16px 8px 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgb(255 255 255 / 0.42);
+}
+.tasks-section:first-child {
+  padding-top: 8px;
+}
+
+/* ── Rows ─────────────────────────────────────────────────────────────── */
+.task-row {
+  transition: background-color 120ms ease;
+  animation: task-in 300ms var(--ease-out) both;
+}
+.task-row:hover {
+  background: rgb(255 255 255 / 0.03);
+}
+@keyframes task-in {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+.task-icon {
+  background: transparent;
+}
+.task-thumb {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 7px;
+  background: rgb(255 255 255 / 0.03);
+  animation: task-thumb-in 260ms ease both;
+}
+@keyframes task-thumb-in {
+  from {
+    opacity: 0;
+    scale: 0.92;
+  }
+}
+.task-row.is-running .task-icon::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 10px;
+  border: 1.5px solid transparent;
+  border-top-color: var(--accent, #fff);
+  animation: task-spin 0.9s linear infinite;
+}
+@keyframes task-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+.task-row.is-done .task-status {
+  color: rgb(255 255 255 / 0.3);
+}
+.task-row.is-running .task-status {
+  color: var(--accent, #fff);
+}
+.task-row.is-error .task-status {
+  color: rgb(253 164 175 / 0.85);
+}
+.task-row.is-canceled,
+.task-row.is-expired {
+  opacity: 0.55;
+}
+.task-row.is-canceled .task-status,
+.task-row.is-queued .task-status {
+  color: rgb(255 255 255 / 0.35);
+}
+
+.task-link {
+  color: rgb(255 255 255 / 0.45);
+  transition: color 120ms ease;
+}
+.task-link:hover {
+  color: rgb(255 255 255 / 0.75);
+}
+/* Link ↔ "Copied" crossfade, tinted from the wallpaper accent */
+.task-link-url,
+.task-link-copied {
+  transition:
+    opacity 180ms ease,
+    translate 220ms var(--ease-out),
+    filter 180ms ease;
+}
+.task-link-copied {
+  color: color-mix(in oklab, var(--accent, #fff) 85%, #fff);
+  opacity: 0;
+  translate: 0 4px;
+  filter: blur(2px);
+  pointer-events: none;
+}
+.task-link.is-copied .task-link-url {
+  opacity: 0;
+  translate: 0 -4px;
+  filter: blur(2px);
+}
+.task-link.is-copied .task-link-copied {
+  opacity: 1;
+  translate: 0 0;
+  filter: none;
+}
+
+.task-rail {
+  background: rgb(255 255 255 / 0.07);
+}
+.task-rail-fill {
+  background: var(--accent, #fff);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--accent, #fff) 55%, transparent);
+  transition: width 200ms linear;
+}
+.task-row.is-queued .task-rail-fill {
+  width: 30% !important;
+  opacity: 0.35;
+  animation: task-wait 1.4s ease-in-out infinite;
+}
+@keyframes task-wait {
+  0% {
+    translate: -110% 0;
+  }
+  100% {
+    translate: 360% 0;
+  }
+}
+
+/* Actions fade in on hover; the status label steps aside for them */
+.task-meta {
+  min-width: 52px;
+  height: 18px;
+}
+.task-status {
+  transition:
+    opacity 140ms ease,
+    translate 180ms var(--ease-out);
+}
+.task-actions {
+  translate: 0 calc(-50% + 3px);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 140ms ease,
+    translate 180ms var(--ease-out);
+}
+.task-row:hover .task-status,
+.task-row:focus-within .task-status {
+  opacity: 0;
+  translate: 0 -3px;
+}
+.task-row:hover .task-actions,
+.task-row:focus-within .task-actions {
+  opacity: 1;
+  translate: 0 -50%;
+  pointer-events: auto;
+}
+.task-action {
+  color: rgb(255 255 255 / 0.5);
+  transition:
+    color 120ms ease,
+    background-color 120ms ease;
+}
+.task-action {
+  color: rgb(255 255 255 / 0.4);
+}
+.task-action:hover {
+  color: #fff;
+  background: rgb(255 255 255 / 0.06);
+}
+
+/* ── Status-bar button ────────────────────────────────────────────────── */
+.tasks-ring-track {
+  stroke: rgb(255 255 255 / 0.12);
+}
+.tasks-ring-fill {
+  stroke: var(--accent, #fff);
+  transition: stroke-dashoffset 220ms linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tasks-drawer-inner,
+  .task-row {
+    transition: opacity 120ms ease;
+    animation: none;
+  }
+}

@@ -1,6 +1,7 @@
 import { Show, createEffect, createSignal, on, onCleanup, onMount, type Component } from 'solid-js'
-import { DockButton, DockDivider, DockGrip, DockSegments, MediaDock } from './MediaDock'
-import { CheckerIcon, CodeIcon, MinusIcon, PlusIcon, RotateIcon } from './icons'
+import { DockButton, DockDivider, DockGrip, DockSegments, MediaDock, MorphBox } from './MediaDock'
+import { CheckerIcon, CodeIcon, MinusIcon, PlusIcon, RotateIcon, StudioIcon } from './icons'
+import { StudioBar } from './studio/StudioBar'
 import { mediaUrl } from './mediaKind'
 import { isTypingTarget } from './keys'
 
@@ -31,6 +32,20 @@ export const ImageViewer: Component<ImageViewerProps> = (props) => {
   const [checker, setChecker] = createSignal(true)
   const [failed, setFailed] = createSignal(false)
   const [grabbing, setGrabbing] = createSignal(false)
+  // Studio: export/convert row that unfolds above the dock
+  const [studio, setStudio] = createSignal(false)
+  const [studioMounted, setStudioMounted] = createSignal(false)
+  const [previewUrl, setPreviewUrl] = createSignal<string | null>(null)
+  const [sourceSize, setSourceSize] = createSignal<{ w: number; h: number } | null>(null)
+  let unmountTimer: number | undefined
+  const toggleStudio = (): void => {
+    const next = !studio()
+    window.clearTimeout(unmountTimer)
+    if (next) setStudioMounted(true)
+    else unmountTimer = window.setTimeout(() => setStudioMounted(false), 170)
+    setStudio(next)
+  }
+  onCleanup(() => window.clearTimeout(unmountTimer))
 
   const rotated = () => rotation() % 180 !== 0
   const fitScale = (): number => {
@@ -111,6 +126,7 @@ export const ImageViewer: Component<ImageViewerProps> = (props) => {
     else if (k === '0') applyFit()
     else if (k === '1') applyActual()
     else if (k === 'r' || k === 'R') rotate()
+    else if (k === 'e' || k === 'E') toggleStudio()
     else return
     e.preventDefault()
   }
@@ -143,6 +159,10 @@ export const ImageViewer: Component<ImageViewerProps> = (props) => {
       () => props.path,
       () => {
         setNatural(null)
+        setSourceSize(null)
+        setStudio(false)
+        setStudioMounted(false)
+        setPreviewUrl(null)
         setFailed(false)
         setRotation(0)
         props.onInfo(null)
@@ -155,11 +175,18 @@ export const ImageViewer: Component<ImageViewerProps> = (props) => {
     // SVGs without intrinsic size report 0 — give them a sensible canvas.
     const w = img.naturalWidth || 512
     const h = img.naturalHeight || 512
+    const wasShowing = natural()
     setNatural({ w, h })
-    setInstant(true)
-    applyFit()
-    requestAnimationFrame(() => setInstant(false))
-    props.onInfo(`${w} × ${h}`)
+    // Compare previews swap the src; only the original defines the source size.
+    if (!previewUrl()) {
+      setSourceSize({ w, h })
+      props.onInfo(`${w} × ${h}`)
+    }
+    if (!wasShowing || mode() === 'fit') {
+      setInstant(true)
+      applyFit()
+      requestAnimationFrame(() => setInstant(false))
+    }
   }
 
   const zoomLabel = () => `${Math.round(scale() * 100)}%`
@@ -198,7 +225,7 @@ export const ImageViewer: Component<ImageViewerProps> = (props) => {
           }}
         >
           <img
-            src={mediaUrl(props.path)}
+            src={previewUrl() ?? mediaUrl(props.path)}
             alt=""
             draggable={false}
             onLoad={onLoad}
@@ -211,39 +238,70 @@ export const ImageViewer: Component<ImageViewerProps> = (props) => {
 
       <div class="absolute inset-x-0 bottom-4 flex justify-center pointer-events-none">
         <MediaDock>
-          <DockGrip />
-          <DockSegments
-            value={mode()}
-            onChange={(v) => (v === 'fit' ? applyFit() : applyActual())}
-            options={[
-              { value: 'fit', label: 'Fit', title: 'Fit to view (0)' },
-              { value: 'actual', label: '100%', title: 'Actual size (1)' }
-            ]}
-          />
-          <DockDivider />
-          <DockButton title="Zoom out (−)" onClick={() => zoomTo(scale() / 1.25)}>
-            <MinusIcon class="w-3.5 h-3.5" />
-          </DockButton>
-          <span class="w-12 text-center text-[12px] tabular-nums text-white/55">{zoomLabel()}</span>
-          <DockButton title="Zoom in (+)" onClick={() => zoomTo(scale() * 1.25)}>
-            <PlusIcon class="w-3.5 h-3.5" />
-          </DockButton>
-          <DockDivider />
-          <DockButton title="Rotate (R)" onClick={rotate}>
-            <RotateIcon class="w-3.5 h-3.5" />
-          </DockButton>
-          <DockButton
-            title="Transparency grid"
-            active={checker()}
-            onClick={() => setChecker((v) => !v)}
-          >
-            <CheckerIcon class="w-3.5 h-3.5" />
-          </DockButton>
-          <Show when={props.onViewSource}>
-            <DockButton title="Edit source" onClick={() => props.onViewSource?.()}>
-              <CodeIcon class="w-3.5 h-3.5" />
-            </DockButton>
-          </Show>
+          <MorphBox>
+            <div class="flex flex-col items-center">
+              <Show when={studioMounted() && sourceSize()}>
+                <div
+                  class="studio-row"
+                  classList={{ 'is-open': studio(), 'is-closing': !studio() }}
+                >
+                  <StudioBar
+                    path={props.path}
+                    natural={sourceSize()!}
+                    rotation={rotation()}
+                    isVector={props.path.toLowerCase().endsWith('.svg')}
+                    onPreview={setPreviewUrl}
+                  />
+                </div>
+              </Show>
+              <div class="flex items-center gap-0.5">
+                <DockGrip />
+                <DockSegments
+                  value={mode()}
+                  onChange={(v) => (v === 'fit' ? applyFit() : applyActual())}
+                  options={[
+                    { value: 'fit', label: 'Fit', title: 'Fit to view (0)' },
+                    { value: 'actual', label: '100%', title: 'Actual size (1)' }
+                  ]}
+                />
+                <DockDivider />
+                <DockButton title="Zoom out (−)" onClick={() => zoomTo(scale() / 1.25)}>
+                  <MinusIcon class="w-3.5 h-3.5" />
+                </DockButton>
+                <span class="w-12 text-center text-[12px] tabular-nums text-white/55">
+                  {zoomLabel()}
+                </span>
+                <DockButton title="Zoom in (+)" onClick={() => zoomTo(scale() * 1.25)}>
+                  <PlusIcon class="w-3.5 h-3.5" />
+                </DockButton>
+                <DockDivider />
+                <DockButton title="Rotate (R)" onClick={rotate}>
+                  <RotateIcon class="w-3.5 h-3.5" />
+                </DockButton>
+                <DockButton
+                  title="Transparency grid"
+                  active={checker()}
+                  onClick={() => setChecker((v) => !v)}
+                >
+                  <CheckerIcon class="w-3.5 h-3.5" />
+                </DockButton>
+                <Show when={props.onViewSource}>
+                  <DockButton title="Edit source" onClick={() => props.onViewSource?.()}>
+                    <CodeIcon class="w-3.5 h-3.5" />
+                  </DockButton>
+                </Show>
+                <DockDivider />
+                <DockButton
+                  title="Studio: convert & export (E)"
+                  active={studio()}
+                  onClick={toggleStudio}
+                >
+                  <StudioIcon class="w-3.5 h-3.5" />
+                  <span>Studio</span>
+                </DockButton>
+              </div>
+            </div>
+          </MorphBox>
         </MediaDock>
       </div>
     </div>
