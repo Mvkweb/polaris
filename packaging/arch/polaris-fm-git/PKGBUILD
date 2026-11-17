@@ -39,8 +39,11 @@ pkgver() {
 	cd "$srcdir/$pkgname"
 
 	# r<commits>.g<hash> until the first tag, then <tag>.r<n>.g<hash>
-	git describe --long --tags --abbrev=7 2>/dev/null | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g' ||
-		printf 'r%s.g%s' "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+	(
+		set -o pipefail
+		git describe --long --tags --abbrev=7 2>/dev/null | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g' ||
+			printf 'r%s.g%s' "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+	)
 }
 
 prepare() {
