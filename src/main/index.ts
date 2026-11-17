@@ -185,15 +185,28 @@ app.whenReady().then(() => {
             : extname(entry.name).toLowerCase().replace(/^\./, '')
         }))
 
+      // Modified time + size for sorting (lstat in parallel: no symlink follow,
+      // a few ms even for thousands of entries). Failures keep the bare entry.
+      const withMeta = await Promise.all(
+        mapped.map(async (e) => {
+          try {
+            const st = await lstat(e.path)
+            return { ...e, modifiedTime: st.mtimeMs, size: e.isDirectory ? undefined : st.size }
+          } catch {
+            return e
+          }
+        })
+      )
+
       // Folders on top, both sorted alphabetically (case-insensitive) using fast cached collator
       const dirCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
-      mapped.sort((a, b) => {
+      withMeta.sort((a, b) => {
         if (a.isDirectory && !b.isDirectory) return -1
         if (!a.isDirectory && b.isDirectory) return 1
         return dirCollator.compare(a.name, b.name)
       })
 
-      return mapped
+      return withMeta
     } catch (err) {
       console.error('Failed to read directory:', dirPath, err)
       return []

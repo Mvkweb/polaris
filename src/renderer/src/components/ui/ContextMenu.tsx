@@ -18,7 +18,13 @@ import {
   openStorageMapModal,
   openNewTab,
   navigateTo,
-  openFileInEditor
+  openFileInEditor,
+  setSort,
+  sortField,
+  sortDescending,
+  foldersFirst,
+  setFoldersFirst,
+  SORT_LABELS
 } from '../../store'
 import { isMac } from '../../shortcuts'
 import { TerminalTileIcon } from './Icons'
@@ -27,6 +33,7 @@ import { installedEditors, preferredEditor, rememberEditor, BUILTIN_EDITOR_ID } 
 import type { ExternalEditor } from '../../types'
 import ghosttyIcon from '../../assets/icons/ghostty.png'
 import { uploadFiles, uploadServices } from '../../tasks'
+import { directionLabel } from '../browser/SortControl'
 import {
   DitherDropdownMenu,
   DitherDropdownMenuContent,
@@ -457,6 +464,43 @@ export const ContextMenu: Component = () => {
                   </DitherDropdownMenuItem>
 
                   <DitherDropdownMenuSeparator />
+
+                  <DitherDropdownMenuSub>
+                    <DitherDropdownMenuSubTrigger variant="dither">
+                      <span>Sort by</span>
+                    </DitherDropdownMenuSubTrigger>
+                    <DitherDropdownMenuSubContent class="min-w-[200px] border-0 shadow-[0_4px_16px_rgba(0,0,0,0.45)] bg-[#050506]">
+                      <For each={['name', 'modified', 'size', 'kind'] as const}>
+                        {(f) => (
+                          <DitherDropdownMenuItem
+                            variant="dither"
+                            closeOnSelect={false}
+                            onSelect={() => setSort(f)}
+                          >
+                            <span class={sortField() === f ? 'text-white' : ''}>
+                              {SORT_LABELS[f]}
+                            </span>
+                            <Show when={sortField() === f}>
+                              <DitherDropdownMenuShortcut>
+                                {directionLabel(f, sortDescending())}
+                              </DitherDropdownMenuShortcut>
+                            </Show>
+                          </DitherDropdownMenuItem>
+                        )}
+                      </For>
+                      <DitherDropdownMenuSeparator />
+                      <DitherDropdownMenuItem
+                        variant="dither"
+                        closeOnSelect={false}
+                        onSelect={() => setFoldersFirst(!foldersFirst())}
+                      >
+                        <span>Folders first</span>
+                        <DitherDropdownMenuShortcut>
+                          {foldersFirst() ? 'On' : 'Off'}
+                        </DitherDropdownMenuShortcut>
+                      </DitherDropdownMenuItem>
+                    </DitherDropdownMenuSubContent>
+                  </DitherDropdownMenuSub>
 
                   <DitherDropdownMenuItem variant="dither" onSelect={handleRefresh}>
                     <span>Refresh Explorer</span>

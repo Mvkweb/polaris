@@ -25,6 +25,7 @@ import {
 } from '../../store'
 import { I } from '../ui/AppIcons'
 import { EditorPill } from './EditorPill'
+import { SortControl } from './SortControl'
 
 /* ── Monodrive Exact Hugeicons SVGs ── */
 const ChevronLeftIcon: Component<{ class?: string }> = (props) => (
@@ -271,6 +272,7 @@ export const BrowserTopBar: Component = () => {
           }}
         />
         <EditorPill />
+        <SortControl />
         <button
           type="button"
           onClick={() => toggleInspector()}

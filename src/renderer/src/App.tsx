@@ -39,7 +39,8 @@ import {
   openPropertiesModal,
   activeTabPath,
   selectedGridEntry,
-  toggleEditorView
+  toggleEditorView,
+  setSort
 } from './store'
 import { matchesShortcut } from './shortcuts'
 import { useThemeVariables, useWallpaperTheme } from './theme'
@@ -96,7 +97,11 @@ const handleGlobalKeyDown = (e: KeyboardEvent): void => {
     ['find_in_files', () => setCurrentView('search')],
     ['settings', toggleSettingsModal],
     // Not inside the terminal: shells use Ctrl+E (end of line).
-    ['toggle_editor_view', () => !inTerminal && toggleEditorView()]
+    ['toggle_editor_view', () => !inTerminal && toggleEditorView()],
+    ['sort_name', () => setSort('name')],
+    ['sort_modified', () => setSort('modified')],
+    ['sort_size', () => setSort('size')],
+    ['sort_kind', () => setSort('kind')]
   ]
   for (const [id, run] of actions) {
     if (matchesShortcut(e, id)) {

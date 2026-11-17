@@ -63,7 +63,7 @@ export interface ShortcutItem {
   locked?: boolean
 }
 
-export const SHORTCUT_GROUPS = ['General & Navigation', 'Editor', 'Terminal'] as const
+export const SHORTCUT_GROUPS = ['General & Navigation', 'Files', 'Editor', 'Terminal'] as const
 
 export const DEFAULT_SHORTCUTS: ShortcutItem[] = [
   // General & Navigation
@@ -130,6 +130,36 @@ export const DEFAULT_SHORTCUTS: ShortcutItem[] = [
     description: 'Quickly focus the search filter in the current sidebar view',
     group: 'General & Navigation',
     keys: ['Mod', 'F']
+  },
+
+  // Files
+  {
+    id: 'sort_name',
+    title: 'Sort by Name',
+    description: 'Press again to reverse (A–Z / Z–A)',
+    group: 'Files',
+    keys: ['Mod', 'Alt', '1']
+  },
+  {
+    id: 'sort_modified',
+    title: 'Sort by Date Modified',
+    description: 'Newest first; press again for oldest first',
+    group: 'Files',
+    keys: ['Mod', 'Alt', '2']
+  },
+  {
+    id: 'sort_size',
+    title: 'Sort by Size',
+    description: 'Largest first; press again for smallest first',
+    group: 'Files',
+    keys: ['Mod', 'Alt', '3']
+  },
+  {
+    id: 'sort_kind',
+    title: 'Sort by Kind',
+    description: 'Group by file type',
+    group: 'Files',
+    keys: ['Mod', 'Alt', '4']
   },
 
   // Editor

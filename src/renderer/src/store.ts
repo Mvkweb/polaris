@@ -20,14 +20,7 @@ export const [previousView, setPreviousView] = createSignal<
 
 // ── Monodrive Settings & Preferences ─────────────────────────────────────────
 export type SettingsPage =
-  | 'General'
-  | 'Appearance'
-  | 'Editor'
-  | 'Files'
-  | 'Media'
-  | 'Uploads'
-  | 'Keyboard'
-  | 'About'
+  'General' | 'Appearance' | 'Editor' | 'Files' | 'Media' | 'Uploads' | 'Keyboard' | 'About'
 export const SETTINGS_PAGES: SettingsPage[] = [
   'General',
   'Appearance',
@@ -45,9 +38,60 @@ export const [activeSettingsPage, setActiveSettingsPage] = createSignal<Settings
 // General Settings
 export type SortByField = 'name' | 'modified' | 'size' | 'kind'
 export const [showHiddenFiles, setShowHiddenFiles] = createSignal(false)
-export const [sortField, setSortField] = createSignal<SortByField>('name')
-export const [sortDescending, setSortDescending] = createSignal(false)
-export const [foldersFirst, setFoldersFirst] = createSignal(true)
+const SORT_KEY = 'polaris.sort.v1'
+const savedSort = ((): { field?: SortByField; desc?: boolean; foldersFirst?: boolean } => {
+  try {
+    return JSON.parse(localStorage.getItem(SORT_KEY) ?? '{}')
+  } catch {
+    return {}
+  }
+})()
+export const [sortField, setSortFieldSignal] = createSignal<SortByField>(savedSort.field ?? 'name')
+export const [sortDescending, setSortDescendingSignal] = createSignal(savedSort.desc ?? false)
+export const [foldersFirst, setFoldersFirstSignal] = createSignal(savedSort.foldersFirst ?? true)
+const persistSort = (): void => {
+  try {
+    localStorage.setItem(
+      SORT_KEY,
+      JSON.stringify({ field: sortField(), desc: sortDescending(), foldersFirst: foldersFirst() })
+    )
+  } catch {
+    /* storage unavailable */
+  }
+}
+export const setSortField = (v: SortByField): void => {
+  setSortFieldSignal(v)
+  persistSort()
+}
+export const setSortDescending = (v: boolean): void => {
+  setSortDescendingSignal(v)
+  persistSort()
+}
+export const setFoldersFirst = (v: boolean): void => {
+  setFoldersFirstSignal(v)
+  persistSort()
+}
+/**
+ * Pick a sort. Choosing the active one flips its direction; a new field starts
+ * in its natural direction (names A→Z, kinds A→Z, newest and largest first).
+ */
+export const setSort = (field: SortByField): void => {
+  if (sortField() === field) {
+    setSortDescending(!sortDescending())
+    return
+  }
+  batch(() => {
+    setSortFieldSignal(field)
+    setSortDescendingSignal(field === 'modified' || field === 'size')
+  })
+  persistSort()
+}
+export const SORT_LABELS: Record<SortByField, string> = {
+  name: 'Name',
+  modified: 'Date modified',
+  size: 'Size',
+  kind: 'Kind'
+}
 export const [defaultTerminal, setDefaultTerminal] = createSignal<
   'Terminal' | 'Ghostty' | 'Alacritty' | 'Kitty'
 >('Terminal')
