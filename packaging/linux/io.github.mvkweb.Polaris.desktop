@@ -10,5 +10,6 @@ Exec=polaris-fm %U
 Icon=io.github.mvkweb.Polaris
 Terminal=false
 StartupNotify=true
+StartupWMClass=io.github.mvkweb.Polaris
 Categories=System;FileTools;FileManager;
 Keywords=files;folders;explorer;browser;editor;

@@ -18,6 +18,10 @@ import { registerUploadIpc } from './uploads'
 import { registerUpdateIpc } from './updates'
 import { INSTALLED, setupInstance, startDir, startReveal, type OpenRequest } from './launch'
 
+// Match the installed desktop entry so Wayland docks and X11 taskbars can
+// resolve the app icon and group its windows. Must run before app is ready.
+if (process.platform === 'linux') app.setDesktopName('io.github.mvkweb.Polaris.desktop')
+
 // Register privileged custom schemes before app is ready
 protocol.registerSchemesAsPrivileged([MEDIA_SCHEME_PRIVILEGES])
 
