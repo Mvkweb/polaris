@@ -1,0 +1,111 @@
+# Maintainer: Mvkweb <https://github.com/Mvkweb>
+
+# PRIVATE-REPO PHASE: source= clones over SSH, so collaborators build with
+# their own GitHub key (no tokens). When the repo goes public, switch it to
+# "$pkgname::git+$url.git" (see .docs/distribution.md, "When public").
+
+pkgname=polaris-fm-git
+_electron=electron44
+pkgver=r0.g0000000
+pkgrel=1
+pkgdesc='A dithered file manager and editor'
+arch=('x86_64' 'aarch64')
+url='https://github.com/Mvkweb/polaris'
+# No license chosen yet (private repo, all rights reserved).
+license=('LicenseRef-Proprietary')
+depends=(
+	"$_electron"
+	'git'
+	'hicolor-icon-theme'
+	'util-linux'
+	'which'
+)
+optdepends=(
+	'udisks2: mount, unmount and eject drives'
+)
+# Requires Zig 0.17.x (see core/build.zig.zon minimum_zig_version).
+makedepends=(
+	'bun'
+	'git'
+	'python'
+	'zig>=0.17'
+)
+provides=('polaris-fm')
+conflicts=('polaris-fm')
+source=("$pkgname::git+ssh://git@github.com/Mvkweb/polaris.git")
+sha256sums=('SKIP')
+
+pkgver() {
+	cd "$srcdir/$pkgname"
+
+	# r<commits>.g<hash> until the first tag, then <tag>.r<n>.g<hash>
+	git describe --long --tags --abbrev=7 2>/dev/null | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g' ||
+		printf 'r%s.g%s' "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+}
+
+prepare() {
+	cd "$srcdir/$pkgname"
+
+	# Keep every cache inside $srcdir. Electron itself comes from the
+	# system ($_electron), so skip its ~100 MB binary download.
+	export BUN_INSTALL_CACHE_DIR="$srcdir/bun-cache"
+	export ELECTRON_SKIP_BINARY_DOWNLOAD=1
+	bun install --frozen-lockfile
+}
+
+build() {
+	cd "$srcdir/$pkgname"
+
+	export ZIG_GLOBAL_CACHE_DIR="$srcdir/zig-cache"
+	export ELECTRON_SKIP_BINARY_DOWNLOAD=1
+
+	# Baseline CPU so the binary runs anywhere, not just the build host.
+	(cd core && zig build -Doptimize=ReleaseFast -Dcpu=baseline)
+
+	# Build stamp, read by the app's update check (src/main/launch.ts).
+	POLARIS_CHANNEL=nightly \
+	POLARIS_COMMIT="$(git rev-parse HEAD)" \
+	POLARIS_PKGVER="$pkgver" \
+		bun x electron-vite build
+}
+
+check() {
+	cd "$srcdir/$pkgname/core"
+
+	ZIG_GLOBAL_CACHE_DIR="$srcdir/zig-cache" zig build test -Doptimize=ReleaseFast -Dcpu=baseline
+}
+
+package() {
+	cd "$srcdir/$pkgname"
+
+	local app="$pkgdir/usr/lib/polaris-fm/app"
+
+	# The app: bundled main/preload/renderer, metadata, window icon, core.
+	install -d "$app"
+	cp -r out "$app/"
+	install -Dm644 package.json "$app/package.json"
+	install -Dm644 resources/icon.png "$app/resources/icon.png"
+	install -Dm755 core/zig-out/bin/polaris-core "$app/bin/polaris-core"
+
+	# Runtime modules the bundles load with require(); everything else is
+	# bundled. node-pty uses N-API, so it runs on the system Electron as is.
+	local mod
+	for mod in @electron-toolkit/utils @electron-toolkit/preload; do
+		install -d "$app/node_modules/$mod"
+		cp -r "node_modules/$mod/dist" "$app/node_modules/$mod/"
+		install -m644 "node_modules/$mod/package.json" "node_modules/$mod/LICENSE" "$app/node_modules/$mod/"
+	done
+	install -d "$app/node_modules/node-pty/build/Release"
+	cp -r node_modules/node-pty/lib "$app/node_modules/node-pty/"
+	find "$app/node_modules/node-pty/lib" -name '*.test.js' -delete
+	install -m644 node_modules/node-pty/package.json node_modules/node-pty/LICENSE "$app/node_modules/node-pty/"
+	install -m755 node_modules/node-pty/build/Release/pty.node "$app/node_modules/node-pty/build/Release/"
+
+	# Launcher, desktop entry, icon.
+	sed "s|@ELECTRON@|$_electron|" packaging/linux/polaris-fm.sh |
+		install -Dm755 /dev/stdin "$pkgdir/usr/bin/polaris-fm"
+	install -Dm644 packaging/linux/io.github.mvkweb.Polaris.desktop \
+		"$pkgdir/usr/share/applications/io.github.mvkweb.Polaris.desktop"
+	install -Dm644 resources/icon.png \
+		"$pkgdir/usr/share/icons/hicolor/512x512/apps/io.github.mvkweb.Polaris.png"
+}

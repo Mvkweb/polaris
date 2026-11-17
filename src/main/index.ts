@@ -16,9 +16,24 @@ import { registerProjectIconIpc } from './projectIcons'
 import { loadTasks, registerTaskIpc } from './tasks'
 import { registerUploadIpc } from './uploads'
 import { registerUpdateIpc } from './updates'
+import { INSTALLED, setupInstance, startDir, startReveal, type OpenRequest } from './launch'
 
 // Register privileged custom schemes before app is ready
 protocol.registerSchemesAsPrivileged([MEDIA_SCHEME_PRIVILEGES])
+
+// Installed builds: one window. A second `polaris-fm <path>` hands its path to
+// the running window (new tab) and exits right away.
+const openInWindow = (req: OpenRequest | null): void => {
+  if (!req) return
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) win.webContents.send('app:open', req)
+  }
+}
+if (!setupInstance(openInWindow)) app.exit(0)
+
+// From the repo `is.dev` is the electron-vite dev server; an installed package
+// runs on the system Electron (unpackaged in Electron's eyes) but is a release.
+const isDev = is.dev && !INSTALLED
 
 const execFileAsync = promisify(execFile)
 const idNameCache = new Map<string, string>()
@@ -102,7 +117,7 @@ function createWindow(): void {
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
-      webSecurity: !is.dev
+      webSecurity: !isDev
     }
   })
 
@@ -115,7 +130,7 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+  if (isDev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
@@ -141,12 +156,23 @@ app.whenReady().then(() => {
 
   ipcMain.handle('app:version', () => app.getVersion())
   ipcMain.handle('app:platform', () => process.platform)
+  // File Polaris was asked to open (`polaris-fm ~/notes.md`): select it once.
+  let pendingReveal = startReveal
+  ipcMain.handle('app:takeStartReveal', () => {
+    const r = pendingReveal
+    pendingReveal = null
+    return r
+  })
 
   registerTerminalHandlers()
   emberCore.start()
-  emberCore.index(process.cwd()).catch((err) => {
-    console.warn('[EmberCore] Initial indexing warning:', err)
-  })
+  // Quick-open index for a project folder. Never walk all of $HOME or / on
+  // startup (the installed app starts in home); those index on demand.
+  if (startDir !== homedir() && startDir !== '/') {
+    emberCore.index(startDir).catch((err) => {
+      console.warn('[EmberCore] Initial indexing warning:', err)
+    })
+  }
 
   app.on('before-quit', () => {
     emberCore.stop()
@@ -159,16 +185,14 @@ app.whenReady().then(() => {
     }
   })
 
-  // NOTE: Temporary default to process.cwd() / dev root; replace with user-selected workspace later
-  ipcMain.handle('fs:getWorkspaceRoot', () => {
-    return process.cwd()
-  })
+  // Start folder: the path Polaris was opened with, else home (installed) or
+  // the launch folder (from the repo). See launch.ts.
+  ipcMain.handle('fs:getWorkspaceRoot', () => startDir)
 
   // Read directory entries for real file explorer (folders first, sorted alphabetically)
   ipcMain.handle('fs:readDirectory', async (_, dirPath?: string) => {
     try {
-      // NOTE: Defaults to process.cwd() if no path provided; replace with workspace root later
-      const targetPath = resolve(dirPath || process.cwd())
+      const targetPath = resolve(dirPath || startDir)
       if (targetPath === '/dev' || targetPath.startsWith('/dev/')) {
         throw new Error(`Cannot browse block device node: ${targetPath}`)
       }
@@ -316,7 +340,7 @@ app.whenReady().then(() => {
   // Open native Ghostty window in target directory
   ipcMain.handle('terminal:openGhostty', async (_, targetDir?: string) => {
     try {
-      const dir = targetDir || process.cwd()
+      const dir = targetDir || startDir
       const child = spawn('ghostty', ['+new-window', `--working-directory=${dir}`], {
         detached: true,
         stdio: 'ignore'
@@ -354,7 +378,7 @@ app.whenReady().then(() => {
   // Open target file or directory in VS Code
   ipcMain.handle('editor:openCode', async (_, targetPath: string) => {
     try {
-      const p = targetPath || process.cwd()
+      const p = targetPath || startDir
       const child = spawn('code', [p], {
         detached: true,
         stdio: 'ignore'
@@ -576,7 +600,7 @@ app.whenReady().then(() => {
 
   // Workspace indexer (Zig sidecar)
   ipcMain.handle('fs:indexWorkspace', async (_, rootPath?: string) => {
-    const target = resolve(rootPath || process.cwd())
+    const target = resolve(rootPath || startDir)
     if (emberCore.isAvailable()) {
       try {
         const gitFiles = await getGitFiles(target)
@@ -631,7 +655,7 @@ app.whenReady().then(() => {
       }
     }
 
-    const targetDir = process.cwd()
+    const targetDir = startDir
     const results: Array<{ name: string; path: string; relativePath: string }> = []
     const IGNORED = new Set(['.git', 'node_modules', 'out', 'dist', 'build', '.cache'])
     const queue: Array<{ dir: string; rel: string }> = [{ dir: targetDir, rel: '' }]
@@ -674,7 +698,7 @@ app.whenReady().then(() => {
   // Git integration: fetch recent commit history
   ipcMain.handle('git:getLog', async (_, repoPath?: string, maxCount = 30) => {
     try {
-      const cwd = resolve(repoPath || process.cwd())
+      const cwd = resolve(repoPath || startDir)
       const { stdout } = await execFileAsync(
         'git',
         ['log', '-n', String(maxCount), '--format=%H|%h|%s|%an|%at'],
@@ -704,7 +728,7 @@ app.whenReady().then(() => {
   // Git integration: fetch current branch, dirty status, modified files
   ipcMain.handle('git:getStatus', async (_, repoPath?: string) => {
     try {
-      const cwd = resolve(repoPath || process.cwd())
+      const cwd = resolve(repoPath || startDir)
       const [branchResult, statusResult] = await Promise.all([
         execFileAsync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { cwd }).catch(() => ({
           stdout: 'main'
@@ -736,7 +760,7 @@ app.whenReady().then(() => {
   // Git integration: fetch commit diff or show patch
   ipcMain.handle('git:getCommitDiff', async (_, hash: string, repoPath?: string) => {
     try {
-      const cwd = resolve(repoPath || process.cwd())
+      const cwd = resolve(repoPath || startDir)
       const { stdout } = await execFileAsync('git', ['show', '--stat', '--patch', hash], { cwd })
       return stdout
     } catch (err) {

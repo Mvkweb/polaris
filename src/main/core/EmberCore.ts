@@ -79,6 +79,8 @@ export class EmberCoreClient {
     for (const exeName of exeNames) {
       candidates.push(
         join(process.resourcesPath || '', 'bin', exeName),
+        // installed package: /usr/lib/polaris-fm/app/bin
+        resolve(app.getAppPath(), 'bin', exeName),
         resolve(app.getAppPath(), 'core', 'zig-out', 'bin', exeName),
         resolve(process.cwd(), 'core', 'zig-out', 'bin', exeName),
         resolve(process.cwd(), '..', 'core', 'zig-out', 'bin', exeName)
@@ -227,11 +229,10 @@ export class EmberCoreClient {
     if (files && files.length > 0) {
       params.files = files
     }
-    const res = await this.request<{ indexed_count: number; elapsed_ms: number }>(
-      'index',
-      params,
-      15000
-    )
+    const res = await this.request<{
+      indexed_count: number
+      elapsed_ms: number
+    }>('index', params, 15000)
     console.log(`[EmberCore] Indexed ${res.indexed_count} files in ${res.elapsed_ms}ms (${root})`)
     return res
   }

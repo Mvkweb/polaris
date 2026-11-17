@@ -50,6 +50,8 @@ export class PolarisCoreClient {
 
     const candidates = [
       join(process.resourcesPath || '', 'bin', exeName),
+      // installed package: /usr/lib/polaris-fm/app/bin
+      resolve(app.getAppPath(), 'bin', exeName),
       resolve(app.getAppPath(), 'core', 'zig-out', 'bin', exeName),
       resolve(process.cwd(), 'core', 'zig-out', 'bin', exeName),
       resolve(process.cwd(), '..', 'core', 'zig-out', 'bin', exeName)
@@ -155,7 +157,9 @@ export class PolarisCoreClient {
     this.pendingRequests.delete(msg.id)
 
     if (msg.error) {
-      pending.reject(new Error(typeof msg.error === 'string' ? msg.error : msg.error.message || 'Core error'))
+      pending.reject(
+        new Error(typeof msg.error === 'string' ? msg.error : msg.error.message || 'Core error')
+      )
     } else {
       pending.resolve(msg.result)
     }

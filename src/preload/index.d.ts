@@ -169,6 +169,8 @@ export interface CustomAPI {
   getUpdateInfo: () => Promise<UpdateInfo>
   checkForUpdates: () => Promise<UpdateInfo>
   onUpdateInfo: (callback: (info: UpdateInfo) => void) => () => void
+  takeStartReveal: () => Promise<string | null>
+  onOpenRequest: (callback: (req: { dir: string; reveal: string | null }) => void) => () => void
   listTasks: () => Promise<TaskRecord[]>
   cancelTask: (id: string) => Promise<boolean>
   removeTask: (id: string) => Promise<boolean>
@@ -218,7 +220,7 @@ export interface UpdateCommit {
 
 export interface UpdateInfo {
   version: string
-  source: 'git' | 'none'
+  source: 'git' | 'package' | 'none'
   branch: string | null
   current: UpdateCommit | null
   available: boolean

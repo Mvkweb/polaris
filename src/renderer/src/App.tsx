@@ -45,7 +45,9 @@ import {
   startPathEdit,
   pathEditing,
   navigateBack,
-  navigateForward
+  navigateForward,
+  openNewTab,
+  setRevealRequest
 } from './store'
 import { matchesShortcut } from './shortcuts'
 import { useThemeVariables, useWallpaperTheme } from './theme'
@@ -172,6 +174,14 @@ const App: Component = () => {
   useWallpaperTheme()
   onCleanup(initTasks() ?? (() => {}))
   onCleanup(initUpdates() ?? (() => {}))
+  // `polaris-fm <path>` while Polaris is already open: that folder in a new
+  // tab of this window (and the file selected, if a file was given).
+  onCleanup(
+    window.api?.onOpenRequest?.((req) => {
+      openNewTab(req.dir)
+      if (req.reveal) setRevealRequest(req.reveal)
+    }) ?? (() => {})
+  )
 
   // Mouse side buttons (4 = back, 5 = forward → DOM buttons 3 and 4) walk the
   // folder history, like every other file manager and browser.
@@ -196,6 +206,8 @@ const App: Component = () => {
       try {
         const root = await window.api.getWorkspaceRoot()
         if (root) navigateTo(root)
+        const reveal = await window.api.takeStartReveal?.()
+        if (reveal) setRevealRequest(reveal)
       } catch (err) {
         console.warn('Failed to get initial workspace root:', err)
       }

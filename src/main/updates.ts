@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
+import { BUILD, INSTALLED } from './launch'
 
 /**
  * Update status for builds that come from a git checkout (dev, and the
@@ -24,10 +25,12 @@ export interface UpdateCommit {
 
 export interface UpdateInfo {
   version: string
-  source: 'git' | 'none'
+  /** git: running from a checkout · package: installed polaris-fm-git */
+  source: 'git' | 'package' | 'none'
   branch: string | null
   current: UpdateCommit | null
   available: boolean
+  /** commits behind; -1 when unknown (packages only know "different") */
   behind: number
   /** newest first, at most 8 */
   commits: UpdateCommit[]
@@ -86,6 +89,60 @@ const parseCommits = (out: string): UpdateCommit[] =>
       return { hash, subject, author, date: Number(ct) * 1000 }
     })
 
+/**
+ * The repo nightly packages are built from. While the repo is private this
+ * goes over the tester's own SSH key (they're collaborators); see
+ * .docs/distribution.md → "When public" for the HTTPS switch.
+ */
+const NIGHTLY_REMOTE = 'git@github.com:Mvkweb/polaris.git'
+const NIGHTLY_BRANCH = 'main'
+const NIGHTLY_WEB = 'https://github.com/Mvkweb/polaris'
+
+/** Installed package: compare the baked-in commit with the tip of main. */
+const checkPackage = async (): Promise<void> => {
+  const commit = BUILD.commit!
+  set({
+    source: 'package',
+    branch: NIGHTLY_BRANCH,
+    current: {
+      hash: commit.slice(0, 7),
+      subject: `polaris-fm-git ${BUILD.pkgver ?? ''}`.trim(),
+      author: '',
+      date: 0
+    },
+    checking: true,
+    error: null
+  })
+  try {
+    const out = await exec('git', ['ls-remote', NIGHTLY_REMOTE, `refs/heads/${NIGHTLY_BRANCH}`], {
+      timeout: 20_000,
+      env: {
+        ...process.env,
+        GIT_TERMINAL_PROMPT: '0',
+        GIT_SSH_COMMAND: 'ssh -o BatchMode=yes -o ConnectTimeout=8'
+      }
+    })
+    const head = out.stdout.split(/\s/)[0]
+    const available = Boolean(head) && head !== commit
+    set({
+      available,
+      behind: available ? -1 : 0,
+      commits: [],
+      compareUrl: available
+        ? `${NIGHTLY_WEB}/compare/${commit.slice(0, 7)}...${head.slice(0, 7)}`
+        : null,
+      checking: false,
+      checkedAt: Date.now()
+    })
+  } catch (err) {
+    set({
+      checking: false,
+      checkedAt: Date.now(),
+      error: (err as Error).message.split('\n')[0].slice(0, 160)
+    })
+  }
+}
+
 const githubBase = (remote: string): string | null => {
   const m = /github\.com[:/]([^/]+)\/([^/.]+?)(?:\.git)?$/.exec(remote)
   return m ? `https://github.com/${m[1]}/${m[2]}` : null
@@ -96,6 +153,7 @@ let running: Promise<void> | null = null
 export const checkForUpdates = (): Promise<void> => {
   running ??= (async () => {
     try {
+      if (INSTALLED && BUILD.commit) return await checkPackage()
       if ((await git(['rev-parse', '--is-inside-work-tree']).catch(() => '')) !== 'true') {
         set({ source: 'none', checking: false, checkedAt: Date.now() })
         return
@@ -112,7 +170,13 @@ export const checkForUpdates = (): Promise<void> => {
         '@{u}'
       ]).catch(() => '')
       if (!upstream) {
-        set({ checking: false, checkedAt: Date.now(), available: false, behind: 0, commits: [] })
+        set({
+          checking: false,
+          checkedAt: Date.now(),
+          available: false,
+          behind: 0,
+          commits: []
+        })
         return
       }
       const remote = upstream.split('/')[0]
@@ -137,7 +201,11 @@ export const checkForUpdates = (): Promise<void> => {
         checkedAt: Date.now()
       })
     } catch (err) {
-      set({ checking: false, checkedAt: Date.now(), error: (err as Error).message.slice(0, 160) })
+      set({
+        checking: false,
+        checkedAt: Date.now(),
+        error: (err as Error).message.slice(0, 160)
+      })
     } finally {
       running = null
     }

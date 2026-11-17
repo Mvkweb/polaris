@@ -1,0 +1,14 @@
+# No MimeType=inode/directory on purpose: declaring it can silently make
+# Polaris open every folder on systems with no explicit default. Becoming the
+# default file manager is an opt-in, reversible setting inside Polaris.
+[Desktop Entry]
+Type=Application
+Name=Polaris
+GenericName=File Manager
+Comment=Browse, search and edit your files
+Exec=polaris-fm %U
+Icon=io.github.mvkweb.Polaris
+Terminal=false
+StartupNotify=true
+Categories=System;FileTools;FileManager;
+Keywords=files;folders;explorer;browser;editor;

@@ -1,3 +1,4 @@
+import { startDir } from './launch'
 import { ipcMain, type WebContents } from 'electron'
 import { spawn, type IPty } from 'node-pty'
 
@@ -38,7 +39,7 @@ export function registerTerminalHandlers(): void {
       name: 'xterm-256color',
       cols,
       rows,
-      cwd: cwd || process.cwd(),
+      cwd: cwd || startDir,
       env: process.env as Record<string, string>
     })
 

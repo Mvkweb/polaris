@@ -50,12 +50,16 @@ export const UpdateFooter: Component = () => {
     if (!i) return 'checking'
     if (i.available) return 'available'
     if (i.checking && !i.checkedAt) return 'checking'
-    return i.source === 'git' ? 'latest' : 'none'
+    return i.source === 'none' ? 'none' : 'latest'
   }
 
   const cardStyle = (): JSX.CSSProperties => {
     const r = anchor()!
-    return { left: `${r.left}px`, bottom: `${innerHeight - r.top + 8}px`, width: '320px' }
+    return {
+      left: `${r.left}px`,
+      bottom: `${innerHeight - r.top + 8}px`,
+      width: '320px'
+    }
   }
 
   return (
@@ -63,7 +67,10 @@ export const UpdateFooter: Component = () => {
       <div
         ref={row}
         class="update-row"
-        classList={{ 'is-available': status() === 'available', 'is-open': open() }}
+        classList={{
+          'is-available': status() === 'available',
+          'is-open': open()
+        }}
         onPointerEnter={show}
         onPointerLeave={hide}
         tabIndex={0}
@@ -125,7 +132,7 @@ export const UpdateFooter: Component = () => {
                 <span class="text-[15px] font-medium text-white">
                   {info()?.available ? 'Update available' : 'You’re up to date'}
                 </span>
-                <Show when={info()?.available}>
+                <Show when={info()?.available && info()!.behind > 0}>
                   <span class="text-[12px] text-white/45 tabular-nums">
                     {info()!.behind} new {info()!.behind === 1 ? 'commit' : 'commits'}
                   </span>
@@ -133,7 +140,7 @@ export const UpdateFooter: Component = () => {
               </div>
               <div class="mt-0.5 text-[12px] text-white/40">
                 <Show
-                  when={info()?.source === 'git'}
+                  when={info()?.source !== 'none'}
                   fallback="Updates will arrive through paru once packaged."
                 >
                   on <span class="text-white/60">{info()?.branch}</span>
@@ -170,6 +177,14 @@ export const UpdateFooter: Component = () => {
                     <span class="truncate text-white/55">{cur().subject}</span>
                   </div>
                 )}
+              </Show>
+
+              <Show when={info()?.source === 'package' && info()?.available}>
+                <div class="update-howto">
+                  <span class="text-white/40">To update, in your polaris clone:</span>
+                  <code>git pull &amp;&amp; makepkg -si</code>
+                  <span class="text-white/30">in packaging/arch/polaris-fm-git</span>
+                </div>
               </Show>
 
               <Show when={info()?.error}>

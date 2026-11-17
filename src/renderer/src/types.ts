@@ -186,7 +186,7 @@ export interface UpdateCommit {
 
 export interface UpdateInfo {
   version: string
-  source: 'git' | 'none'
+  source: 'git' | 'package' | 'none'
   branch: string | null
   current: UpdateCommit | null
   available: boolean
