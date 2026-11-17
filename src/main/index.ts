@@ -16,7 +16,8 @@ import { registerProjectIconIpc } from './projectIcons'
 import { loadTasks, registerTaskIpc } from './tasks'
 import { registerUploadIpc } from './uploads'
 import { registerUpdateIpc } from './updates'
-import { INSTALLED, setupInstance, startDir, startReveal, type OpenRequest } from './launch'
+import { INSTALLED, setupInstance, startDir, getStartupLocation, type OpenRequest } from './launch'
+import type { StartupFolder } from '../shared/startup'
 
 // Match the installed desktop entry so Wayland docks and X11 taskbars can
 // resolve the app icon and group its windows. Must run before app is ready.
@@ -160,13 +161,9 @@ app.whenReady().then(() => {
 
   ipcMain.handle('app:version', () => app.getVersion())
   ipcMain.handle('app:platform', () => process.platform)
-  // File Polaris was asked to open (`polaris-fm ~/notes.md`): select it once.
-  let pendingReveal = startReveal
-  ipcMain.handle('app:takeStartReveal', () => {
-    const r = pendingReveal
-    pendingReveal = null
-    return r
-  })
+  ipcMain.handle('app:startup', (_, preference: StartupFolder, lastFolder: string | null) =>
+    getStartupLocation(preference, lastFolder)
+  )
 
   registerTerminalHandlers()
   emberCore.start()
@@ -189,8 +186,8 @@ app.whenReady().then(() => {
     }
   })
 
-  // Start folder: the path Polaris was opened with, else home (installed) or
-  // the launch folder (from the repo). See launch.ts.
+  // Fallback for calls without an explicit path; startup preferences are
+  // resolved separately by app:startup. See launch.ts.
   ipcMain.handle('fs:getWorkspaceRoot', () => startDir)
 
   // Read directory entries for real file explorer (folders first, sorted alphabetically)

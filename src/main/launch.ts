@@ -3,6 +3,8 @@ import { existsSync, statSync } from 'fs'
 import { homedir } from 'os'
 import { dirname, join, resolve } from 'path'
 import { fileURLToPath } from 'url'
+import { resolveStartupLocation } from './startup'
+import type { StartupFolder, StartupLocation } from '../shared/startup'
 
 /**
  * How Polaris was started: from the repo (`bun run dev` / `bun run start`) or
@@ -26,10 +28,7 @@ export const BUILD: BuildInfo = __POLARIS_BUILD__
 export const INSTALLED = BUILD.channel !== null
 
 /** A folder (or file → its folder + the file to select) to open. */
-export interface OpenRequest {
-  dir: string
-  reveal: string | null
-}
+export type OpenRequest = StartupLocation
 
 const toPath = (arg: string, cwd: string): string | null => {
   try {
@@ -63,12 +62,26 @@ export const openRequestFromArgv = (argv: string[], cwd: string): OpenRequest | 
 const initial = INSTALLED ? openRequestFromArgv(process.argv, process.cwd()) : null
 
 /**
- * Folder Polaris starts in. Installed: the path it was asked to open, else
- * your home folder. From the repo: the folder you launched it from, as before.
+ * Default for filesystem/terminal calls without an explicit path. The renderer
+ * resolves its actual starting folder with getStartupLocation and preferences.
  */
 export const startDir: string = initial?.dir ?? (INSTALLED ? homedir() : process.cwd())
-/** File to select on startup, when Polaris was asked to open a file. */
-export const startReveal: string | null = initial?.reveal ?? null
+
+/** Renderer preferences stay in its profile; only validate the selected path here. */
+export const getStartupLocation = (
+  preference: StartupFolder,
+  lastFolder: string | null
+): Promise<StartupLocation> =>
+  resolveStartupLocation(
+    {
+      requested: initial,
+      home: homedir(),
+      launchDir: process.cwd(),
+      defaultDir: startDir
+    },
+    preference,
+    lastFolder
+  )
 
 /**
  * Installed builds keep their own profile (`~/.config/polaris-fm`) so they

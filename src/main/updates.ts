@@ -266,7 +266,7 @@ export const registerUpdateIpc = (): void => {
   // Relaunch into the newly installed version (same args, same window state).
   ipcMain.handle('updates:restart', () => {
     app.relaunch()
-    app.exit(0)
+    app.quit()
   })
   // Installed: pacman swaps our files during an update. Watch the app folder
   // so the footer flips to "Restart to update" the moment it's done.

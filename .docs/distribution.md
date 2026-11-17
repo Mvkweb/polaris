@@ -102,9 +102,15 @@ The variants `provide` `polaris-fm` and `conflict` with each other, never with
   Polaris's terminal) is still to do.
 - **Installed builds vs the repo:** installed builds keep their own profile in
   `~/.config/polaris-fm`, so they run next to `bun run dev` without sharing
-  Chromium's locks. They start in `$HOME` (dev still starts in the launch
-  folder), keep a single window, and `polaris-fm <path>` opens that path in a
-  new tab. See `src/main/launch.ts`.
+  Chromium's locks. Startup follows Settings → General → Open on launch:
+  Last folder restores the active browser folder, Home opens `$HOME`, and
+  Launch folder uses the launch working directory. With no saved folder, the
+  installed app starts in `$HOME` and dev starts in the launch directory.
+  Explicit launch paths take priority; missing/inaccessible folders fall back
+  to Home. Each profile remembers one path in `polaris.lastFolder.v1`, with
+  no background scans or watchers. Installed builds keep a single window,
+  and `polaris-fm <path>` opens that path in a new tab. See `src/main/launch.ts`,
+  `src/main/startup.ts` and `src/renderer/src/startup.ts`.
 - **Build stamp:** the PKGBUILD exports `POLARIS_CHANNEL`, `POLARIS_COMMIT` and
   `POLARIS_PKGVER`, which electron-vite bakes into the main bundle. They're
   unset in the repo.

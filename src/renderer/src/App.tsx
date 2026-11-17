@@ -6,6 +6,7 @@ import FolderView from './components/browser/FolderView'
 import TasksPanel from './components/tasks/TasksPanel'
 import { initTasks } from './tasks'
 import { initUpdates } from './updates'
+import { initStartup } from './startup'
 import StatusBar from './components/StatusBar'
 import Terminal from './components/terminal/Terminal'
 import QuickOpenModal from './components/modals/QuickOpenModal'
@@ -35,7 +36,6 @@ import {
   closeSettingsModal,
   toggleSettingsModal,
   workspaceRoot,
-  navigateTo,
   isFilterTabActive,
   openPropertiesModal,
   activeTabPath,
@@ -172,6 +172,7 @@ const App: Component = () => {
 
   useThemeVariables()
   useWallpaperTheme()
+  initStartup()
   onCleanup(initTasks() ?? (() => {}))
   onCleanup(initUpdates() ?? (() => {}))
   // `polaris-fm <path>` while Polaris is already open: that folder in a new
@@ -199,19 +200,9 @@ const App: Component = () => {
     window.removeEventListener('mouseup', onMouseNav)
   })
 
-  onMount(async () => {
+  onMount(() => {
     window.addEventListener('keydown', handleGlobalKeyDown)
     window.addEventListener('keyup', handleGlobalKeyDown)
-    if (!workspaceRoot() && window.api?.getWorkspaceRoot) {
-      try {
-        const root = await window.api.getWorkspaceRoot()
-        if (root) navigateTo(root)
-        const reveal = await window.api.takeStartReveal?.()
-        if (reveal) setRevealRequest(reveal)
-      } catch (err) {
-        console.warn('Failed to get initial workspace root:', err)
-      }
-    }
   })
   onCleanup(() => {
     window.removeEventListener('keydown', handleGlobalKeyDown)

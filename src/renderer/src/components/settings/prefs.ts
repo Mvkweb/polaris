@@ -1,4 +1,5 @@
 import { createStore } from 'solid-js/store'
+import type { StartupFolder } from '../../../../shared/startup'
 
 /**
  * Preferences for features that are being built out. Persisted now so the
@@ -8,7 +9,7 @@ import { createStore } from 'solid-js/store'
  */
 export interface Prefs {
   // general
-  startupFolder: 'last' | 'home' | 'workspace'
+  startupFolder: StartupFolder
   confirmTrash: boolean
   // appearance
   syntaxFromWallpaper: boolean

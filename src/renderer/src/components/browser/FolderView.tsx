@@ -102,8 +102,9 @@ export const FolderView: Component = () => {
   let currentRequestId = 0
 
   createEffect(() => {
-    const root = workspaceRoot() || '.'
+    const root = workspaceRoot()
     explorerRefreshTrigger()
+    if (!root) return
 
     const reqId = ++currentRequestId
 

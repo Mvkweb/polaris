@@ -46,12 +46,18 @@ MAKEPKG_GIT_CONFIG=~/.gitconfig makepkg -sic
 Then start **Polaris** from your app launcher, or run `polaris-fm` in a terminal:
 
 ```bash
-polaris-fm                 # opens your home folder
+polaris-fm                 # follows Settings → General → Open on launch
 polaris-fm ~/Downloads     # opens a folder
 polaris-fm ~/notes.md      # opens its folder with the file selected
 ```
 
 Running it again while it's open adds a tab to the same window.
+
+**Open on launch:** Last folder reopens the last active browser folder (Home
+on the first launch), Home always opens Home, and Launch folder opens the
+directory Polaris was started from. An explicit file/folder argument takes
+priority. Missing or inaccessible startup folders fall back to Home. The
+installed app and development checkout remember their folders separately.
 
 **Hyprland:** `bind = SUPER, E, exec, polaris-fm`
 

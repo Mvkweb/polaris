@@ -116,7 +116,11 @@ export const PAGES: PageDef[] = [
       title: 'General',
       blurb: 'How Polaris starts, what it opens with, and which tools it hands off to.',
       chips: () => [
-        prefs.startupFolder === 'last' ? 'Reopens last folder' : `Starts in ${prefs.startupFolder}`,
+        prefs.startupFolder === 'last'
+          ? 'Reopens last folder'
+          : prefs.startupFolder === 'home'
+            ? 'Starts in Home'
+            : 'Starts in launch folder',
         defaultTerminal() === 'Terminal' ? 'Built-in terminal' : `Opens ${defaultTerminal()}`,
         `${updateTrack()} channel`
       ]
@@ -129,8 +133,8 @@ export const PAGES: PageDef[] = [
             kind: 'choice',
             id: 'startup',
             title: 'Open on launch',
-            hint: 'The folder Polaris shows first',
-            options: opts(['last', 'Last folder'], ['home', 'Home'], ['workspace', 'Workspace']),
+            hint: 'Last active tab, Home, or the folder Polaris was launched from',
+            options: opts(['last', 'Last folder'], ['home', 'Home'], ['workspace', 'Launch folder']),
             ...pref('startupFolder'),
             wide: true
           },

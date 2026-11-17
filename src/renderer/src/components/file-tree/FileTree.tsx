@@ -2,7 +2,6 @@ import { Component, createSignal, createEffect, on, onMount, onCleanup, For, Sho
 import type { FsEntry } from '../../types'
 import {
   workspaceRoot,
-  setWorkspaceRoot,
   selectedFilePath,
   setSelectedFilePath,
   openFileInEditor,
@@ -516,13 +515,7 @@ export const FileTree: Component<FileTreeProps> = (props) => {
   const refreshWorkspace = async (): Promise<void> => {
     setIsLoading(true)
     try {
-      let root = workspaceRoot()
-      if (!root && window.api?.getWorkspaceRoot) {
-        root = await window.api.getWorkspaceRoot()
-        if (root) {
-          setWorkspaceRoot(root)
-        }
-      }
+      const root = workspaceRoot()
 
       if (root) {
         const parts = root.replace(/\\/g, '/').split('/')

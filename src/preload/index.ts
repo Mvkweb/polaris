@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import type { StartupFolder } from '../shared/startup'
 
 const api = {
   getAppVersion: () => ipcRenderer.invoke('app:version'),
@@ -60,9 +61,9 @@ const api = {
     ipcRenderer.on('updates:changed', listener)
     return () => ipcRenderer.removeListener('updates:changed', listener)
   },
-  /** File Polaris was launched with (`polaris-fm ~/a.txt`), handed out once. */
   restartToUpdate: () => ipcRenderer.invoke('updates:restart'),
-  takeStartReveal: () => ipcRenderer.invoke('app:takeStartReveal'),
+  getStartupLocation: (preference: StartupFolder, lastFolder: string | null) =>
+    ipcRenderer.invoke('app:startup', preference, lastFolder),
   /** Another `polaris-fm <path>` launch: open that folder in a new tab. */
   onOpenRequest: (callback: (req: unknown) => void) => {
     const listener = (_: unknown, req: unknown): void => callback(req)

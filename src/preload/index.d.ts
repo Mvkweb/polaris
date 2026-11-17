@@ -1,4 +1,5 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
+import type { StartupFolder, StartupLocation } from '../shared/startup'
 
 export interface FsEntry {
   name: string
@@ -170,7 +171,7 @@ export interface CustomAPI {
   checkForUpdates: () => Promise<UpdateInfo>
   onUpdateInfo: (callback: (info: UpdateInfo) => void) => () => void
   restartToUpdate: () => Promise<void>
-  takeStartReveal: () => Promise<string | null>
+  getStartupLocation: (preference: StartupFolder, lastFolder: string | null) => Promise<StartupLocation>
   onOpenRequest: (callback: (req: { dir: string; reveal: string | null }) => void) => () => void
   listTasks: () => Promise<TaskRecord[]>
   cancelTask: (id: string) => Promise<boolean>
