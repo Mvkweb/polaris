@@ -476,6 +476,12 @@ export const [browserTabs, setBrowserTabs] = createSignal<BrowserTab[]>([
 ])
 export const [activeTabId, setActiveTabId] = createSignal<string>('tab-default')
 
+/** Middle-click: add a folder tab without leaving the current one (Dolphin-style). */
+export const openTabInBackground = (path: string): void => {
+  const name = path.split(/[/\\]/).filter(Boolean).pop() || '/'
+  setBrowserTabs((prev) => [...prev, { id: `tab-${Date.now()}`, path, name }])
+}
+
 export const openNewTab = (path?: string): void => {
   const targetPath = path || workspaceRoot() || '.'
   const name = targetPath.split(/[/\\]/).filter(Boolean).pop() || '/'

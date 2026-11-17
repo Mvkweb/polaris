@@ -16,6 +16,7 @@ import {
   selectedGridEntry,
   setSelectedGridEntry,
   revealRequest,
+  openTabInBackground,
   setRevealRequest,
   explorerRefreshTrigger,
   browserSearchFilter,
@@ -604,6 +605,15 @@ export const FolderView: Component = () => {
                     tabIndex={0}
                     onClick={(e) => handleItemClick(entry, e)}
                     onDblClick={() => handleItemDoubleClick(entry)}
+                    onMouseDown={(e) => {
+                      // keep middle-click from starting autoscroll
+                      if (e.button === 1 && entry.isDirectory) e.preventDefault()
+                    }}
+                    onAuxClick={(e) => {
+                      if (e.button !== 1 || !entry.isDirectory) return
+                      e.preventDefault()
+                      openTabInBackground(entry.path)
+                    }}
                     onContextMenu={(e) => {
                       e.preventDefault()
                       e.stopPropagation()

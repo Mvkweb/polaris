@@ -42,7 +42,9 @@ import {
   toggleEditorView,
   setSort,
   startPathEdit,
-  pathEditing
+  pathEditing,
+  navigateBack,
+  navigateForward
 } from './store'
 import { matchesShortcut } from './shortcuts'
 import { useThemeVariables, useWallpaperTheme } from './theme'
@@ -168,6 +170,22 @@ const App: Component = () => {
   useThemeVariables()
   useWallpaperTheme()
   onCleanup(initTasks() ?? (() => {}))
+
+  // Mouse side buttons (4 = back, 5 = forward → DOM buttons 3 and 4) walk the
+  // folder history, like every other file manager and browser.
+  const onMouseNav = (e: MouseEvent): void => {
+    if (e.button !== 3 && e.button !== 4) return
+    e.preventDefault()
+    if (e.type !== 'mouseup') return
+    if (e.button === 3) navigateBack()
+    else navigateForward()
+  }
+  window.addEventListener('mousedown', onMouseNav)
+  window.addEventListener('mouseup', onMouseNav)
+  onCleanup(() => {
+    window.removeEventListener('mousedown', onMouseNav)
+    window.removeEventListener('mouseup', onMouseNav)
+  })
 
   onMount(async () => {
     window.addEventListener('keydown', handleGlobalKeyDown)
