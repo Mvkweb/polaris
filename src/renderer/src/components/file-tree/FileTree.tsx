@@ -20,6 +20,7 @@ import {
   activeTabPath
 } from '../../store'
 import { FileIcon } from './FileIcon'
+import { DirtyMark } from '../ui/DirtyMark'
 import { folderIconUrl, refreshFolderIcons } from '../../projectIcons'
 
 interface FileTreeItemProps {
@@ -293,21 +294,29 @@ const FileTreeItem: Component<FileTreeItemProps> = (props) => {
             lastSavedPath() !== props.entry.path
           }
         >
-          <span
-            class="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--accent)] shrink-0"
-            title="Unsaved changes"
-          />
+          <DirtyMark class="ml-auto w-[9px] h-[9px] shrink-0" />
         </Show>
 
         {/* Recently Saved Pulse */}
         <Show when={!props.entry.isDirectory && lastSavedPath() === props.entry.path}>
-          <span class="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" title="Saved" />
+          <svg
+            viewBox="0 0 12 12"
+            class="saved-check ml-auto w-3 h-3 shrink-0"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-label="Saved"
+          >
+            <path d="M2.5 6.2 5 8.5l4.5-5" />
+          </svg>
         </Show>
 
         {/* Collapsed Directory Containing Dirty Descendant */}
         <Show when={props.entry.isDirectory && !isOpen() && hasDirtyDescendant(props.entry.path)}>
-          <span
-            class="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--accent)]/60 shrink-0"
+          <DirtyMark
+            class="ml-auto w-[9px] h-[9px] shrink-0 opacity-55"
             title="Contains unsaved files"
           />
         </Show>
@@ -468,13 +477,21 @@ const SearchResultRow: Component<SearchResultRowProps> = (props) => {
         </Show>
       </div>
       <Show when={isFileDirty(props.res.path) && lastSavedPath() !== props.res.path}>
-        <span
-          class="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shrink-0"
-          title="Unsaved changes"
-        />
+        <DirtyMark class="w-[9px] h-[9px] shrink-0" />
       </Show>
       <Show when={lastSavedPath() === props.res.path}>
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" title="Saved" />
+        <svg
+          viewBox="0 0 12 12"
+          class="saved-check w-3 h-3 shrink-0"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-label="Saved"
+        >
+          <path d="M2.5 6.2 5 8.5l4.5-5" />
+        </svg>
       </Show>
       <span class="ml-auto text-[10.5px] text-white/30 truncate max-w-[110px] font-mono group-hover:text-white/50">
         {props.res.relativePath}

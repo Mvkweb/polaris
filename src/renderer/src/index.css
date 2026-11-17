@@ -290,12 +290,9 @@ textarea {
     background-color 200ms ease;
 }
 .editor-status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--accent, #fff);
-  box-shadow: 0 0 8px color-mix(in oklab, var(--accent, #fff) 60%, transparent);
-  transform: scale(0);
+  width: 9px;
+  height: 9px;
+  transform: scale(0.4);
   opacity: 0;
 }
 .editor-status-state.is-dirty .editor-status-dot {
@@ -305,7 +302,7 @@ textarea {
 .editor-status-check {
   width: 12px;
   height: 12px;
-  stroke: #6ee7a0;
+  stroke: color-mix(in oklab, var(--accent, #fff) 85%, #fff);
   stroke-width: 1.6;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -319,4 +316,95 @@ textarea {
 .editor-status-state.is-saved .editor-status-check {
   stroke-dashoffset: 0;
   opacity: 1;
+}
+
+/* ── Unsaved mark (dithered dot) ─────────────────────────────────────────── */
+.dirty-mark {
+  color: var(--accent, #fff);
+  fill: currentColor;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 3px color-mix(in oklab, var(--accent, #fff) 45%, transparent));
+}
+.dirty-mark .dm-core {
+  opacity: 1;
+}
+.dirty-mark .dm-a,
+.dirty-mark .dm-b {
+  animation: dm-shimmer 1.6s steps(1, end) infinite;
+}
+.dirty-mark .dm-b {
+  animation-delay: -0.8s;
+}
+@keyframes dm-shimmer {
+  0% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dirty-mark .dm-a,
+  .dirty-mark .dm-b {
+    animation: none;
+    opacity: 0.5;
+  }
+}
+
+/* ── Files ↔ editor view swap ────────────────────────────────────────────── */
+.view-swap {
+  animation: view-swap-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.view-swap.is-editor {
+  animation-name: view-swap-in-editor;
+}
+@keyframes view-swap-in {
+  from {
+    opacity: 0;
+    translate: -10px 0;
+  }
+}
+@keyframes view-swap-in-editor {
+  from {
+    opacity: 0;
+    translate: 10px 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .view-swap {
+    animation-duration: 1ms;
+  }
+}
+
+/* "Just saved" check, tinted from the wallpaper accent */
+.saved-check {
+  color: color-mix(in oklab, var(--accent, #fff) 85%, #fff);
+  animation: saved-check-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes saved-check-in {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+
+/* Top-bar editor pill: grid-row style width unfold so neighbours re-flow smoothly */
+.editor-pill-wrap {
+  display: grid;
+  grid-template-columns: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-columns 300ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 180ms ease;
+}
+.editor-pill-wrap.is-shown {
+  grid-template-columns: 1fr;
+  opacity: 1;
+}
+.editor-pill-inner {
+  min-width: 0;
+  overflow: hidden;
+}
+.editor-pill {
+  white-space: nowrap;
 }

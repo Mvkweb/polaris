@@ -1,0 +1,614 @@
+import type { JSX } from 'solid-js'
+import {
+  MONODRIVE_ACCENTS,
+  defaultTerminal,
+  explorerMode,
+  foldersFirst,
+  selectedAccentColor,
+  setDefaultTerminal,
+  setExplorerMode,
+  setFoldersFirst,
+  setSelectedAccentColor,
+  setShowHiddenFiles,
+  setUpdateTrack,
+  showEditor,
+  showHiddenFiles,
+  updateTrack,
+  wallpaperSync,
+  setWallpaperSync,
+  closeSettingsModal,
+  type SettingsPage
+} from '../../store'
+import { setTasksPanelOpen, uploadServices } from '../../tasks'
+import { prefs, setPref, type Prefs } from './prefs'
+import { KeyboardPage } from './pages/KeyboardPage'
+import { AboutPanel } from './AboutPanel'
+
+// ── Types ───────────────────────────────────────────────────────────────────
+
+interface TileBase {
+  id: string
+  title: string
+  hint?: string
+  /** true when the setting already drives the app; false = saved, feature in progress */
+  live?: boolean
+  wide?: boolean
+}
+export type Tile =
+  | (TileBase & { kind: 'toggle'; get: () => boolean; set: (v: boolean) => void })
+  | (TileBase & {
+      kind: 'choice'
+      /** tabs (default) for 2–4 short options, grid for longer lists */
+      layout?: 'tabs' | 'grid'
+      options: () => { value: string; label: string; detail?: string }[]
+      get: () => string
+      set: (v: string) => void
+    })
+  | (TileBase & {
+      kind: 'slider'
+      min: number
+      max: number
+      step: number
+      ticks?: boolean
+      get: () => number
+      set: (v: number) => void
+      format: (v: number) => string
+    })
+  | (TileBase & {
+      kind: 'swatches'
+      colors: readonly { hex: string; label: string }[]
+      get: () => string
+      set: (v: string) => void
+      disabled?: () => boolean
+    })
+  | (TileBase & { kind: 'action'; label: string; run: () => void; tone?: 'danger' })
+  | (TileBase & { kind: 'custom'; render: () => JSX.Element })
+
+export interface HeroAction {
+  label: string
+  run: () => void
+}
+
+export interface PageDef {
+  id: SettingsPage
+  label: string
+  icon: () => JSX.Element
+  hero: {
+    eyebrow: () => string
+    title: string
+    blurb: string
+    chips: () => string[]
+    primary?: () => HeroAction
+    secondary?: () => HeroAction
+  }
+  sections: { title: string; tiles: Tile[] }[]
+  /** prefs owned by this page (Restore defaults) */
+  prefKeys: (keyof Prefs)[]
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Bind a tile to a persisted pref. Values come from the tile's own options/control. */
+const pref = <K extends keyof Prefs>(k: K) => ({
+  get: () => prefs[k] as never,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  set: (v: any) => setPref(k, v as Prefs[K])
+})
+const opts =
+  (...pairs: [string, string][]) =>
+  () =>
+    pairs.map(([value, label]) => ({ value, label }))
+
+const Icon = (d: string) => () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.7"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    class="w-[18px] h-[18px]"
+    aria-hidden="true"
+  >
+    <path d={d} />
+  </svg>
+)
+
+// ── Pages ───────────────────────────────────────────────────────────────────
+
+export const PAGES: PageDef[] = [
+  {
+    id: 'General',
+    label: 'General',
+    icon: Icon('M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4'),
+    hero: {
+      eyebrow: () => 'Polaris',
+      title: 'General',
+      blurb: 'How Polaris starts, what it opens with, and which tools it hands off to.',
+      chips: () => [
+        prefs.startupFolder === 'last' ? 'Reopens last folder' : `Starts in ${prefs.startupFolder}`,
+        `${defaultTerminal()} terminal`,
+        `${updateTrack()} channel`
+      ]
+    },
+    sections: [
+      {
+        title: 'Startup',
+        tiles: [
+          {
+            kind: 'choice',
+            id: 'startup',
+            title: 'Open on launch',
+            hint: 'The folder Polaris shows first',
+            options: opts(['last', 'Last folder'], ['home', 'Home'], ['workspace', 'Workspace']),
+            ...pref('startupFolder'),
+            wide: true
+          },
+          {
+            kind: 'toggle',
+            id: 'confirm-trash',
+            title: 'Confirm before trash',
+            hint: 'Ask before moving items to the trash',
+            ...pref('confirmTrash')
+          },
+          {
+            kind: 'choice',
+            id: 'updates',
+            title: 'Updates',
+            hint: 'Release channel',
+            options: opts(['Stable', 'Stable'], ['Nightly', 'Nightly']),
+            get: updateTrack,
+            set: (v) => setUpdateTrack(v as 'Stable' | 'Nightly')
+          }
+        ]
+      },
+      {
+        title: 'Hand-offs',
+        tiles: [
+          {
+            kind: 'choice',
+            id: 'terminal',
+            title: 'External terminal',
+            hint: '“Open in terminal” launches this',
+            options: opts(
+              ['Terminal', 'Built-in'],
+              ['Ghostty', 'Ghostty'],
+              ['Kitty', 'Kitty'],
+              ['Alacritty', 'Alacritty']
+            ),
+            get: defaultTerminal,
+            set: (v) => setDefaultTerminal(v as 'Terminal'),
+            wide: true
+          }
+        ]
+      }
+    ],
+    prefKeys: ['startupFolder', 'confirmTrash']
+  },
+  {
+    id: 'Appearance',
+    label: 'Appearance',
+    icon: Icon(
+      'M12 3a9 9 0 1 0 0 18c1.1 0 1.5-.8 1.5-1.6 0-1.2-1-1.6-1-2.6 0-.9.7-1.6 1.7-1.6H16a5 5 0 0 0 5-5c0-4-4-7.2-9-7.2ZM7.5 11.5h0M10 7.5h0M14.5 7.5h0'
+    ),
+    hero: {
+      eyebrow: () => (wallpaperSync() ? 'Synced with wallpaper' : 'Manual accent'),
+      title: 'Appearance',
+      blurb: 'Dark by design. Colour comes from your wallpaper, or an accent you pick.',
+      chips: () => [
+        wallpaperSync() ? 'Wallpaper palette' : 'Custom accent',
+        prefs.syntaxFromWallpaper ? 'Syntax follows wallpaper' : 'Classic syntax',
+        prefs.iconPack === 'pierre' ? 'Pierre icons' : 'JetBrains icons'
+      ],
+      primary: () => ({
+        label: wallpaperSync() ? 'Use my accent' : 'Sync with wallpaper',
+        run: () => setWallpaperSync(!wallpaperSync())
+      })
+    },
+    sections: [
+      {
+        title: 'Colour',
+        tiles: [
+          {
+            kind: 'toggle',
+            id: 'wallpaper',
+            title: 'Sync with wallpaper',
+            hint: 'Accent, glows and folders follow matugen/dithergen',
+            get: wallpaperSync,
+            set: setWallpaperSync,
+            live: true
+          },
+          {
+            kind: 'toggle',
+            id: 'syntax',
+            title: 'Wallpaper syntax',
+            hint: 'Code colours orbit the wallpaper hue',
+            ...pref('syntaxFromWallpaper')
+          },
+          {
+            kind: 'swatches',
+            id: 'accent',
+            title: 'Accent',
+            hint: 'Used when wallpaper sync is off',
+            colors: MONODRIVE_ACCENTS,
+            get: selectedAccentColor,
+            set: setSelectedAccentColor,
+            disabled: wallpaperSync,
+            live: true,
+            wide: true
+          }
+        ]
+      },
+      {
+        title: 'Texture & motion',
+        tiles: [
+          {
+            kind: 'choice',
+            id: 'icons',
+            title: 'File icons',
+            hint: 'Icon pack for tree, tabs and search',
+            options: opts(['pierre', 'Pierre'], ['jetbrains', 'JetBrains']),
+            ...pref('iconPack')
+          },
+          {
+            kind: 'toggle',
+            id: 'motion',
+            title: 'Reduce motion',
+            hint: 'Swap slides and morphs for fades',
+            ...pref('reduceMotion')
+          },
+          {
+            kind: 'slider',
+            id: 'density',
+            title: 'Dither density',
+            hint: 'How busy backgrounds and loaders look',
+            min: 0,
+            max: 100,
+            step: 1,
+            format: (v) => `${v}%`,
+            ...pref('ditherDensity'),
+            wide: true
+          }
+        ]
+      }
+    ],
+    prefKeys: ['syntaxFromWallpaper', 'iconPack', 'reduceMotion', 'ditherDensity']
+  },
+  {
+    id: 'Editor',
+    label: 'Editor',
+    icon: Icon('m8 8-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14'),
+    hero: {
+      eyebrow: () => 'CodeMirror · Zed-style',
+      title: 'Editor',
+      blurb: 'Type, guides and the little things that make code feel calm.',
+      chips: () => [
+        `${prefs.fontSize}px`,
+        `Tab ${prefs.tabSize}`,
+        `Whitespace: ${prefs.whitespace}`,
+        prefs.cursorTrail ? 'Cursor trail' : 'Plain cursor'
+      ],
+      primary: () => ({
+        label: 'Open editor',
+        run: () => {
+          closeSettingsModal()
+          showEditor()
+        }
+      })
+    },
+    sections: [
+      {
+        title: 'Text',
+        tiles: [
+          {
+            kind: 'slider',
+            id: 'font',
+            title: 'Font size',
+            min: 10,
+            max: 20,
+            step: 1,
+            ticks: true,
+            format: (v) => `${v}px`,
+            ...pref('fontSize'),
+            wide: true
+          },
+          {
+            kind: 'choice',
+            id: 'tab',
+            title: 'Tab size',
+            options: opts(['2', '2'], ['4', '4']),
+            ...pref('tabSize')
+          },
+          {
+            kind: 'toggle',
+            id: 'format',
+            title: 'Format on save',
+            hint: 'Run the project formatter',
+            ...pref('formatOnSave')
+          }
+        ]
+      },
+      {
+        title: 'Guides',
+        tiles: [
+          {
+            kind: 'choice',
+            id: 'ws',
+            title: 'Show whitespace',
+            hint: 'Dots for spaces, arrows for tabs',
+            options: opts(
+              ['selection', 'Selection'],
+              ['boundary', 'Boundary'],
+              ['all', 'All'],
+              ['none', 'None']
+            ),
+            ...pref('whitespace'),
+            wide: true
+          },
+          {
+            kind: 'toggle',
+            id: 'guides',
+            title: 'Indent guides',
+            hint: 'Active scope lights up',
+            ...pref('indentGuides')
+          },
+          {
+            kind: 'toggle',
+            id: 'trail',
+            title: 'Cursor trail',
+            hint: 'Zed-style smear while moving',
+            ...pref('cursorTrail')
+          }
+        ]
+      }
+    ],
+    prefKeys: ['fontSize', 'tabSize', 'formatOnSave', 'whitespace', 'indentGuides', 'cursorTrail']
+  },
+  {
+    id: 'Files',
+    label: 'Files',
+    icon: Icon(
+      'M3 7.5A2.5 2.5 0 0 1 5.5 5H10l2 2h6.5A2.5 2.5 0 0 1 21 9.5v7a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5Z'
+    ),
+    hero: {
+      eyebrow: () => (explorerMode() === 'tree' ? 'Tree sidebar' : 'Places sidebar'),
+      title: 'Files',
+      blurb: 'How folders are listed, sorted and decorated across the browser and tree.',
+      chips: () => [
+        showHiddenFiles() ? 'Hidden files shown' : 'Hidden files hidden',
+        foldersFirst() ? 'Folders first' : 'Mixed order',
+        prefs.folderLogos ? 'Project logos' : 'Plain folders'
+      ],
+      primary: () => ({
+        label: explorerMode() === 'tree' ? 'Show places' : 'Show file tree',
+        run: () => setExplorerMode(explorerMode() === 'tree' ? 'places' : 'tree')
+      })
+    },
+    sections: [
+      {
+        title: 'Listing',
+        tiles: [
+          {
+            kind: 'choice',
+            id: 'sidebar',
+            title: 'Sidebar',
+            hint: 'Places & devices, or the workspace tree',
+            options: opts(['places', 'Places'], ['tree', 'Tree']),
+            get: explorerMode,
+            set: (v) => setExplorerMode(v as 'places' | 'tree'),
+            live: true
+          },
+          {
+            kind: 'toggle',
+            id: 'hidden',
+            title: 'Hidden files',
+            hint: 'Show dotfiles and dotfolders',
+            get: showHiddenFiles,
+            set: setShowHiddenFiles,
+            live: true
+          },
+          {
+            kind: 'toggle',
+            id: 'folders-first',
+            title: 'Folders first',
+            hint: 'Group folders above files',
+            get: foldersFirst,
+            set: setFoldersFirst
+          },
+          {
+            kind: 'toggle',
+            id: 'logos',
+            title: 'Project logos',
+            hint: 'Favicons and logos as folder icons',
+            ...pref('folderLogos')
+          },
+          {
+            kind: 'toggle',
+            id: 'sizes',
+            title: 'Folder sizes',
+            hint: 'Compute sizes in the background',
+            ...pref('folderSizes'),
+            wide: true
+          }
+        ]
+      }
+    ],
+    prefKeys: ['folderLogos', 'folderSizes']
+  },
+  {
+    id: 'Media',
+    label: 'Media',
+    icon: Icon(
+      'M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5ZM4 15l4.5-4.5L13 15m-1-1 2.5-2.5L20 17M15.5 8.5h0'
+    ),
+    hero: {
+      eyebrow: () => 'Viewer · Studio',
+      title: 'Media',
+      blurb: 'Defaults for the image studio and how videos behave when you open them.',
+      chips: () => [
+        `Exports ${prefs.defaultExport.toUpperCase()}`,
+        `Quality ${prefs.exportQuality}`,
+        prefs.autoplayVideo ? 'Autoplay' : 'Click to play'
+      ]
+    },
+    sections: [
+      {
+        title: 'Studio',
+        tiles: [
+          {
+            kind: 'choice',
+            id: 'export',
+            title: 'Default format',
+            hint: 'Studio opens with this',
+            options: opts(['webp', 'WebP'], ['png', 'PNG'], ['jpg', 'JPEG'], ['gif', 'GIF']),
+            ...pref('defaultExport'),
+            wide: true
+          },
+          {
+            kind: 'slider',
+            id: 'quality',
+            title: 'Default quality',
+            min: 30,
+            max: 100,
+            step: 1,
+            format: (v) => `${v}`,
+            ...pref('exportQuality'),
+            wide: true
+          }
+        ]
+      },
+      {
+        title: 'Playback',
+        tiles: [
+          {
+            kind: 'toggle',
+            id: 'autoplay',
+            title: 'Autoplay video',
+            hint: 'Start playing when opened',
+            ...pref('autoplayVideo')
+          },
+          {
+            kind: 'toggle',
+            id: 'loop',
+            title: 'Loop short clips',
+            hint: 'Under 30 seconds',
+            ...pref('loopShortClips')
+          }
+        ]
+      }
+    ],
+    prefKeys: ['defaultExport', 'exportQuality', 'autoplayVideo', 'loopShortClips']
+  },
+  {
+    id: 'Uploads',
+    label: 'Uploads',
+    icon: Icon(
+      'M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 8.5a4 4 0 0 1-.5 9.5M12 12v8m-3-5 3-3 3 3'
+    ),
+    hero: {
+      eyebrow: () => 'Upload to…',
+      title: 'Uploads',
+      blurb: 'Anonymous hosts for quick shares. Links land on your clipboard.',
+      chips: () => {
+        const svc = uploadServices().find((s) => s.id === prefs.defaultUpload)
+        return [
+          svc ? `${svc.name} · ${svc.retention}` : 'No default host',
+          prefs.copyLinkOnUpload ? 'Copies link' : 'Link not copied',
+          prefs.keepUploadHistory ? 'History kept' : 'No history'
+        ]
+      },
+      primary: () => ({
+        label: 'Open tasks',
+        run: () => {
+          closeSettingsModal()
+          setTasksPanelOpen(true)
+        }
+      })
+    },
+    sections: [
+      {
+        title: 'Defaults',
+        tiles: [
+          {
+            kind: 'choice',
+            id: 'host',
+            title: 'Default host',
+            hint: 'Used by the quick upload shortcut',
+            layout: 'grid',
+            options: () =>
+              uploadServices().map((s) => ({ value: s.id, label: s.name, detail: s.retention })),
+            ...pref('defaultUpload'),
+            wide: true
+          },
+          {
+            kind: 'toggle',
+            id: 'copy',
+            title: 'Copy link when done',
+            ...pref('copyLinkOnUpload')
+          },
+          {
+            kind: 'toggle',
+            id: 'history',
+            title: 'Keep history',
+            hint: 'Shown in the Tasks drawer',
+            ...pref('keepUploadHistory')
+          },
+          {
+            kind: 'action',
+            id: 'clear',
+            title: 'Upload history',
+            hint: 'Removes finished uploads (links keep working)',
+            label: 'Clear history',
+            run: () => void window.api.clearTasks(),
+            tone: 'danger',
+            live: true,
+            wide: true
+          }
+        ]
+      }
+    ],
+    prefKeys: ['defaultUpload', 'copyLinkOnUpload', 'keepUploadHistory']
+  },
+  {
+    id: 'Keyboard',
+    label: 'Keyboard',
+    icon: Icon(
+      'M3.5 7.5A2 2 0 0 1 5.5 5.5h13a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2ZM7 9.5h0M10 9.5h0M13 9.5h0M16 9.5h0M8 15h8'
+    ),
+    hero: {
+      eyebrow: () => 'Shortcuts',
+      title: 'Keyboard',
+      blurb: 'Every shortcut in one place. Ctrl+E flips between your files and the editor.',
+      chips: () => ['Ctrl+P open', 'Ctrl+E files / editor', 'Space details']
+    },
+    sections: [
+      {
+        title: '',
+        tiles: [
+          { kind: 'custom', id: 'keys', title: '', render: () => <KeyboardPage />, wide: true }
+        ]
+      }
+    ],
+    prefKeys: []
+  },
+  {
+    id: 'About',
+    label: 'About',
+    icon: Icon('M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 16v-4.5M12 8h0'),
+    hero: {
+      eyebrow: () => 'Polaris',
+      title: 'About',
+      blurb: 'A fast, dithered file manager and editor for Linux, built on a Zig core.',
+      chips: () => ['Electron', 'SolidJS', 'Zig 0.17']
+    },
+    sections: [
+      {
+        title: '',
+        tiles: [
+          { kind: 'custom', id: 'about', title: '', render: () => <AboutPanel />, wide: true }
+        ]
+      }
+    ],
+    prefKeys: []
+  }
+]

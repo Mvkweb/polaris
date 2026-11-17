@@ -19,13 +19,24 @@ export const [previousView, setPreviousView] = createSignal<
 >('files')
 
 // ── Monodrive Settings & Preferences ─────────────────────────────────────────
-export type SettingsPage = 'General' | 'Window' | 'Appearance' | 'Keyboard' | 'Agents'
+export type SettingsPage =
+  | 'General'
+  | 'Appearance'
+  | 'Editor'
+  | 'Files'
+  | 'Media'
+  | 'Uploads'
+  | 'Keyboard'
+  | 'About'
 export const SETTINGS_PAGES: SettingsPage[] = [
   'General',
-  'Window',
   'Appearance',
+  'Editor',
+  'Files',
+  'Media',
+  'Uploads',
   'Keyboard',
-  'Agents'
+  'About'
 ]
 
 export const [isSettingsModalOpen, setIsSettingsModalOpen] = createSignal(false)
@@ -37,17 +48,22 @@ export const [showHiddenFiles, setShowHiddenFiles] = createSignal(false)
 export const [sortField, setSortField] = createSignal<SortByField>('name')
 export const [sortDescending, setSortDescending] = createSignal(false)
 export const [foldersFirst, setFoldersFirst] = createSignal(true)
-export const [defaultTerminal, setDefaultTerminal] = createSignal<'Terminal' | 'Ghostty' | 'Alacritty' | 'Kitty'>('Terminal')
+export const [defaultTerminal, setDefaultTerminal] = createSignal<
+  'Terminal' | 'Ghostty' | 'Alacritty' | 'Kitty'
+>('Terminal')
 export const [updateTrack, setUpdateTrack] = createSignal<'Stable' | 'Nightly'>('Nightly')
 
 // Window Settings
 export type WindowDefaultSize = 'Reasonable' | 'Almost Full' | 'Last Used'
-export const [windowDefaultSize, setWindowDefaultSize] = createSignal<WindowDefaultSize>('Reasonable')
+export const [windowDefaultSize, setWindowDefaultSize] =
+  createSignal<WindowDefaultSize>('Reasonable')
 export const [viewMode, setViewMode] = createSignal<'List' | 'Grid'>('Grid')
 export const [showPathBar, setShowPathBar] = createSignal(true)
 export const [openFoldersWhileDragging, setOpenFoldersWhileDragging] = createSignal(false)
 export const [gridIconSize, setGridIconSize] = createSignal(72)
-export const [gridLabelSize, setGridLabelSize] = createSignal<'Small' | 'Medium' | 'Large'>('Medium')
+export const [gridLabelSize, setGridLabelSize] = createSignal<'Small' | 'Medium' | 'Large'>(
+  'Medium'
+)
 export const [showThumbnails, setShowThumbnails] = createSignal(true)
 export const [suggestSentenceCaseNames, setSuggestSentenceCaseNames] = createSignal(false)
 export const [listRowSize, setListRowSize] = createSignal<'Small' | 'Medium' | 'Large'>('Medium')
@@ -67,7 +83,9 @@ export const MONODRIVE_ACCENTS: readonly MonodriveAccent[] = [
   { hex: '#10b981', label: 'Green' }
 ] as const
 
-export const [appearanceTheme, setAppearanceTheme] = createSignal<'System' | 'Dark' | 'Light'>('Dark')
+export const [appearanceTheme, setAppearanceTheme] = createSignal<'System' | 'Dark' | 'Light'>(
+  'Dark'
+)
 export const [selectedAccentColor, setSelectedAccentColor] = createSignal<string>('#4da3f5')
 export const [windowHue, setWindowHue] = createSignal(240)
 export const [windowSaturation, setWindowSaturation] = createSignal(0)
@@ -114,42 +132,21 @@ export const toggleSettings = (): void => {
   toggleSettingsModal()
 }
 
+/** Reset the wired (store-backed) settings of a page; prefs reset via settings/prefs.ts. */
 export const restorePageDefaults = (page: SettingsPage): void => {
   switch (page) {
     case 'General':
-      setShowHiddenFiles(false)
-      setSortField('name')
-      setSortDescending(false)
-      setFoldersFirst(true)
       setDefaultTerminal('Terminal')
       setUpdateTrack('Nightly')
       break
-    case 'Window':
-      setWindowDefaultSize('Reasonable')
-      setViewMode('Grid')
-      setShowPathBar(true)
-      setOpenFoldersWhileDragging(false)
-      setGridIconSize(72)
-      setGridLabelSize('Medium')
-      setShowThumbnails(true)
-      setSuggestSentenceCaseNames(false)
-      setListRowSize('Medium')
-      break
     case 'Appearance':
-      setAppearanceTheme('Dark')
       setSelectedAccentColor('#4da3f5')
-      setWindowHue(240)
-      setWindowSaturation(0)
-      setDarkLightness(9)
-      setWindowOpacity(95)
-      setMainPaneGlass(false)
-      setWorkspaceStyle('Card')
       break
-    case 'Keyboard':
-      break
-    case 'Agents':
-      setAgentsChangeFiles(true)
-      setSelectedHarness('Antigravity')
+    case 'Files':
+      setShowHiddenFiles(false)
+      setFoldersFirst(true)
+      setSortField('name')
+      setSortDescending(false)
       break
   }
 }
@@ -468,9 +465,32 @@ export const switchTab = (id: string): void => {
   }
 }
 
+// ── Files ↔ editor ───────────────────────────────────────────────────────────
+// The top bar (folder pills, back/forward, parent crumb) is file-browser
+// navigation, so any folder navigation reveals the files view: what you click
+// is what you see. The editor keeps its tabs and comes back in one click
+// (editor pill in the top bar, or Mod+E).
+
+/** Show the folder view if the editor is covering it. */
+export const revealFiles = (): void => {
+  if (currentView() === 'editor') setCurrentView('files')
+}
+
+/** Return to the editor (only meaningful when files are open). */
+export const showEditor = (): void => {
+  if (openTabs().length > 0) setCurrentView('editor')
+}
+
+/** Mod+E: flip between the folder view and the editor. */
+export const toggleEditorView = (): void => {
+  if (currentView() === 'editor') setCurrentView('files')
+  else showEditor()
+}
+
 export const navigateTo = (newPath: string): void => {
   if (!newPath) return
   const current = workspaceRoot()
+  revealFiles()
 
   batch(() => {
     // Always update active tab name & path
@@ -493,12 +513,21 @@ export const navigateTo = (newPath: string): void => {
   })
 }
 
+/** Keep the active folder pill's path/name in step with history moves. */
+const syncActiveBrowserTab = (path: string): void => {
+  const activeId = activeTabId()
+  const name = path.split(/[/\\]/).filter(Boolean).pop() || '/'
+  setBrowserTabs((prev) => prev.map((tab) => (tab.id === activeId ? { ...tab, path, name } : tab)))
+}
+
 export const navigateBack = (): void => {
   const idx = historyIndex()
   if (idx > 0) {
     const prevPath = navHistory()[idx - 1]
+    revealFiles()
     batch(() => {
       setHistoryIndex(idx - 1)
+      syncActiveBrowserTab(prevPath)
       setWorkspaceRoot(prevPath)
       setSelectedGridEntry(null)
     })
@@ -510,8 +539,10 @@ export const navigateForward = (): void => {
   const idx = historyIndex()
   if (idx < history.length - 1) {
     const nextPath = history[idx + 1]
+    revealFiles()
     batch(() => {
       setHistoryIndex(idx + 1)
+      syncActiveBrowserTab(nextPath)
       setWorkspaceRoot(nextPath)
       setSelectedGridEntry(null)
     })

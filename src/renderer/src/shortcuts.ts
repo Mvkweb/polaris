@@ -61,6 +61,13 @@ export const DEFAULT_SHORTCUTS: ShortcutItem[] = [
     keys: ['Mod', 'P']
   },
   {
+    id: 'toggle_editor_view',
+    title: 'Files ↔ Editor',
+    description: 'Switch between the folder view and the editor (keeps open tabs)',
+    group: 'General & Navigation',
+    keys: ['Mod', 'E']
+  },
+  {
     id: 'settings',
     title: 'Preferences / Settings',
     description: 'Open or close the settings view',

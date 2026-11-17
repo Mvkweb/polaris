@@ -8,6 +8,7 @@ import {
   workspaceRoot
 } from '../../store'
 import { FileIcon } from '../file-tree/FileIcon'
+import { DirtyMark } from '../ui/DirtyMark'
 import { MediaViewer } from '../media/MediaViewer'
 import { hasSourceView, mediaKind, mediaLabel } from '../media/mediaKind'
 import TabBar from './TabBar'
@@ -135,7 +136,7 @@ export const EditorPane: Component = () => {
               classList={{ 'is-dirty': isDirty(), 'is-saved': isSaved() && !isDirty() }}
               title={isDirty() ? 'Unsaved changes' : isSaved() ? 'Saved' : undefined}
             >
-              <span class="editor-status-dot" />
+              <DirtyMark class="editor-status-dot w-[9px] h-[9px]" />
               <svg viewBox="0 0 12 12" class="editor-status-check" fill="none">
                 <path d="M2.5 6.2 5 8.5l4.5-5" />
               </svg>

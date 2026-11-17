@@ -15,9 +15,7 @@ export const SettingGroup: Component<SettingGroupProps> = (props) => {
           <div class="text-[12px] text-[#767676]">{props.description}</div>
         </Show>
       </div>
-      <div class="rounded-2xl bg-[#181818] flex flex-col overflow-hidden">
-        {props.children}
-      </div>
+      <div class="rounded-2xl bg-[#181818] flex flex-col overflow-hidden">{props.children}</div>
     </div>
   )
 }
@@ -159,8 +157,7 @@ export const ColorSwatchPicker: Component<ColorSwatchPickerProps> = (props) => {
     <div class="flex items-center gap-2.5">
       <For each={props.colors}>
         {(color) => {
-          const isSelected = () =>
-            color.hex.toLowerCase() === props.selectedColor.toLowerCase()
+          const isSelected = () => color.hex.toLowerCase() === props.selectedColor.toLowerCase()
           return (
             <button
               type="button"

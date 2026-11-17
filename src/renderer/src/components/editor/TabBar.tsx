@@ -1,6 +1,7 @@
 import {
   Component,
   For,
+  Show,
   createEffect,
   createMemo,
   createSignal,
@@ -19,6 +20,7 @@ import {
 } from '../../store'
 import type { EditorTab } from '../../types'
 import { FileIcon } from '../file-tree/FileIcon'
+import { DirtyMark } from '../ui/DirtyMark'
 
 /**
  * Liquid tab bar: a SolidJS port of the technique from `liquid-gooey`
@@ -346,26 +348,43 @@ export const TabBar: Component = () => {
                   } ${isActive() ? 'text-white' : 'text-white/45 hover:text-white/90'}`}
                   style={{ height: `${TAB_HEIGHT}px` }}
                 >
-                  {/* Hover chip for inactive tabs (the active tab is liquid) */}
-                  <span
-                    class={`absolute inset-x-0 top-0 bottom-[5px] -z-10 transition-opacity duration-200 bg-white/[0.04] ${
-                      isActive() ? 'opacity-0' : 'opacity-0 group-hover:opacity-100'
+                  <FileIcon
+                    name={tab.name}
+                    isDirectory={false}
+                    class={`w-3.5 h-3.5 shrink-0 transition-opacity duration-200 ${
+                      isActive() ? 'opacity-100' : 'opacity-55 group-hover:opacity-90'
                     }`}
-                    style={{ 'border-radius': `${TAB_RADIUS + 1}px` }}
                   />
-
-                  <FileIcon name={tab.name} isDirectory={false} class="w-3.5 h-3.5 shrink-0" />
 
                   <span class="truncate max-w-[150px]">{tab.name}</span>
 
                   {/* Status dot and close button share one slot and cross-morph on hover */}
                   <div class="relative w-4 h-4 shrink-0">
                     <span
-                      title={isJustSaved() ? 'Saved' : 'Unsaved changes'}
-                      class={`absolute inset-0 m-auto w-2 h-2 rounded-full pointer-events-none transition-all duration-200 group-hover:scale-0 group-hover:opacity-0 ${
-                        isJustSaved() ? 'bg-emerald-400' : 'bg-[var(--accent)]'
-                      } ${showsDot() ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}
-                    />
+                      class={`absolute inset-0 flex items-center justify-center pointer-events-none transition-all duration-200 group-hover:scale-0 group-hover:opacity-0 ${
+                        showsDot() ? 'scale-100 opacity-100' : 'scale-50 opacity-0'
+                      }`}
+                    >
+                      <Show
+                        when={!isJustSaved()}
+                        fallback={
+                          <svg
+                            viewBox="0 0 12 12"
+                            class="saved-check w-3 h-3"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            aria-label="Saved"
+                          >
+                            <path d="M2.5 6.2 5 8.5l4.5-5" />
+                          </svg>
+                        }
+                      >
+                        <DirtyMark />
+                      </Show>
+                    </span>
 
                     <button
                       type="button"
@@ -398,12 +417,12 @@ export const TabBar: Component = () => {
             type="button"
             onClick={() => toggleQuickOpen()}
             title="Quick Open / Open File (Ctrl+P)"
-            class="group/plus relative mb-[6px] ml-1.5 w-7 h-7 shrink-0 rounded-full flex items-center justify-center bg-white/[0.06] text-white/55 hover:text-white hover:bg-white/[0.12] active:scale-90 transition-all duration-200 cursor-pointer outline-none"
+            class="group/plus relative mb-[7px] ml-1 w-6 h-6 shrink-0 flex items-center justify-center text-white/35 hover:text-white active:scale-90 transition-all duration-200 cursor-pointer outline-none"
           >
             <svg
               viewBox="0 0 16 16"
               fill="currentColor"
-              class="w-3.5 h-3.5 transition-transform duration-300 group-hover/plus:rotate-90"
+              class="w-3 h-3 transition-transform duration-300 group-hover/plus:rotate-90"
               style={{ 'transition-timing-function': EASE_OUT }}
             >
               <path d="M8 2.5a.75.75 0 0 1 .75.75v4h4a.75.75 0 0 1 0 1.5h-4v4a.75.75 0 0 1-1.5 0v-4h-4a.75.75 0 0 1 0-1.5h4v-4A.75.75 0 0 1 8 2.5z" />

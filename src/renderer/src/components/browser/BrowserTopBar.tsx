@@ -11,6 +11,7 @@ import {
   openNewTab,
   closeBrowserTab,
   switchTab,
+  revealFiles,
   workspaceRoot,
   browserSearchFilter,
   setBrowserSearchFilter,
@@ -23,6 +24,7 @@ import {
   INSPECTOR_TRANSITION
 } from '../../store'
 import { SolarInfoCircleLinear } from '../ui/SolarIcons'
+import { EditorPill } from './EditorPill'
 
 /* ── Monodrive Exact Hugeicons SVGs ── */
 const ChevronLeftIcon: Component<{ class?: string }> = (props) => (
@@ -180,9 +182,14 @@ export const BrowserTopBar: Component = () => {
                 </Show>
 
                 {/* Active Tab Pill */}
-                <div class="px-3.5 py-1 rounded-full bg-white/[0.10] text-white text-[13px] font-medium shadow-sm flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={revealFiles}
+                  title="Show this folder"
+                  class="px-3.5 py-1 rounded-full bg-white/[0.10] text-white text-[13px] font-medium shadow-sm flex items-center gap-1.5 cursor-pointer"
+                >
                   <span>{browserTabs()[0]?.name || 'folder'}</span>
-                </div>
+                </button>
               </>
             }
           >
@@ -263,6 +270,7 @@ export const BrowserTopBar: Component = () => {
               : 'opacity 120ms ease-in, transform 160ms ease-in'
           }}
         />
+        <EditorPill />
         <button
           type="button"
           onClick={() => toggleInspector()}

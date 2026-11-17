@@ -1,165 +1,206 @@
-import { Component, Show, Switch, Match, onMount, onCleanup } from 'solid-js'
+import { For, Show, createMemo, onCleanup, onMount, type Component } from 'solid-js'
 import {
-  isSettingsModalOpen,
-  closeSettingsModal,
   activeSettingsPage,
-  setActiveSettingsPage,
+  closeSettingsModal,
+  isSettingsModalOpen,
   restorePageDefaults,
-  type SettingsPage
+  setActiveSettingsPage
 } from '../../store'
-import { GeneralPage } from './pages/GeneralPage'
-import { WindowPage } from './pages/WindowPage'
-import { AppearancePage } from './pages/AppearancePage'
-import { KeyboardPage } from './pages/KeyboardPage'
-import { AgentsPage } from './pages/AgentsPage'
+import { Contours } from '../dithercn/contours'
+import { DitherButton } from '../dithercn/dither-button'
+import { PAGES } from './schema'
+import { resetPrefs } from './prefs'
+import { SettingTile } from './SettingTile'
+import './settings.css'
 
-import slidersIcon from '../../assets/icons/sliders.svg'
-import appWindowIcon from '../../assets/icons/app-window.svg'
-import paletteIcon from '../../assets/icons/palette.svg'
-import keyboardIcon from '../../assets/icons/keyboard.svg'
-import botIcon from '../../assets/icons/bot.svg'
-import rotateCcwIcon from '../../assets/icons/rotate-ccw.svg'
-import cancelIcon from '../../assets/icons/cancel-01.svg'
+/** Contour palette from the live accent: near-black paper, two quiet ink steps. */
+const CONTOUR_PALETTE = [
+  '#0b0b0c',
+  'color-mix(in oklch, var(--accent, #4da3f5) 24%, #0b0b0c)',
+  'color-mix(in oklch, var(--accent, #4da3f5) 62%, #0b0b0c)'
+] as const
 
-interface NavItem {
-  id: SettingsPage
-  label: string
-  icon: string
+/** Each page gets its own patch of terrain. */
+const TERRAIN: Record<string, number> = {
+  General: 1,
+  Appearance: 0.8,
+  Editor: 1.25,
+  Files: 0.95,
+  Media: 1.1,
+  Uploads: 0.85,
+  Keyboard: 1.35,
+  About: 0.7
 }
 
+/**
+ * Settings: rail · contour hero · tiles. The hero is a dithered topographic
+ * map in the wallpaper accent that summarises the page (live chips + the one
+ * action you came for); the tiles hold the controls.
+ */
 export const SettingsModal: Component = () => {
-  const navItems: NavItem[] = [
-    { id: 'General', label: 'General', icon: slidersIcon },
-    { id: 'Window', label: 'Window', icon: appWindowIcon },
-    { id: 'Appearance', label: 'Appearance', icon: paletteIcon },
-    { id: 'Keyboard', label: 'Keyboard', icon: keyboardIcon },
-    { id: 'Agents', label: 'Agents', icon: botIcon }
-  ]
+  const page = createMemo(() => PAGES.find((p) => p.id === activeSettingsPage()) ?? PAGES[0])
 
-  const handleKeyDown = (e: KeyboardEvent): void => {
+  const onKey = (e: KeyboardEvent): void => {
     if (!isSettingsModalOpen()) return
-
     if (e.key === 'Escape') {
       e.preventDefault()
       closeSettingsModal()
     }
   }
+  onMount(() => window.addEventListener('keydown', onKey))
+  onCleanup(() => window.removeEventListener('keydown', onKey))
 
-  onMount(() => {
-    window.addEventListener('keydown', handleKeyDown)
-  })
-
-  onCleanup(() => {
-    window.removeEventListener('keydown', handleKeyDown)
-  })
-
-  const handleRestoreDefaults = (): void => {
-    restorePageDefaults(activeSettingsPage())
+  const restore = (): void => {
+    restorePageDefaults(page().id)
+    resetPrefs(page().prefKeys)
   }
 
   return (
     <Show when={isSettingsModalOpen()}>
       <div
-        class="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm select-none"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) {
-            closeSettingsModal()
-          }
-        }}
+        class="settings-overlay fixed inset-0 z-50 flex items-center justify-center p-6 select-none"
+        onClick={(e) => e.target === e.currentTarget && closeSettingsModal()}
       >
-        {/* Floating Sheet Card: Quiet, solid, non-wireframe surface */}
         <div
-          class="relative w-full max-w-[880px] h-[600px] max-h-[90vh] bg-[#131313] rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.75)] flex overflow-hidden text-[#ebebeb]"
+          class="settings-sheet relative flex gap-3 p-3 rounded-[26px] text-white"
           role="dialog"
           aria-modal="true"
           aria-label="Settings"
-          onClick={(e) => e.stopPropagation()}
         >
-          {/* Left Navigation Sidebar */}
-          <aside class="w-[200px] shrink-0 h-full flex flex-col gap-1 p-3 bg-[#101010] select-none">
-            {navItems.map((item) => {
-              const isActive = () => activeSettingsPage() === item.id
-              return (
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive()}
-                  onClick={() => setActiveSettingsPage(item.id)}
-                  class={`h-8 px-3 rounded-lg flex items-center gap-2.5 text-[13px] font-normal transition-colors cursor-pointer text-left focus:outline-none ${
-                    isActive()
-                      ? 'bg-[#242424] text-[#ffffff] font-medium shadow-sm'
-                      : 'text-[#7d7d7d] hover:bg-[#171717] hover:text-[#d1d1d1]'
-                  }`}
-                >
-                  <img
-                    src={item.icon}
-                    alt=""
-                    class={`w-4 h-4 transition-opacity ${
-                      isActive() ? 'opacity-100' : 'opacity-45'
-                    }`}
-                  />
-                  <span>{item.label}</span>
-                </button>
-              )
-            })}
-          </aside>
-
-          {/* Right Content Panel */}
-          <section class="flex-1 min-w-0 flex flex-col h-full overflow-hidden bg-[#131313]">
-            {/* Header Bar */}
-            <header class="h-11 shrink-0 px-6 flex items-center gap-2 text-[13px]">
-              <span class="text-[#666666]">Settings</span>
-              <span class="text-[#404040]">/</span>
-              <span class="flex-1 font-medium text-[#f0f0f0]">{activeSettingsPage()}</span>
-
-              {/* Restore Defaults */}
+          {/* ── Rail ─────────────────────────────────────────────── */}
+          <nav class="w-[200px] shrink-0 flex flex-col">
+            <div class="h-11 px-3 flex items-center text-[15px] font-medium text-white/85">
+              Settings
+            </div>
+            <div class="flex flex-col gap-1 mt-1" role="tablist" aria-orientation="vertical">
+              <For each={PAGES}>
+                {(p) => (
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={page().id === p.id}
+                    onClick={() => setActiveSettingsPage(p.id)}
+                    class="settings-nav h-10 px-3 rounded-[13px] flex items-center gap-3 text-[13.5px]"
+                    classList={{ 'is-active': page().id === p.id }}
+                  >
+                    {p.icon()}
+                    <span>{p.label}</span>
+                  </button>
+                )}
+              </For>
+            </div>
+            <div class="mt-auto px-1 pb-1">
               <button
                 type="button"
-                onClick={handleRestoreDefaults}
-                class="h-7 px-3 rounded-full text-[12px] text-[#7d7d7d] hover:text-[#e0e0e0] hover:bg-[#1a1a1a] flex items-center gap-1.5 transition-colors cursor-pointer focus:outline-none"
-                title="Restore default settings for this page"
+                onClick={restore}
+                class="settings-nav w-full h-9 px-3 rounded-[12px] flex items-center gap-2.5 text-[12.5px]"
+                title="Restore this page's defaults"
               >
-                <img src={rotateCcwIcon} alt="" class="w-3.5 h-3.5 opacity-55" />
-                <span>Restore Defaults</span>
+                <svg
+                  viewBox="0 0 16 16"
+                  class="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 2.5v3h3" />
+                </svg>
+                Restore defaults
               </button>
+            </div>
+          </nav>
 
-              {/* Close Button */}
+          {/* ── Hero: contour map summarising the page ───────────── */}
+          <section class="settings-hero relative w-[340px] shrink-0 rounded-[22px] overflow-hidden">
+            <Contours
+              class="absolute inset-0"
+              palette={CONTOUR_PALETTE}
+              lines={16}
+              index={5}
+              relief={0.45}
+              scale={TERRAIN[page().id] ?? 1}
+            />
+            <div class="settings-hero-shade absolute inset-0" />
+
+            <Show when={page()} keyed>
+              {(p) => (
+                <div class="settings-hero-content relative h-full flex flex-col p-6">
+                  <div class="flex flex-wrap gap-1.5">
+                    <For each={p.hero.chips()}>{(c) => <span class="settings-chip">{c}</span>}</For>
+                  </div>
+
+                  <div class="settings-hero-glyph mx-auto my-auto">{p.icon()}</div>
+
+                  <div class="text-[12.5px] text-white/55">{p.hero.eyebrow()}</div>
+                  <h2 class="mt-0.5 text-[40px] leading-[1.05] font-semibold tracking-[-0.02em] text-white">
+                    {p.hero.title}
+                  </h2>
+                  <p class="mt-2 text-[13px] leading-relaxed text-white/55">{p.hero.blurb}</p>
+
+                  <Show when={p.hero.primary}>
+                    {(primary) => (
+                      <div class="mt-5">
+                        <DitherButton size="md" color="ink" onClick={() => primary()().run()}>
+                          {primary()().label}
+                        </DitherButton>
+                      </div>
+                    )}
+                  </Show>
+                </div>
+              )}
+            </Show>
+          </section>
+
+          {/* ── Tiles ────────────────────────────────────────────── */}
+          <section class="flex-1 min-w-0 flex flex-col">
+            <header class="h-11 shrink-0 flex items-center justify-end">
               <button
                 type="button"
                 onClick={closeSettingsModal}
-                class="w-7 h-7 rounded-full text-[#7d7d7d] hover:text-[#e0e0e0] hover:bg-[#1a1a1a] flex items-center justify-center transition-colors cursor-pointer focus:outline-none"
-                aria-label="Close"
+                aria-label="Close settings"
+                title="Close (Esc)"
+                class="settings-close w-9 h-9 rounded-full flex items-center justify-center"
               >
-                <img src={cancelIcon} alt="" class="w-3.5 h-3.5 opacity-60" />
+                <svg
+                  viewBox="0 0 16 16"
+                  class="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"
+                  aria-hidden="true"
+                >
+                  <path d="m4.5 4.5 7 7m0-7-7 7" />
+                </svg>
               </button>
             </header>
 
-            {/* Scrollable Page Body */}
-            <div class="flex-1 min-h-0 overflow-y-auto px-6 py-5 flex justify-center">
-              <div class="w-full max-w-[620px]">
-                <Switch>
-                  <Match when={activeSettingsPage() === 'General'}>
-                    <GeneralPage />
-                  </Match>
-                  <Match when={activeSettingsPage() === 'Window'}>
-                    <WindowPage />
-                  </Match>
-                  <Match when={activeSettingsPage() === 'Appearance'}>
-                    <AppearancePage />
-                  </Match>
-                  <Match when={activeSettingsPage() === 'Keyboard'}>
-                    <KeyboardPage />
-                  </Match>
-                  <Match when={activeSettingsPage() === 'Agents'}>
-                    <AgentsPage />
-                  </Match>
-                </Switch>
-              </div>
-            </div>
+            <Show when={page()} keyed>
+              {(p) => (
+                <div class="settings-body flex-1 min-h-0 overflow-y-auto pr-1 pb-2">
+                  <For each={p.sections}>
+                    {(section) => (
+                      <div class="settings-section">
+                        <Show when={section.title}>
+                          <div class="settings-section-title">{section.title}</div>
+                        </Show>
+                        <div class="grid grid-cols-2 gap-2">
+                          <For each={section.tiles}>{(tile) => <SettingTile tile={tile} />}</For>
+                        </div>
+                      </div>
+                    )}
+                  </For>
+                </div>
+              )}
+            </Show>
           </section>
         </div>
       </div>
     </Show>
   )
 }
+
 export default SettingsModal

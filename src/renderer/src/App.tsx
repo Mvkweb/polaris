@@ -38,7 +38,8 @@ import {
   isFilterTabActive,
   openPropertiesModal,
   activeTabPath,
-  selectedGridEntry
+  selectedGridEntry,
+  toggleEditorView
 } from './store'
 import { isModKey } from './shortcuts'
 import { useThemeVariables, useWallpaperTheme } from './theme'
@@ -106,6 +107,11 @@ const handleGlobalKeyDown = (e: KeyboardEvent): void => {
   } else if (e.key === ',') {
     e.preventDefault()
     toggleSettingsModal()
+  } else if (e.key.toLowerCase() === 'e' && !e.shiftKey && !e.altKey) {
+    // Files ↔ editor. Not inside the terminal: shells use Ctrl+E (end of line).
+    if ((document.activeElement as HTMLElement | null)?.closest('.xterm')) return
+    e.preventDefault()
+    toggleEditorView()
   }
 }
 
@@ -211,8 +217,18 @@ const App: Component = () => {
               transition: 'border-top-right-radius 220ms cubic-bezier(0.16, 1, 0.3, 1)'
             }}
           >
-            <Show when={currentView() === 'editor'} fallback={<FolderView />}>
-              <EditorPane />
+            {/* Files ↔ editor: each side slides in from where it "lives" */}
+            <Show
+              when={currentView() === 'editor'}
+              fallback={
+                <div class="view-swap flex-1 min-h-0 min-w-0 flex flex-col">
+                  <FolderView />
+                </div>
+              }
+            >
+              <div class="view-swap is-editor flex-1 min-h-0 min-w-0 flex flex-col">
+                <EditorPane />
+              </div>
             </Show>
           </main>
           <InspectorDrawer />
