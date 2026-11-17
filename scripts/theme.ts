@@ -6,8 +6,10 @@
  *   bun run theme '#5b6cff'
  *
  * Uses `dithergen` from $DITHERGEN, then PATH, then builds references/dithergen.
- * Writes $POLARIS_THEME or ~/.config/polaris/theme.json — a running Polaris picks
- * it up instantly. Not part of the app; Polaris itself only watches that file.
+ * Writes $POLARIS_THEME when set (explicit single file), otherwise dithergen's
+ * own $POLARIS_THEME_DITHERGEN or ~/.config/polaris/dithergen/theme.json.
+ * Matugen keeps writing ~/.config/polaris/theme.json, so both can coexist; a
+ * running Polaris picks up whichever valid file was modified most recently.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'fs'
 import { homedir, tmpdir } from 'os'
@@ -45,7 +47,8 @@ const findDithergen = (): string => {
 
 const out =
   process.env.POLARIS_THEME ||
-  join(process.env.XDG_CONFIG_HOME || join(homedir(), '.config'), 'polaris', 'theme.json')
+  process.env.POLARIS_THEME_DITHERGEN ||
+  join(process.env.XDG_CONFIG_HOME || join(homedir(), '.config'), 'polaris', 'dithergen', 'theme.json')
 mkdirSync(dirname(out), { recursive: true })
 
 // One-off config pointing the shipped template at the output path.

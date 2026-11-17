@@ -1,12 +1,12 @@
 import { BrowserWindow } from 'electron'
 import { watch, type FSWatcher } from 'fs'
-import { readFile } from 'fs/promises'
+import { readFile, stat } from 'fs/promises'
 import { homedir } from 'os'
 import { basename, dirname, join } from 'path'
 
 /**
- * Wallpaper-synced palette, written by an external generator (dithergen or
- * matugen) from `resources/themes/polaris.json`. Polaris never generates or
+ * Wallpaper-synced palette, written by an external generator (matugen or
+ * dithergen) from `resources/themes/polaris.json`. Polaris never generates or
  * writes it — it only watches and reads. Kept tiny on purpose: the renderer
  * derives every tint from these few roles with CSS color-mix.
  */
@@ -17,13 +17,47 @@ export interface WallpaperPalette {
   tertiary: string
 }
 
-const THEME_PATH =
-  process.env.POLARIS_THEME ||
-  join(process.env.XDG_CONFIG_HOME || join(homedir(), '.config'), 'polaris', 'theme.json')
+const configHome = process.env.XDG_CONFIG_HOME || join(homedir(), '.config')
+
+/**
+ * `POLARIS_THEME` is an explicit single-file override: when set, only that
+ * file is read, exactly like before dithergen had its own output.
+ *
+ * Otherwise Polaris watches matugen's file and dithergen's own file. Each
+ * generator owns its path, so a dithergen run never disturbs matugen's setup.
+ */
+const explicitPath = process.env.POLARIS_THEME
+const MATUGEN_PATH = explicitPath || join(configHome, 'polaris', 'theme.json')
+const DITHERGEN_PATH = explicitPath
+  ? null
+  : process.env.POLARIS_THEME_DITHERGEN || join(configHome, 'polaris', 'dithergen', 'theme.json')
 
 const HEX = /^#[0-9a-f]{6}$/i
+
+interface ThemeSource {
+  path: string
+  /** Last valid palette, kept while the file is half-written. */
+  palette: WallpaperPalette | null
+  /** Raw text of the last valid palette, for change detection. */
+  raw: string
+  /** mtime of the last valid palette, in nanoseconds for tie-free ordering. */
+  mtimeNs: bigint
+}
+
+const makeSource = (path: string): ThemeSource => ({
+  path,
+  palette: null,
+  raw: '',
+  mtimeNs: 0n
+})
+
+const sources: ThemeSource[] = [makeSource(MATUGEN_PATH)]
+if (DITHERGEN_PATH) sources.push(makeSource(DITHERGEN_PATH))
+
 let current: WallpaperPalette | null = null
-let lastRaw = ''
+let currentPath = MATUGEN_PATH
+let currentKey = ''
+let initialized = false
 
 const parse = (raw: string): WallpaperPalette | null => {
   try {
@@ -49,6 +83,79 @@ const broadcast = (): void => {
   }
 }
 
+/**
+ * Read one source and keep its last valid palette.
+ *
+ * - missing/empty file → palette cleared (same as the original watcher);
+ * - invalid content → ignored, previous palette kept;
+ * - valid content → palette plus the file's mtime.
+ */
+const refreshSource = async (source: ThemeSource): Promise<void> => {
+  let mtimeNs: bigint
+  try {
+    mtimeNs = (await stat(source.path, { bigint: true })).mtimeNs
+  } catch {
+    source.palette = null
+    source.raw = ''
+    source.mtimeNs = 0n
+    return
+  }
+
+  let raw: string
+  try {
+    raw = await readFile(source.path, 'utf8')
+  } catch {
+    source.palette = null
+    source.raw = ''
+    source.mtimeNs = 0n
+    return
+  }
+
+  if (raw === '') {
+    source.palette = null
+    source.raw = ''
+    source.mtimeNs = mtimeNs
+    return
+  }
+
+  if (raw === source.raw) {
+    source.mtimeNs = mtimeNs // identical rewrite: still the newest file
+    return
+  }
+
+  const next = parse(raw)
+  if (!next) return // invalid/half-written; keep the last good palette
+
+  source.palette = next
+  source.raw = raw
+  source.mtimeNs = mtimeNs
+}
+
+/** Pick the valid file with the newest mtime and broadcast only real changes. */
+const select = (): void => {
+  let best: ThemeSource | null = null
+  for (const source of sources) {
+    if (!source.palette) continue
+    // Ties go to the later source (dithergen), the explicit `bun run theme`
+    // path; matugen-only setups have no second source to tie with.
+    if (!best || source.mtimeNs >= best.mtimeNs) best = source
+  }
+
+  const key = best ? `${best.path}\u0000${best.raw}` : ''
+  if (key === currentKey) return
+
+  currentKey = key
+  current = best?.palette ?? null
+  currentPath = best?.path ?? MATUGEN_PATH
+  broadcast()
+}
+
+const reloadNow = async (): Promise<void> => {
+  await Promise.all(sources.map(refreshSource))
+  select()
+  initialized = true
+}
+
 // Coalesce bursts (write + rename + chmod arrive as several inotify events) into
 // one read on the next macrotask — no timer delay, so the update is effectively
 // instant while still doing a single ~1 KB read per wallpaper change.
@@ -58,80 +165,80 @@ const reload = (): void => {
   pending = true
   setImmediate(async () => {
     pending = false
-    let raw = ''
-    try {
-      raw = await readFile(THEME_PATH, 'utf8')
-    } catch {
-      raw = '' // deleted → fall back to the user's chosen accent
-    }
-    if (raw === lastRaw) return
-    lastRaw = raw
-    const next = raw ? parse(raw) : null
-    if (raw && !next) return // ignore invalid content, keep the last good palette
-    current = next
-    broadcast()
+    await reloadNow()
   })
 }
 
-let dirWatcher: FSWatcher | null = null
-let parentWatcher: FSWatcher | null = null
+/**
+ * Watch a source's directory (survives atomic rename-writes) with inotify, and
+ * its parent while the directory itself does not exist yet. No polling.
+ */
+const watchSource = (source: ThemeSource): void => {
+  const dir = dirname(source.path)
+  const file = basename(source.path)
+  let dirWatcher: FSWatcher | null = null
+  let parentWatcher: FSWatcher | null = null
 
-/** Watch the theme's directory (survives atomic rename-writes). inotify, no polling. */
-const watchDir = (): boolean => {
-  const dir = dirname(THEME_PATH)
-  const file = basename(THEME_PATH)
-  try {
-    dirWatcher = watch(dir, { persistent: false }, (_event, name) => {
-      if (!name || name === file) reload()
-    })
-    dirWatcher.on('error', () => {
-      dirWatcher?.close()
-      dirWatcher = null
-      waitForDir()
-    })
-    reload()
-    return true
-  } catch {
-    return false
-  }
-}
-
-/** Until the directory exists, watch its parent for it to appear. */
-const waitForDir = (): void => {
-  if (watchDir()) return
-  const dir = dirname(THEME_PATH)
-  try {
-    parentWatcher = watch(dirname(dir), { persistent: false }, (_e, name) => {
-      if (name !== basename(dir)) return
-      if (watchDir()) {
+  const armParent = (): void => {
+    const parent = dirname(dir)
+    try {
+      parentWatcher = watch(parent, { persistent: false }, (_event, name) => {
+        if (name !== basename(dir)) return
         parentWatcher?.close()
         parentWatcher = null
-      }
-    })
-  } catch {
-    /* parent missing too — wallpaper sync simply stays off */
+        // The directory may have appeared together with its file, before the
+        // new watcher was armed, so read once as soon as it arms successfully.
+        if (!armDir()) armParent()
+        else reload()
+      })
+      parentWatcher.on('error', () => {
+        parentWatcher?.close()
+        parentWatcher = null
+        if (!armDir()) armParent()
+        else reload()
+      })
+    } catch {
+      /* parent missing too — wallpaper sync simply stays off for this source */
+    }
   }
-  if (current) {
-    current = null
-    lastRaw = ''
-    broadcast()
+
+  const armDir = (): boolean => {
+    try {
+      dirWatcher = watch(dir, { persistent: false }, (_event, name) => {
+        if (!name || name === file) reload()
+      })
+      dirWatcher.on('error', () => {
+        dirWatcher?.close()
+        dirWatcher = null
+        if (!armDir()) armParent()
+        else reload()
+      })
+      return true
+    } catch {
+      return false
+    }
   }
+
+  if (!armDir()) armParent()
 }
 
+const startWatcher = (): void => {
+  for (const source of sources) watchSource(source)
+}
+
+let watching = false
 export const startThemeWatcher = (): void => {
-  if (dirWatcher || parentWatcher) return
-  waitForDir()
+  if (watching) return
+  watching = true
+  startWatcher()
+  reload()
 }
 
-/** Current palette; reads the file directly if the watcher hasn't loaded it yet. */
+/** Current palette; reads the files directly if the watcher hasn't loaded them yet. */
 export const getWallpaperTheme = async (): Promise<WallpaperPalette | null> => {
-  if (current || lastRaw) return current
-  try {
-    lastRaw = await readFile(THEME_PATH, 'utf8')
-    current = parse(lastRaw)
-  } catch {
-    /* no file yet */
-  }
+  if (!initialized || !current) await reloadNow()
   return current
 }
-export const wallpaperThemePath = (): string => THEME_PATH
+
+/** The theme file currently in use (matugen's path until dithergen wins). */
+export const wallpaperThemePath = (): string => currentPath
