@@ -1,107 +1,48 @@
-import { Component, For } from 'solid-js'
-import { SettingGroup, SettingRow } from '../MonodriveControls'
+import { For, Show, type Component } from 'solid-js'
+import {
+  DEFAULT_SHORTCUTS,
+  SHORTCUT_GROUPS,
+  hasAnyShortcutModified,
+  resetAllShortcuts
+} from '../../../shortcuts'
+import { ShortcutRecorder } from '../ShortcutRecorder'
 
-interface ShortcutRowData {
-  label: string
-  description?: string
-  keys: string[]
-}
-
-export const KeyboardPage: Component = () => {
-  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/i.test(navigator.userAgent)
-  const modKey = isMac ? '⌘' : 'Ctrl'
-
-  const navigationShortcuts: ShortcutRowData[] = [
-    {
-      label: 'Quick Open',
-      description: 'Search and jump to files or folders anywhere in the workspace.',
-      keys: [modKey, 'P']
-    },
-    {
-      label: 'Find in Files',
-      description: 'Search text and symbols across workspace entries.',
-      keys: [modKey, 'Shift', 'F']
-    },
-    {
-      label: 'Toggle Hidden Files',
-      description: 'Show or hide files and folders whose names start with a period.',
-      keys: [modKey, 'Shift', '.']
-    },
-    {
-      label: 'Go Back',
-      description: 'Navigate up to the parent directory in the browser canvas.',
-      keys: ['Backspace']
-    }
-  ]
-
-  const windowShortcuts: ShortcutRowData[] = [
-    {
-      label: 'Toggle Settings',
-      description: 'Open or close this preferences sheet.',
-      keys: [modKey, ',']
-    },
-    {
-      label: 'Toggle Terminal',
-      description: 'Slide the embedded terminal drawer open or closed.',
-      keys: [modKey, '`']
-    },
-    {
-      label: 'Switch to Grid View',
-      description: 'Display entries as icons in a grid layout.',
-      keys: [isMac ? '⌥⌘' : 'Alt+Ctrl', '2']
-    },
-    {
-      label: 'Switch to List View',
-      description: 'Display entries as rows in a column table.',
-      keys: [isMac ? '⌥⌘' : 'Alt+Ctrl', '1']
-    }
-  ]
-
-  return (
-    <div class="flex flex-col gap-6">
-      <SettingGroup title="Navigation">
-        <For each={navigationShortcuts}>
-          {(shortcut, idx) => (
-            <SettingRow
-              label={shortcut.label}
-              description={shortcut.description}
-              isLast={idx() === navigationShortcuts.length - 1}
-            >
-              <div class="flex items-center gap-1">
-                <For each={shortcut.keys}>
-                  {(k) => (
-                    <kbd class="px-2 py-0.5 min-w-6 text-center rounded-md bg-[#242424] text-[11px] font-mono text-[#dcdcdc] shadow-[0_1px_2px_rgba(0,0,0,0.4)]">
-                      {k}
-                    </kbd>
-                  )}
-                </For>
-              </div>
-            </SettingRow>
-          )}
-        </For>
-      </SettingGroup>
-
-      <SettingGroup title="Window & Tools">
-        <For each={windowShortcuts}>
-          {(shortcut, idx) => (
-            <SettingRow
-              label={shortcut.label}
-              description={shortcut.description}
-              isLast={idx() === windowShortcuts.length - 1}
-            >
-              <div class="flex items-center gap-1">
-                <For each={shortcut.keys}>
-                  {(k) => (
-                    <kbd class="px-2 py-0.5 min-w-6 text-center rounded-md bg-[#242424] text-[11px] font-mono text-[#dcdcdc] shadow-[0_1px_2px_rgba(0,0,0,0.4)]">
-                      {k}
-                    </kbd>
-                  )}
-                </For>
-              </div>
-            </SettingRow>
-          )}
-        </For>
-      </SettingGroup>
+/** Every shortcut from the registry, grouped; click the keys to rebind. */
+export const KeyboardPage: Component = () => (
+  <div class="flex flex-col gap-5">
+    <div class="flex items-center justify-between px-1">
+      <span class="text-[12.5px] text-white/40">
+        Click a shortcut, then press the new keys. Esc cancels.
+      </span>
+      <Show when={hasAnyShortcutModified()}>
+        <button type="button" class="kbd-reset-all" onClick={resetAllShortcuts}>
+          Reset all
+        </button>
+      </Show>
     </div>
-  )
-}
+    <For each={SHORTCUT_GROUPS}>
+      {(group) => (
+        <div>
+          <div class="settings-section-title">{group}</div>
+          <div class="kbd-list">
+            <For each={DEFAULT_SHORTCUTS.filter((s) => s.group === group)}>
+              {(s) => (
+                <div class="kbd-row">
+                  <div class="min-w-0 flex-1">
+                    <div class="text-[13.5px] text-white/90">{s.title}</div>
+                    <Show when={s.description}>
+                      <div class="mt-0.5 text-[12px] text-white/38 truncate">{s.description}</div>
+                    </Show>
+                  </div>
+                  <ShortcutRecorder id={s.id} locked={s.locked} />
+                </div>
+              )}
+            </For>
+          </div>
+        </div>
+      )}
+    </For>
+  </div>
+)
+
+export default KeyboardPage

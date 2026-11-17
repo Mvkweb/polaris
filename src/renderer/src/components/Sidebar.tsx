@@ -43,7 +43,7 @@ import type { FileNode, ChatSessionSummary, GitCommit, SystemDrive } from '../ty
 import FileTree from './file-tree/FileTree'
 import SearchPanel from './search/SearchPanel'
 
-import { formatShortcut, isMac, isModKey, shortcutKeys } from '../shortcuts'
+import { formatShortcut, isMac, isModKey, matchesShortcut, shortcutKeys } from '../shortcuts'
 
 interface AtlasPlaceItem {
   id: string
@@ -904,30 +904,27 @@ const Sidebar: Component = () => {
   })
 
   const handleKeyDown = (e: KeyboardEvent): void => {
-    if (!isModKey(e)) return
+    // Settings (Mod+,) is handled once, in App.
 
-    const key = e.key.toLowerCase()
-
-    if (key === 'b') {
+    if (matchesShortcut(e, 'toggle_sidebar')) {
       e.preventDefault()
       setIsSidebarPinned(!isSidebarPinned())
       return
     }
 
-    if (key === ',') {
-      e.preventDefault()
-      toggleSettings()
-      return
-    }
-
-    if (key === 'i') {
+    if (matchesShortcut(e, 'cycle_scope')) {
       e.preventDefault()
       cycleScopeView()
       return
     }
 
     // Step through items with Mod+Shift+Up/Down
-    if (e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+    if (
+      e.type === 'keydown' &&
+      isModKey(e) &&
+      e.shiftKey &&
+      (e.key === 'ArrowUp' || e.key === 'ArrowDown')
+    ) {
       if (currentView() === 'tasks') {
         const list = filteredCommits()
         if (list.length === 0) return
@@ -951,7 +948,7 @@ const Sidebar: Component = () => {
       }
     }
 
-    if (key === 'n') {
+    if (matchesShortcut(e, 'new_item')) {
       const target = e.target as HTMLElement | null
       const isInsideEditor =
         Boolean(target?.closest('main')) || Boolean(document.activeElement?.closest('main'))
@@ -962,14 +959,14 @@ const Sidebar: Component = () => {
       return
     }
 
-    if (key === 'f') {
-      if (e.shiftKey) {
-        e.preventDefault()
-        setSearchOpen(true)
-        setTimeout(focusSearch, 0)
-        return
-      }
+    if (matchesShortcut(e, 'find_in_files')) {
+      e.preventDefault()
+      setSearchOpen(true)
+      setTimeout(focusSearch, 0)
+      return
+    }
 
+    if (matchesShortcut(e, 'sidebar_search')) {
       const target = e.target as HTMLElement | null
       const isInsideEditor =
         Boolean(target?.closest('main')) ||
@@ -988,6 +985,7 @@ const Sidebar: Component = () => {
 
   onMount(() => {
     window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyDown)
     refreshGitData()
     loadUserPlaces()
     loadDrives()
@@ -1003,6 +1001,7 @@ const Sidebar: Component = () => {
 
     onCleanup(() => {
       window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyDown)
       window.removeEventListener('focus', refreshGitData)
       window.removeEventListener('focus', loadDrives)
       unsubscribeDrives?.()

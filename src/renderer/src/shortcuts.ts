@@ -18,14 +18,26 @@ const forceMacLabels = import.meta.env.DEV && import.meta.env.VITE_MAC_LABELS ==
 const useMacLabels = (): boolean => forceMacLabels || isMac()
 
 const MAC_SYMBOLS: Record<string, string> = {
+  ArrowUp: '↑',
+  ArrowDown: '↓',
+  ArrowLeft: '←',
+  ArrowRight: '→',
   Mod: '⌘',
   Shift: '⇧',
   Alt: '⌥',
   Ctrl: '⌃'
 }
 
+const ARROWS: Record<string, string> = {
+  ArrowUp: '↑',
+  ArrowDown: '↓',
+  ArrowLeft: '←',
+  ArrowRight: '→'
+}
+
 const OTHER_LABELS: Record<string, string> = {
-  Mod: 'Ctrl'
+  Mod: 'Ctrl',
+  ...ARROWS
 }
 
 export const shortcutKeys = (combo: string): string[] => {
@@ -47,6 +59,8 @@ export interface ShortcutItem {
   description?: string
   group: string
   keys: string[]
+  /** handled inside CodeMirror / xterm: shown, not rebindable (yet) */
+  locked?: boolean
 }
 
 export const SHORTCUT_GROUPS = ['General & Navigation', 'Editor', 'Terminal'] as const
@@ -100,7 +114,8 @@ export const DEFAULT_SHORTCUTS: ShortcutItem[] = [
     title: 'Switch Items',
     description: 'Navigate up and down through commits or chat sessions',
     group: 'General & Navigation',
-    keys: ['Mod', 'Shift', 'ArrowUp', 'ArrowDown']
+    keys: ['Mod', 'Shift', 'ArrowUp', 'ArrowDown'],
+    locked: true
   },
   {
     id: 'new_item',
@@ -123,14 +138,16 @@ export const DEFAULT_SHORTCUTS: ShortcutItem[] = [
     title: 'Save File',
     description: 'Save the currently active file to disk',
     group: 'Editor',
-    keys: ['Mod', 'S']
+    keys: ['Mod', 'S'],
+    locked: true
   },
   {
     id: 'find_in_file',
     title: 'Find in File',
     description: 'Open in-editor search and replace panel',
     group: 'Editor',
-    keys: ['Mod', 'F']
+    keys: ['Mod', 'F'],
+    locked: true
   },
   {
     id: 'find_in_files',
@@ -153,14 +170,16 @@ export const DEFAULT_SHORTCUTS: ShortcutItem[] = [
     title: 'Copy in Terminal',
     description: 'Copy selected terminal output to clipboard',
     group: 'Terminal',
-    keys: ['Mod', 'Shift', 'C']
+    keys: ['Mod', 'Shift', 'C'],
+    locked: true
   },
   {
     id: 'terminal_paste',
     title: 'Paste in Terminal',
     description: 'Paste text from clipboard into terminal session',
     group: 'Terminal',
-    keys: ['Mod', 'Shift', 'V']
+    keys: ['Mod', 'Shift', 'V'],
+    locked: true
   }
 ]
 
@@ -236,3 +255,120 @@ export function isShortcutModified(id: string): boolean {
 export function hasAnyShortcutModified(): boolean {
   return Object.keys(defaultMap).some(isShortcutModified)
 }
+
+// ── Matching ─────────────────────────────────────────────────────────────────
+// Combos are stored as ['Mod', 'Alt', 'Shift', key]. `Mod` is Cmd on macOS and
+// Ctrl elsewhere (`Ctrl` only appears on macOS, for the real Control key).
+// Keys come from `e.code`, so Shift+, still reads as ',' and layouts don't
+// change letters.
+
+export const MODIFIERS = ['Mod', 'Ctrl', 'Alt', 'Shift'] as const
+const MODIFIER_KEYS = new Set(['Control', 'Shift', 'Alt', 'Meta', 'AltGraph', 'OS'])
+
+const CODE_KEYS: Record<string, string> = {
+  Comma: ',',
+  Period: '.',
+  Slash: '/',
+  Backslash: '\\',
+  Backquote: '`',
+  Minus: '-',
+  Equal: '=',
+  BracketLeft: '[',
+  BracketRight: ']',
+  Semicolon: ';',
+  Quote: "'",
+  Space: 'Space'
+}
+
+/** The non-modifier key of an event, normalised, or null for a modifier press. */
+export const eventKeyName = (e: KeyboardEvent): string | null => {
+  if (MODIFIER_KEYS.has(e.key)) return null
+  const letter = /^Key([A-Z])$/.exec(e.code)
+  if (letter) return letter[1]
+  const digit = /^(?:Digit|Numpad)(\d)$/.exec(e.code)
+  if (digit) return digit[1]
+  if (CODE_KEYS[e.code]) return CODE_KEYS[e.code]
+  return e.key.length === 1 ? e.key.toUpperCase() : e.key
+}
+
+/** Modifiers held during an event, in canonical order. */
+export const eventModifiers = (e: KeyboardEvent): string[] => {
+  const mods: string[] = []
+  if (isMac() ? e.metaKey : e.ctrlKey) mods.push('Mod')
+  if (isMac() && e.ctrlKey) mods.push('Ctrl')
+  if (e.altKey) mods.push('Alt')
+  if (e.shiftKey) mods.push('Shift')
+  return mods
+}
+
+const modifierOf = (key: string): string | null =>
+  key === 'Shift'
+    ? 'Shift'
+    : key === 'Alt'
+      ? 'Alt'
+      : key === (isMac() ? 'Meta' : 'Control')
+        ? 'Mod'
+        : isMac() && key === 'Control'
+          ? 'Ctrl'
+          : null
+
+export const isModifierOnly = (keys: readonly string[]): boolean =>
+  keys.length > 0 && keys.every((k) => (MODIFIERS as readonly string[]).includes(k))
+
+export const sameCombo = (a: readonly string[], b: readonly string[]): boolean =>
+  a.length === b.length && [...a].sort().join('+') === [...b].sort().join('+')
+
+export const canonicalCombo = (keys: readonly string[]): string[] => {
+  const mods = MODIFIERS.filter((m) => keys.includes(m))
+  const rest = keys.filter((k) => !(MODIFIERS as readonly string[]).includes(k))
+  return [...mods, ...rest]
+}
+
+// Modifier-only chords (e.g. Mod+Shift) fire on a clean release: only if no
+// other key was pressed while the modifiers were held. Tracked globally.
+let chordDirty = false
+if (typeof window !== 'undefined') {
+  window.addEventListener(
+    'keydown',
+    (e) => {
+      if (eventKeyName(e)) chordDirty = true
+      else if (eventModifiers(e).length <= 1 && !e.repeat) chordDirty = false
+    },
+    true
+  )
+  window.addEventListener(
+    'keyup',
+    (e) => {
+      if (!e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey) {
+        queueMicrotask(() => (chordDirty = false))
+      }
+    },
+    true
+  )
+}
+
+/**
+ * Does this event trigger shortcut `id`? Normal combos match on keydown;
+ * modifier-only chords match on the clean release of their last modifier.
+ * Handlers can pass both keydown and keyup events through.
+ */
+export const matchesShortcut = (e: KeyboardEvent, id: string): boolean => {
+  const keys = getShortcutKeys(id)
+  if (!keys.length) return false
+  if (isModifierOnly(keys)) {
+    if (e.type !== 'keyup' || chordDirty) return false
+    const released = modifierOf(e.key)
+    if (!released) return false
+    return sameCombo([...new Set([...eventModifiers(e), released])], keys)
+  }
+  if (e.type !== 'keydown') return false
+  const key = eventKeyName(e)
+  return key !== null && sameCombo([...eventModifiers(e), key], keys)
+}
+
+/** The shortcut (other than `exceptId`) already using `keys`, if any. */
+export const findShortcutUsing = (
+  keys: readonly string[],
+  exceptId: string
+): ShortcutItem | undefined =>
+  DEFAULT_SHORTCUTS.find((s) => s.id !== exceptId && sameCombo(getShortcutKeys(s.id), keys))

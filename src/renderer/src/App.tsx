@@ -41,7 +41,7 @@ import {
   selectedGridEntry,
   toggleEditorView
 } from './store'
-import { isModKey } from './shortcuts'
+import { matchesShortcut } from './shortcuts'
 import { useThemeVariables, useWallpaperTheme } from './theme'
 
 const MIN_EXPANDED_HEIGHT = 100
@@ -50,14 +50,17 @@ const MAX_TERMINAL_HEIGHT_RATIO = 0.75
 const TERMINAL_MOUNT_THRESHOLD = 20
 
 const handleGlobalKeyDown = (e: KeyboardEvent): void => {
-  if (e.key === 'Escape' && isSettingsModalOpen()) {
+  // Also receives keyup (for modifier-only shortcuts); the direct key checks
+  // below are keydown-only so a released key never re-triggers them.
+  const isDown = e.type === 'keydown'
+  if (isDown && e.key === 'Escape' && isSettingsModalOpen()) {
     e.preventDefault()
     closeSettingsModal()
     return
   }
 
   // Alt+Enter: full Properties modal for the selection (Explorer / Dolphin convention)
-  if (e.key === 'Enter' && e.altKey && !e.ctrlKey && !e.metaKey && !e.defaultPrevented) {
+  if (isDown && e.key === 'Enter' && e.altKey && !e.ctrlKey && !e.metaKey && !e.defaultPrevented) {
     const el = document.activeElement as HTMLElement | null
     if (!el?.closest('input, textarea, [contenteditable="true"], .cm-editor, .xterm')) {
       const target =
@@ -70,17 +73,9 @@ const handleGlobalKeyDown = (e: KeyboardEvent): void => {
     }
   }
 
-  // Space peeks at the selection (Quick Look style) — only when nothing else wants
-  // the key: not typing, not on a focused control, not in the editor or terminal.
-  if (
-    e.key === ' ' &&
-    !e.ctrlKey &&
-    !e.metaKey &&
-    !e.altKey &&
-    !e.shiftKey &&
-    !e.repeat &&
-    !e.defaultPrevented
-  ) {
+  // Toggle details (Space by default) — only when nothing else wants the key:
+  // not typing, not on a focused control, not in the editor or terminal.
+  if (matchesShortcut(e, 'toggle_inspector') && !e.repeat && !e.defaultPrevented) {
     const el = document.activeElement as HTMLElement | null
     const busy = el?.closest(
       'input, textarea, select, button, a[href], [contenteditable="true"], [role="button"], [role="menuitem"], [role="option"], .cm-editor, .xterm'
@@ -93,25 +88,22 @@ const handleGlobalKeyDown = (e: KeyboardEvent): void => {
     }
   }
 
-  if (!isModKey(e)) return
-
-  if (e.key === '`') {
-    e.preventDefault()
-    toggleTerminal()
-  } else if (e.key.toLowerCase() === 'p' && !e.shiftKey) {
-    e.preventDefault()
-    toggleQuickOpen()
-  } else if (e.key.toLowerCase() === 'f' && e.shiftKey) {
-    e.preventDefault()
-    setCurrentView('search')
-  } else if (e.key === ',') {
-    e.preventDefault()
-    toggleSettingsModal()
-  } else if (e.key.toLowerCase() === 'e' && !e.shiftKey && !e.altKey) {
-    // Files ↔ editor. Not inside the terminal: shells use Ctrl+E (end of line).
-    if ((document.activeElement as HTMLElement | null)?.closest('.xterm')) return
-    e.preventDefault()
-    toggleEditorView()
+  // Everything else comes from the (user-customisable) shortcut registry.
+  const inTerminal = (document.activeElement as HTMLElement | null)?.closest('.xterm')
+  const actions: [string, () => void][] = [
+    ['toggle_terminal', toggleTerminal],
+    ['quick_open', toggleQuickOpen],
+    ['find_in_files', () => setCurrentView('search')],
+    ['settings', toggleSettingsModal],
+    // Not inside the terminal: shells use Ctrl+E (end of line).
+    ['toggle_editor_view', () => !inTerminal && toggleEditorView()]
+  ]
+  for (const [id, run] of actions) {
+    if (matchesShortcut(e, id)) {
+      e.preventDefault()
+      run()
+      return
+    }
   }
 }
 
@@ -171,6 +163,7 @@ const App: Component = () => {
 
   onMount(async () => {
     window.addEventListener('keydown', handleGlobalKeyDown)
+    window.addEventListener('keyup', handleGlobalKeyDown)
     if (!workspaceRoot() && window.api?.getWorkspaceRoot) {
       try {
         const root = await window.api.getWorkspaceRoot()
@@ -180,7 +173,10 @@ const App: Component = () => {
       }
     }
   })
-  onCleanup(() => window.removeEventListener('keydown', handleGlobalKeyDown))
+  onCleanup(() => {
+    window.removeEventListener('keydown', handleGlobalKeyDown)
+    window.removeEventListener('keyup', handleGlobalKeyDown)
+  })
 
   return (
     <div class="flex h-screen w-screen overflow-hidden bg-[#050505] text-[#ececec] font-sans selection:bg-[var(--accent)]/15 selection:text-white">

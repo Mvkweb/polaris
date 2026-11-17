@@ -422,3 +422,356 @@
   translate: 0 0;
   color: color-mix(in oklab, var(--accent, #4da3f5) 80%, #fff);
 }
+
+/* ── Keyboard: rebindable shortcuts ────────────────────────────────────── */
+.kbd-list {
+  border-radius: 18px;
+  background: #121212;
+  padding: 4px;
+}
+.kbd-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  transition: background-color 130ms ease;
+}
+.kbd-row:hover {
+  background: rgb(255 255 255 / 0.02);
+}
+.kbd-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 3px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    box-shadow 200ms ease;
+}
+.kbd-field:hover:not(.is-locked) {
+  background: rgb(255 255 255 / 0.04);
+}
+.kbd-field.is-locked {
+  cursor: default;
+}
+.kbd-field.is-locked .kbd-cap {
+  opacity: 0.55;
+}
+/* Recording: no outline — a dithered gradient rises from the bottom edge */
+.kbd-field.is-recording {
+  padding: 3px 10px 3px 4px;
+}
+.kbd-cap {
+  position: relative;
+  min-width: 26px;
+  padding: 3px 8px;
+  border-radius: 7px;
+  text-align: center;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: #dcdcdc;
+  background: #242424;
+  box-shadow:
+    0 1px 0 rgb(0 0 0 / 0.5),
+    inset 0 -1px 0 rgb(0 0 0 / 0.35);
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+.kbd-cap.is-live {
+  color: #fff;
+  background: color-mix(in oklab, var(--accent, #4da3f5) 30%, #222);
+  animation: kbd-pop 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+/* Saved: caps drop in one by one with an accent flash, then settle */
+.kbd-field.is-saved .kbd-cap {
+  animation: kbd-saved 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+@keyframes kbd-pop {
+  from {
+    scale: 0.7;
+    opacity: 0;
+  }
+}
+@keyframes kbd-saved {
+  0% {
+    translate: 0 -6px;
+    opacity: 0;
+    background: color-mix(in oklab, var(--accent, #4da3f5) 60%, #222);
+    color: #fff;
+  }
+  55% {
+    background: color-mix(in oklab, var(--accent, #4da3f5) 45%, #222);
+    color: #fff;
+  }
+}
+@keyframes kbd-glow {
+  from {
+    background: color-mix(in oklab, var(--accent, #4da3f5) 18%, transparent);
+  }
+}
+.kbd-listen {
+  position: relative;
+  padding-left: 4px;
+  font-size: 12px;
+  color: color-mix(in oklab, var(--accent, #4da3f5) 70%, #fff);
+  animation: kbd-breathe 1.4s ease-in-out infinite;
+}
+@keyframes kbd-breathe {
+  50% {
+    opacity: 0.55;
+  }
+}
+.kbd-empty {
+  padding: 3px 8px;
+  font-size: 12px;
+  color: rgb(255 255 255 / 0.3);
+}
+/* Hold-to-set: dithered ring that fills in lockstep with the hold timer */
+.kbd-hold {
+  margin-left: 4px;
+  animation: kbd-pop 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.kbd-shake {
+  animation: kbd-shake 380ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+@keyframes kbd-shake {
+  20%,
+  60% {
+    translate: -4px 0;
+  }
+  40%,
+  80% {
+    translate: 4px 0;
+  }
+}
+.kbd-note {
+  font-size: 11.5px;
+  color: rgb(255 255 255 / 0.45);
+  animation: kbd-pop 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.kbd-note.is-warn {
+  color: #f3c26b;
+}
+.kbd-reset,
+.kbd-reset-all {
+  color: rgb(255 255 255 / 0.4);
+  cursor: pointer;
+  transition:
+    color 130ms ease,
+    background-color 130ms ease;
+}
+.kbd-reset {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  animation: kbd-pop 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.kbd-reset-all {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+.kbd-reset:hover,
+.kbd-reset-all:hover {
+  color: #fff;
+  background: rgb(255 255 255 / 0.06);
+}
+@media (prefers-reduced-motion: reduce) {
+  .kbd-listen,
+  .kbd-shake,
+  .kbd-field.is-saved .kbd-cap {
+    animation: none;
+  }
+}
+
+/* ── Keybind motion, on the transitions.dev token scale ───────────────── */
+.kbd-field {
+  --t-quick: 150ms;
+  --t-fast: 250ms;
+  --t-emphasis: 500ms;
+  --t-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+  transition:
+    background-color var(--t-fast) var(--t-smooth),
+    box-shadow var(--t-fast) var(--t-smooth),
+    padding var(--t-fast) var(--t-smooth);
+}
+/* card resize: width eases to whatever the field now holds */
+.kbd-morph {
+  display: inline-flex;
+  overflow: hidden;
+  transition: width var(--t-fast) var(--t-smooth);
+}
+/* text states swap: exit up + blur, enter from below */
+.kbd-swap {
+  flex-shrink: 0;
+  transform: translateY(0);
+  filter: blur(0);
+  opacity: 1;
+  transition:
+    transform var(--t-quick) ease-in-out,
+    filter var(--t-quick) ease-in-out,
+    opacity var(--t-quick) ease-in-out;
+}
+.kbd-swap.is-exit {
+  transform: translateY(-4px);
+  filter: blur(2px);
+  opacity: 0;
+}
+.kbd-swap.is-enter-start {
+  transform: translateY(4px);
+  filter: blur(2px);
+  opacity: 0;
+  transition: none;
+}
+/* number pop-in for live modifier caps and the hold ring */
+.kbd-cap.is-live,
+.kbd-hold {
+  animation: kbd-pop-in var(--t-fast) var(--t-smooth) both;
+}
+@keyframes kbd-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+    filter: blur(2px);
+  }
+}
+/* saved: emphasis glow only — the swap already carries the motion */
+.kbd-field.is-saved .kbd-cap {
+  animation: kbd-saved-glow var(--t-emphasis) var(--t-smooth) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+@keyframes kbd-saved-glow {
+  from {
+    color: #fff;
+    background: color-mix(in oklab, var(--accent, #4da3f5) 55%, #222);
+  }
+}
+/* error shake: 80/60/80/60ms segments, 6px then a 4px overshoot */
+.kbd-shake {
+  animation: kbd-shake-recipe 280ms both;
+}
+@keyframes kbd-shake-recipe {
+  0% {
+    transform: translateX(0);
+    animation-timing-function: var(--t-smooth);
+  }
+  28.57% {
+    transform: translateX(-6px);
+    animation-timing-function: var(--t-smooth);
+  }
+  57.14% {
+    transform: translateX(4px);
+    animation-timing-function: var(--t-smooth);
+  }
+  78.57% {
+    transform: translateX(-2px);
+    animation-timing-function: var(--t-smooth);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+/* note: rises in like a text reveal */
+.kbd-note {
+  animation: kbd-note-in var(--t-fast) var(--t-smooth) both;
+}
+@keyframes kbd-note-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+    filter: blur(2px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kbd-field,
+  .kbd-morph,
+  .kbd-swap {
+    transition: none !important;
+  }
+  .kbd-cap.is-live,
+  .kbd-hold,
+  .kbd-shake,
+  .kbd-note,
+  .kbd-field.is-saved,
+  .kbd-field.is-saved .kbd-cap {
+    animation: none !important;
+  }
+}
+
+/* ── Field backgrounds (engine fills) ──────────────────────────────────── */
+.kbd-field {
+  overflow: hidden;
+  isolation: isolate;
+}
+.kbd-field > .kbd-morph,
+.kbd-field > svg {
+  position: relative;
+  z-index: 1;
+}
+.kbd-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--t-fast) var(--t-smooth);
+}
+/* listening: accent-tinted dither gradient that slowly breathes */
+.kbd-bg-listen {
+  background-color: color-mix(in oklab, var(--accent, #4da3f5) 55%, transparent) !important;
+}
+.kbd-field.is-recording .kbd-bg-listen {
+  opacity: 0.55;
+  animation: kbd-bg-breathe 2.4s ease-in-out infinite;
+}
+@keyframes kbd-bg-breathe {
+  50% {
+    opacity: 0.3;
+  }
+}
+/* can't use (reserved / locked / bare key): red hatching sweeps in */
+.kbd-bg-deny {
+  clip-path: inset(0 100% 0 0);
+  transition:
+    opacity var(--t-fast) var(--t-smooth),
+    clip-path 350ms var(--t-smooth);
+}
+.kbd-field.is-denied .kbd-bg-deny {
+  opacity: 0.5;
+  clip-path: inset(0 0 0 0);
+}
+.kbd-field.is-denied .kbd-bg-listen {
+  opacity: 0;
+  animation: none;
+}
+/* taken but swappable: orange hatching while it waits for the second press */
+.kbd-field.is-warned .kbd-bg-warn {
+  opacity: 0.4;
+}
+.kbd-field.is-warned .kbd-bg-listen {
+  opacity: 0;
+  animation: none;
+}
+.kbd-field.is-denied .kbd-cap {
+  color: #ffd2d2;
+}
+.kbd-field.is-locked {
+  cursor: not-allowed;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kbd-bg {
+    transition: opacity 120ms ease !important;
+    animation: none !important;
+    clip-path: none !important;
+  }
+}
