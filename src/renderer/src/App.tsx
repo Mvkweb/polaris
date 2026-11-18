@@ -11,6 +11,7 @@ import StatusBar from './components/StatusBar'
 import Terminal from './components/terminal/Terminal'
 import QuickOpenModal from './components/modals/QuickOpenModal'
 import SettingsModal from './components/settings/SettingsModal'
+import { WallpaperSetupDialog } from './components/settings/WallpaperSetup'
 import ContextMenu from './components/ui/ContextMenu'
 import FileActionModal from './components/file-tree/FileActionModal'
 import { OpenWithDialog } from './components/file-tree/OpenWithDialog'
@@ -224,6 +225,7 @@ const App: Component = () => {
       {/* Global Context Menu & Modals */}
       <ContextMenu />
       <OpenWithDialog />
+      <WallpaperSetupDialog />
       <FileActionModal />
       <StorageMapModal />
       <PropertiesModal />
