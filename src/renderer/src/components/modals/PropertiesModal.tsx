@@ -1,6 +1,7 @@
 import { Component, createEffect, createMemo, createSignal, onCleanup, Show } from 'solid-js'
 import { propertiesModalState, closePropertiesModal } from '../../store'
 import type { FileProperties } from '../../types'
+import { openBrowserFile, supportsOpenWith } from '../../openWith'
 import {
   MonodriveFolderIcon,
   MonodriveFileIcon,
@@ -111,9 +112,12 @@ export const PropertiesModal: Component = () => {
   }
 
   const openInDefaultApp = (): void => {
-    const p = data()?.path
-    if (p && window.api?.openPath) {
-      window.api.openPath(p).catch((err) => console.error('Failed to open file:', err))
+    const file = data()
+    if (!file) return
+    if (!file.isDirectory && supportsOpenWith()) {
+      void openBrowserFile(file.path, file.name)
+    } else {
+      void window.api?.openPath(file.path)
     }
   }
 

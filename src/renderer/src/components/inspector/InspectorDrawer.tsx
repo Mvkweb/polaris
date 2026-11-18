@@ -30,6 +30,7 @@ import {
   navigateTo
 } from '../../store'
 import type { ExternalEditor, FileProperties } from '../../types'
+import { openBrowserFile, supportsOpenWith } from '../../openWith'
 import { installedEditors, preferredEditor, rememberEditor, BUILTIN_EDITOR_ID } from '../../editors'
 import { EditorGlyph } from '../ui/EditorGlyph'
 import {
@@ -265,8 +266,10 @@ export const InspectorDrawer: Component = () => {
     setTimeout(() => setCopied(false), 1600)
   }
   const handleOpenDefault = (): void => {
-    const p = data()?.path
-    if (p) void window.api?.openPath(p)
+    const file = data()
+    if (!file) return
+    if (!file.isDirectory && supportsOpenWith()) void openBrowserFile(file.path, file.name)
+    else void window.api?.openPath(file.path)
   }
   const handleReveal = (): void => {
     const p = data()?.path

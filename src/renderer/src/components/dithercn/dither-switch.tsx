@@ -396,6 +396,9 @@ export const DitherSwitch = (props: DitherSwitchProps) => {
     "disabled",
     "name",
     "value",
+    "aria-label",
+    "aria-labelledby",
+    "aria-describedby",
   ]);
 
   const step = () => Math.max(1, Math.round(local.cell));
@@ -445,12 +448,17 @@ export const DitherSwitch = (props: DitherSwitchProps) => {
         class="inline-flex"
         {...rest}
       >
-        <SwitchPrimitive.Input class="sr-only" />
+        <SwitchPrimitive.Input
+          class="peer sr-only"
+          aria-label={local["aria-label"]}
+          aria-labelledby={local["aria-labelledby"]}
+          aria-describedby={local["aria-describedby"]}
+        />
         <SwitchPrimitive.Control
           class={cn(
             "dcn-switch group/switch relative isolate inline-flex shrink-0 cursor-pointer items-center",
             "after:absolute after:-inset-x-1 after:-inset-y-2 after:content-['']",
-            "outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:outline-solid",
+            "outline-hidden peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring peer-focus-visible:outline-solid",
             "data-disabled:cursor-not-allowed data-disabled:opacity-45 disabled:cursor-not-allowed disabled:opacity-45",
             local.class
           )}

@@ -1,11 +1,13 @@
-import { ipcMain, nativeImage } from 'electron'
+import { ipcMain } from 'electron'
 import { execFile, spawn } from 'child_process'
 import { access, readFile, realpath } from 'fs/promises'
 import { constants } from 'fs'
-import { delimiter, join, extname, isAbsolute } from 'path'
+import { delimiter, join, isAbsolute } from 'path'
 import { homedir } from 'os'
 import { promisify } from 'util'
 import { startDir } from './launch'
+import { dataDirs, parseDesktopEntry } from './desktopEntries'
+import { findIconFile, iconToDataUrl } from './appIcons'
 import type { ExternalEditor } from '../shared/ipcModels'
 
 export type { ExternalEditor } from '../shared/ipcModels'
@@ -58,17 +60,6 @@ interface Resolved extends ExternalEditor {
   fromDesktop: boolean
 }
 
-const dataDirs = (): string[] => {
-  const home = homedir()
-  const xdg = (process.env.XDG_DATA_DIRS || '/usr/local/share:/usr/share').split(':')
-  return [
-    process.env.XDG_DATA_HOME || join(home, '.local/share'),
-    ...xdg,
-    join(home, '.local/share/flatpak/exports/share'),
-    '/var/lib/flatpak/exports/share'
-  ].filter(Boolean)
-}
-
 const isExecutable = async (p: string): Promise<boolean> => {
   try {
     await access(p, constants.X_OK)
@@ -89,23 +80,6 @@ const findOnPath = async (bin: string): Promise<string | null> => {
     }
   }
   return null
-}
-
-/** Minimal .desktop parser: reads the [Desktop Entry] group only. */
-const parseDesktopEntry = (text: string): Record<string, string> => {
-  const out: Record<string, string> = {}
-  let inMain = false
-  for (const raw of text.split('\n')) {
-    const line = raw.trim()
-    if (line.startsWith('[')) {
-      inMain = line === '[Desktop Entry]'
-      continue
-    }
-    if (!inMain || !line || line.startsWith('#')) continue
-    const eq = line.indexOf('=')
-    if (eq > 0) out[line.slice(0, eq).trim()] = line.slice(eq + 1).trim()
-  }
-  return out
 }
 
 /** Split an Exec= line into argv, honoring double quotes, and normalize field codes. */
@@ -134,51 +108,6 @@ const parseExec = (exec: string): string[] => {
   }
   if (!hasTarget) result.push('%F')
   return result
-}
-
-const ICON_SIZES = ['scalable', '512x512', '256x256', '128x128', '96x96', '64x64', '48x48']
-
-const findIconFile = async (icon: string): Promise<string | null> => {
-  if (isAbsolute(icon)) {
-    try {
-      await access(icon, constants.R_OK)
-      return icon
-    } catch {
-      return null
-    }
-  }
-  const candidates: string[] = []
-  for (const base of dataDirs()) {
-    for (const size of ICON_SIZES) {
-      const ext = size === 'scalable' ? 'svg' : 'png'
-      candidates.push(join(base, 'icons/hicolor', size, 'apps', `${icon}.${ext}`))
-    }
-  }
-  candidates.push(`/usr/share/pixmaps/${icon}.png`, `/usr/share/pixmaps/${icon}.svg`)
-  for (const c of candidates) {
-    try {
-      await access(c, constants.R_OK)
-      return c
-    } catch {
-      /* try next */
-    }
-  }
-  return null
-}
-
-const iconToDataUrl = async (file: string): Promise<string | null> => {
-  try {
-    if (extname(file).toLowerCase() === '.svg') {
-      const svg = await readFile(file)
-      return `data:image/svg+xml;base64,${svg.toString('base64')}`
-    }
-    const img = nativeImage.createFromPath(file)
-    if (img.isEmpty()) return null
-    // 64px is plenty for a 16–20px glyph on HiDPI and keeps the IPC payload tiny.
-    return img.resize({ width: 64, height: 64, quality: 'best' }).toDataURL()
-  } catch {
-    return null
-  }
 }
 
 const resolveFromDesktop = async (c: Candidate): Promise<Resolved | null> => {

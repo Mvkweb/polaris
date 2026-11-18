@@ -7,6 +7,7 @@ import type { StartupFolder } from '../shared/startup'
 import { emberCore } from './core/EmberCore'
 import { registerDrivesIpc, startDriveMonitoring, stopDriveMonitoring } from './drives'
 import { registerEditorIpc } from './editors'
+import { registerOpenWithIpc } from './openWith'
 import { registerFileDetailsIpc } from './fileDetails'
 import { registerFilesystemIpc } from './filesystem'
 import { registerGitIpc } from './git'
@@ -124,6 +125,7 @@ app.whenReady().then(() => {
   registerExternalTerminalIpc()
   registerThemeIpc()
   registerEditorIpc()
+  registerOpenWithIpc()
   registerFileDetailsIpc()
   registerSearchIpc()
   registerGitIpc()

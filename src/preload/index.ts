@@ -5,6 +5,11 @@ import type { StartupFolder } from '../shared/startup'
 const api = {
   getAppVersion: () => ipcRenderer.invoke('app:version'),
   getPlatform: () => ipcRenderer.invoke('app:platform'),
+  openDefaultFile: (path: string) => ipcRenderer.invoke('apps:openDefault', path),
+  inspectOpenWith: (path: string) => ipcRenderer.invoke('apps:inspectFile', path),
+  getAppIcon: (appId: string) => ipcRenderer.invoke('apps:icon', appId),
+  openWithApp: (path: string, appId: string, makeDefaultFor?: string) =>
+    ipcRenderer.invoke('apps:openChosen', path, appId, makeDefaultFor),
   getSystemDrives: () => ipcRenderer.invoke('system:getDrives'),
   mountDrive: (devicePath: string) => ipcRenderer.invoke('system:mountDrive', devicePath),
   getUserPlaces: () => ipcRenderer.invoke('system:getUserPlaces'),

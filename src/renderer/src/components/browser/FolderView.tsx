@@ -28,9 +28,9 @@ import {
   gridLabelSize,
   showThumbnails,
   openContextMenu,
-  openPropertiesModal,
-  openFileInEditor
+  openPropertiesModal
 } from '../../store'
+import { openBrowserFile } from '../../openWith'
 import { MonodriveFolderIcon, MonodriveFileIcon, ImageThumbnail } from './MonodriveIcons'
 import type { FsEntry, SystemDrive } from '../../types'
 import emberLogo from '../../assets/ember-logo.svg'
@@ -277,7 +277,7 @@ export const FolderView: Component = () => {
     if (entry.isDirectory) {
       navigateTo(entry.path)
     } else {
-      openFileInEditor(entry.path, entry.name)
+      await openBrowserFile(entry.path, entry.name)
     }
   }
 

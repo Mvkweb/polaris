@@ -1,5 +1,6 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
 import type { StartupFolder, StartupLocation } from '../shared/startup'
+import type { ChosenOpenResult, DefaultOpenResult, OpenWithInfo } from '../shared/openWith'
 import type {
   ExternalEditor,
   GitCommit,
@@ -67,6 +68,11 @@ export interface FileProperties {
 export interface CustomAPI {
   getAppVersion: () => Promise<string>
   getPlatform: () => Promise<string>
+  openDefaultFile: (path: string) => Promise<DefaultOpenResult>
+  inspectOpenWith: (path: string) => Promise<OpenWithInfo>
+  /** data: URL of an app's icon from its desktop entry, or null */
+  getAppIcon: (appId: string) => Promise<string | null>
+  openWithApp: (path: string, appId: string, makeDefaultFor?: string) => Promise<ChosenOpenResult>
   getSystemDrives: () => Promise<SystemDrive[]>
   mountDrive: (devicePath: string) => Promise<MountDriveResult>
   getUserPlaces: () => Promise<{

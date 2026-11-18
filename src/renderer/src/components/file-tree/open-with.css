@@ -1,0 +1,282 @@
+/* Open With chooser: the same black card + aurora as the update card. */
+.ow-card {
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  margin: auto;
+  width: 400px;
+  max-width: calc(100% - 2rem);
+  max-height: calc(100% - 2rem);
+  padding: 0;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  border: none;
+  border-radius: 18px;
+  background: #070708;
+  color: #fff;
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.04),
+    0 30px 80px -20px rgb(0 0 0 / 0.95);
+  animation: ow-in 260ms var(--ease) both;
+}
+.ow-card::backdrop {
+  background: rgb(0 0 0 / 0.55);
+  animation: ow-fade 200ms ease both;
+}
+@keyframes ow-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+    filter: blur(2px);
+  }
+}
+@keyframes ow-fade {
+  from {
+    opacity: 0;
+  }
+}
+@media (forced-colors: active) {
+  .ow-card {
+    border: 1px solid CanvasText;
+  }
+}
+
+.ow-aurora {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 84px;
+  opacity: 0.9;
+  pointer-events: none;
+  mask-image: linear-gradient(to bottom, #000 0%, #000 50%, transparent 100%);
+}
+.ow-mime {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: rgb(255 255 255 / 0.28);
+}
+
+.ow-section {
+  padding: 6px 8px 4px;
+  font-size: 11.5px;
+  color: rgb(255 255 255 / 0.35);
+}
+.ow-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ow-list-scroll {
+  max-height: 224px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.12) transparent;
+}
+
+/* App row: icon + name, no bullets. Selected = white text, dithered accent
+   ramp from the left edge and a check. */
+.ow-row {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 0 10px 0 8px;
+  border-radius: 10px;
+  font-size: 13px;
+  color: rgb(255 255 255 / 0.62);
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    color 110ms ease,
+    background-color 110ms ease;
+}
+.ow-row:hover {
+  color: #fff;
+  background: rgb(255 255 255 / 0.04);
+}
+.ow-row.is-active {
+  color: #fff;
+  background: rgb(255 255 255 / 0.06);
+}
+.ow-row:has(input:focus-visible) {
+  outline: 2px solid var(--accent, #4da3f5);
+  outline-offset: -2px;
+}
+.ow-row-fill {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.ow-row.is-active .ow-row-fill {
+  opacity: 0.38;
+}
+.ow-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+}
+.ow-icon img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+.ow-icon-fallback {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  background: rgb(255 255 255 / 0.06);
+}
+.ow-icon-dots {
+  position: absolute;
+  inset: 0;
+  opacity: 0.18;
+}
+.ow-tag {
+  font-family: ui-monospace, monospace;
+  font-size: 10.5px;
+  color: rgb(255 255 255 / 0.35);
+}
+.ow-check {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: var(--accent, #4da3f5);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity 140ms ease,
+    transform 200ms var(--ease);
+}
+.ow-row.is-active .ow-check {
+  opacity: 1;
+  transform: none;
+}
+
+/* "All apps" disclosure row */
+.ow-more {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 34px;
+  margin-top: 4px;
+  padding: 0 10px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  color: rgb(255 255 255 / 0.5);
+  transition:
+    color 110ms ease,
+    background-color 110ms ease;
+}
+.ow-more:hover {
+  color: #fff;
+  background: rgb(255 255 255 / 0.04);
+}
+.ow-more:focus-visible {
+  outline: 2px solid var(--accent, #4da3f5);
+  outline-offset: -2px;
+}
+.ow-chevron {
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: rotate 220ms var(--ease);
+}
+.ow-more[aria-expanded='true'] .ow-chevron {
+  rotate: 180deg;
+}
+.ow-all {
+  animation: ow-reveal 240ms var(--ease) both;
+}
+@keyframes ow-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.ow-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  margin: 4px 0 6px;
+  padding: 0 10px;
+  border-radius: 10px;
+  background: rgb(255 255 255 / 0.04);
+  color: rgb(255 255 255 / 0.35);
+}
+.ow-search:focus-within {
+  background: rgb(255 255 255 / 0.06);
+  color: rgb(255 255 255 / 0.6);
+}
+.ow-search svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.ow-search input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  outline: none;
+  font-size: 13px;
+  color: #fff;
+}
+.ow-search input::placeholder {
+  color: rgb(255 255 255 / 0.3);
+}
+.ow-search input::-webkit-search-cancel-button {
+  filter: invert(1) opacity(0.4);
+}
+
+/* Default switch: a quiet row under a hairline, like the update card's "You're on". */
+.ow-default {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  font-size: 12.5px;
+  color: rgb(255 255 255 / 0.65);
+  box-shadow: 0 -1px 0 rgb(255 255 255 / 0.05);
+}
+.ow-foot-note {
+  margin-top: 12px;
+  padding-top: 12px;
+  font-size: 12px;
+  color: rgb(255 255 255 / 0.4);
+  box-shadow: 0 -1px 0 rgb(255 255 255 / 0.05);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ow-card,
+  .ow-card::backdrop,
+  .ow-all {
+    animation: none;
+  }
+}

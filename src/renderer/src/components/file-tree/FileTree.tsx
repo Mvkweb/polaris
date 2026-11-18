@@ -1,5 +1,6 @@
 import { Component, createSignal, createEffect, on, onMount, onCleanup, For, Show } from 'solid-js'
 import type { FsEntry } from '../../types'
+import { openBrowserFile } from '../../openWith'
 import {
   workspaceRoot,
   selectedFilePath,
@@ -765,7 +766,11 @@ export const FileTree: Component<FileTreeProps> = (props) => {
               <div class="ft-root-in flex flex-col">
                 <For each={rootEntries()}>
                   {(entry) => (
-                    <FileTreeItem entry={entry} depth={0} onFileClick={handleFileSelect} />
+                    <FileTreeItem
+                      entry={entry}
+                      depth={0}
+                      onFileClick={(file) => void openBrowserFile(file.path, file.name)}
+                    />
                   )}
                 </For>
               </div>

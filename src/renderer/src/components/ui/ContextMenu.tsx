@@ -34,6 +34,7 @@ import type { ExternalEditor } from '../../types'
 import ghosttyIcon from '../../assets/icons/ghostty.png'
 import { uploadFiles, uploadServices } from '../../tasks'
 import { directionLabel } from '../browser/SortControl'
+import { openBrowserFile, showOpenWith, supportsOpenWith } from '../../openWith'
 import { protectedMount, type ProtectedReason } from '../../systemMounts'
 
 const lockLabel = (r: ProtectedReason): string => (r === 'home' ? 'Home drive' : 'System drive')
@@ -151,10 +152,18 @@ export const ContextMenu: Component = () => {
 
   const handleOpenInDefaultApp = (): void => {
     const p = targetPath()
+    const directory = isDirectory()
+    const name = target()?.name ?? ''
     closeContextMenu()
-    if (window.api?.openPath) {
-      window.api.openPath(p)
-    }
+    if (!directory && supportsOpenWith()) void openBrowserFile(p, name)
+    else void window.api?.openPath(p)
+  }
+
+  const handleChooseApp = (): void => {
+    const entry = target()
+    if (!entry?.path || !entry.name) return
+    closeContextMenu()
+    showOpenWith(entry.path, entry.name)
   }
 
   const handleOpenInTerminal = (): void => {
@@ -353,11 +362,11 @@ export const ContextMenu: Component = () => {
     </DitherDropdownMenuSub>
   )
 
-  const OpenWithMenu = (props: { terminalShortcut?: string }) => (
+  const OpenWithMenu = (props: { terminalShortcut?: string; label?: string }) => (
     <DitherDropdownMenuSub>
       <DitherDropdownMenuSubTrigger variant="dither">
         <EditorGlyph editor={preferredEditor()} />
-        <span>Open With</span>
+        <span>{props.label ?? 'Open With'}</span>
       </DitherDropdownMenuSubTrigger>
       <DitherDropdownMenuSubContent class="min-w-[210px] border-0 shadow-[0_4px_16px_rgba(0,0,0,0.45)] bg-[#050506]">
         <DitherDropdownMenuLabel>Editors</DitherDropdownMenuLabel>
@@ -564,7 +573,12 @@ export const ContextMenu: Component = () => {
                   <span>{isDirectory() ? 'Open Folder' : 'Open in Default App'}</span>
                 </DitherDropdownMenuItem>
 
-                <OpenWithMenu />
+                <Show when={!isDirectory() && supportsOpenWith()} fallback={<OpenWithMenu />}>
+                  <DitherDropdownMenuItem variant="dither" onSelect={handleChooseApp}>
+                    <span>Open With…</span>
+                  </DitherDropdownMenuItem>
+                  <OpenWithMenu label="Editors and Terminals" />
+                </Show>
 
                 <Show when={!isDirectory() && uploadServices().length}>
                   <UploadMenu />
