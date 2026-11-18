@@ -158,4 +158,14 @@ export interface ThemeSetupStatus {
   matugenInstalled: boolean
   /** matugen's config mentions Polaris's output file */
   matugenConfigured: boolean
+  /** matugen's config file (~/.config/matugen/config.toml) */
+  configPath: string
+}
+
+/** "Set it up for me" result; nothing is changed when ok is false. */
+export interface MatugenSetupResult {
+  ok: boolean
+  /** copy of the previous config, when there was one */
+  backupPath?: string
+  error?: string
 }

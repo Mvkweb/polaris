@@ -55,6 +55,8 @@ const api = {
   getWallpaperTheme: () => ipcRenderer.invoke('theme:get'),
   getWallpaperThemePath: () => ipcRenderer.invoke('theme:path'),
   getThemeSetup: () => ipcRenderer.invoke('theme:setup'),
+  addMatugenTemplate: () => ipcRenderer.invoke('theme:addMatugenTemplate'),
+  generateThemeFromImage: () => ipcRenderer.invoke('theme:generateFromImage'),
   exportImage: (sourcePath: string, stem: string, ext: string, bytes: Uint8Array) =>
     ipcRenderer.invoke('media:exportImage', sourcePath, stem, ext, bytes),
   projectIcons: (dirs: string[]) => ipcRenderer.invoke('fs:projectIcons', dirs),
