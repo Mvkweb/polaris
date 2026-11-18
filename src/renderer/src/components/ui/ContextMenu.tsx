@@ -7,7 +7,6 @@ import {
   setFileClipboard,
   openFileActionModal,
   startInlineRename,
-  closeEditorTab,
   renameOpenFile,
   refreshFileExplorer,
   collapseAllFolders,
@@ -34,6 +33,7 @@ import type { ExternalEditor } from '../../types'
 import ghosttyIcon from '../../assets/icons/ghostty.png'
 import { uploadFiles, uploadServices } from '../../tasks'
 import { directionLabel } from '../browser/SortControl'
+import { TrashDialog } from '../file-tree/TrashDialog'
 import { protectedMount, type ProtectedReason } from '../../systemMounts'
 
 const lockLabel = (r: ProtectedReason): string => (r === 'home' ? 'Home drive' : 'System drive')
@@ -63,6 +63,7 @@ const getParentDir = (p: string): string => {
 
 export const ContextMenu: Component = () => {
   const [hasGhostty, setHasGhostty] = createSignal(false)
+  const [trashTarget, setTrashTarget] = createSignal<{ path: string; name: string } | null>(null)
 
   const isApple = isMac()
   const modKey = isApple ? 'Cmd' : 'Ctrl'
@@ -270,16 +271,11 @@ export const ContextMenu: Component = () => {
     }
   }
 
-  const handleTrash = async (): Promise<void> => {
-    const p = targetPath()
+  const handleTrash = (): void => {
+    const entry = target()
+    if (!entry?.path || !entry.name || trashTarget()) return
     closeContextMenu()
-    if (window.api?.trashPath) {
-      const ok = await window.api.trashPath(p)
-      if (ok) {
-        closeEditorTab(p)
-        refreshFileExplorer()
-      }
-    }
+    setTrashTarget({ path: entry.path, name: entry.name })
   }
 
   const handleRefresh = (): void => {
@@ -413,7 +409,7 @@ export const ContextMenu: Component = () => {
     </DitherDropdownMenuSub>
   )
 
-  return (
+  const menu = (
     <DitherDropdownMenu
       open={contextMenuState().isOpen}
       onOpenChange={(isOpen) => {
@@ -627,7 +623,6 @@ export const ContextMenu: Component = () => {
 
                 <DitherDropdownMenuItem variant="dither" destructive onSelect={handleTrash}>
                   <span>Move to Trash</span>
-                  <DitherDropdownMenuShortcut>Del</DitherDropdownMenuShortcut>
                 </DitherDropdownMenuItem>
 
                 <DitherDropdownMenuSeparator />
@@ -889,6 +884,17 @@ export const ContextMenu: Component = () => {
         </Show>
       </DitherDropdownMenuContent>
     </DitherDropdownMenu>
+  )
+
+  return (
+    <>
+      {menu}
+      <Show when={trashTarget()} keyed>
+        {(entry) => (
+          <TrashDialog path={entry.path} name={entry.name} onDismiss={() => setTrashTarget(null)} />
+        )}
+      </Show>
+    </>
   )
 }
 

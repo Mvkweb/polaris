@@ -1,6 +1,6 @@
 import { ipcMain, shell } from 'electron'
 import { extname, join, resolve } from 'path'
-import { cp, lstat, mkdir, readdir, readFile, rename, rm, writeFile } from 'fs/promises'
+import { cp, lstat, mkdir, readdir, readFile, rename, writeFile } from 'fs/promises'
 import { startDir } from './launch'
 
 export function registerFilesystemIpc(): void {
@@ -94,20 +94,13 @@ export function registerFilesystemIpc(): void {
     }
   })
 
-  // If the OS Trash operation fails, this handler falls back to permanent deletion.
   ipcMain.handle('fs:trash', async (_, itemPath: string) => {
     try {
       await shell.trashItem(itemPath)
       return true
     } catch (err) {
-      console.warn('shell.trashItem failed, falling back to rm:', err)
-      try {
-        await rm(itemPath, { recursive: true, force: true })
-        return true
-      } catch (rmErr) {
-        console.error('Failed to delete path:', itemPath, rmErr)
-        throw rmErr
-      }
+      console.error('Failed to move item to Trash:', itemPath, err)
+      return false
     }
   })
 
