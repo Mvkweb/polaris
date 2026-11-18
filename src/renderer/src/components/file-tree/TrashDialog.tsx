@@ -58,7 +58,7 @@ export const TrashDialog: Component<TrashDialogProps> = (props) => {
         e.preventDefault()
         if (!busy()) dismiss()
       }}
-      class="m-auto w-[380px] max-w-[calc(100%-2rem)] rounded-2xl border border-white/[0.08] bg-[#0d0b10] p-5 text-white shadow-2xl backdrop:bg-black/55"
+      class="m-auto w-[380px] max-w-[calc(100%-2rem)] rounded-2xl border border-transparent bg-[#0d0b10] p-5 text-white shadow-2xl backdrop:bg-black/55 forced-colors:border-[CanvasText]"
     >
       <h2 id="trash-dialog-title" class="text-[15px] font-semibold">
         <Show when={failed()} fallback="Move to Trash?">
