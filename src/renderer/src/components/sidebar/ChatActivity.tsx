@@ -160,8 +160,6 @@ const SessionCardBody = (props: {
   )
 }
 
-/* ── Real Git Tasks Commit Row ── */
-
 export function createChatActivity(searchQuery: Accessor<string>) {
   const [expandedSettledId, setExpandedSettledId] = createSignal<string | null>(null)
 

@@ -27,7 +27,6 @@ import { IconSetPicker } from './IconSetPicker'
 import { NightlyBackdrop } from './NightlyBackdrop'
 import type { IconName } from '../ui/AppIcons'
 
-// ── Types ───────────────────────────────────────────────────────────────────
 
 interface TileBase {
   id: string
@@ -91,7 +90,6 @@ export interface PageDef {
   prefKeys: (keyof Prefs)[]
 }
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
 
 /** Bind a tile to a persisted pref. Values come from the tile's own options/control. */
 const pref = <K extends keyof Prefs>(k: K) => ({
@@ -104,7 +102,6 @@ const opts =
   () =>
     pairs.map(([value, label]) => ({ value, label }))
 
-// ── Pages ───────────────────────────────────────────────────────────────────
 
 export const PAGES: PageDef[] = [
   {
@@ -150,7 +147,6 @@ export const PAGES: PageDef[] = [
             id: 'updates',
             title: 'Updates',
             hint: 'Release channel',
-            // Nightly literally looks less stable
             backdrop: () => <NightlyBackdrop active={updateTrack() === 'Nightly'} />,
             options: opts(['Stable', 'Stable'], ['Nightly', 'Nightly']),
             get: updateTrack,

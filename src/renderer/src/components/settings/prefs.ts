@@ -1,12 +1,7 @@
 import { createStore } from 'solid-js/store'
 import type { StartupFolder } from '../../../../shared/startup'
 
-/**
- * Preferences for features that are being built out. Persisted now so the
- * settings UI is real (values survive restarts) and each feature can read its
- * key the day it's wired. Wired settings live in their own stores (store.ts,
- * tasks.ts…) and are only surfaced by the settings schema.
- */
+/** Preferences stored together in the renderer profile. */
 export interface Prefs {
   // general
   startupFolder: StartupFolder

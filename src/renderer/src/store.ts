@@ -8,17 +8,14 @@ import type {
   WallpaperPalette
 } from './types'
 import { initialChatSessions } from './fixtures/sidebar'
+import { currentView, setCurrentView } from './viewState'
+
+export { currentView, setCurrentView, previousView, setPreviousView } from './viewState'
+export * from './components/browser/state'
 
 export const [currentNote, setCurrentNote] = createSignal('Welcome')
 export const [currentFolder, setCurrentFolder] = createSignal('')
-export const [currentView, setCurrentView] = createSignal<
-  'files' | 'search' | 'editor' | 'tasks' | 'chat' | 'settings'
->('files')
-export const [previousView, setPreviousView] = createSignal<
-  'files' | 'search' | 'editor' | 'tasks' | 'chat'
->('files')
-
-// ── Monodrive Settings & Preferences ─────────────────────────────────────────
+// Settings
 export type SettingsPage =
   'General' | 'Appearance' | 'Editor' | 'Files' | 'Media' | 'Uploads' | 'Keyboard' | 'About'
 export const SETTINGS_PAGES: SettingsPage[] = [
@@ -197,12 +194,12 @@ export const restorePageDefaults = (page: SettingsPage): void => {
 
 export const [isSidebarPinned, setIsSidebarPinned] = createSignal(true)
 
-// ── Settings View State ───────────────────────────────────────────────────────
+// Settings View State
 export type SettingsTabId = 'general' | 'appearance' | 'editor' | 'shortcuts' | 'projects'
 export const [activeSettingsTab, setActiveSettingsTab] = createSignal<SettingsTabId>('general')
 export const [settingsSearchQuery, setSettingsSearchQuery] = createSignal<string>('')
 
-// ── Projects State ────────────────────────────────────────────────────────────
+// Projects State
 export type ProjectBadgeColor = 'amber' | 'emerald' | 'yellow' | 'purple' | 'cyan' | 'blue' | 'rose'
 
 export interface ProjectAction {
@@ -242,7 +239,7 @@ export const removeProject = (id: string): void => {
   }
 }
 
-// ── Appearance Preferences ───────────────────────────────────────────────────
+// Appearance Preferences
 export type ColorSchemeMode = 'system' | 'dark' | 'light'
 export type ThemePresetId =
   | 'ember'
@@ -274,7 +271,7 @@ export const THEME_ACCENTS: Record<ThemePresetId, string> = {
   sunset: '#F43F5E'
 }
 
-// ── Sidebar explorer mode: Places/Devices list or the workspace file tree ──
+// Sidebar explorer mode: Places/Devices list or the workspace file tree
 export type ExplorerMode = 'places' | 'tree'
 const readExplorerMode = (): ExplorerMode => {
   try {
@@ -293,7 +290,7 @@ export const setExplorerMode = (mode: ExplorerMode): void => {
   }
 }
 
-// ── Wallpaper-synced palette (written by dithergen/matugen, watched by main) ──
+// Wallpaper palette
 const readWallpaperSync = (): boolean => {
   try {
     return localStorage.getItem('polaris.theme.wallpaperSync') !== '0'
@@ -321,7 +318,7 @@ export const [appearanceContrast, setAppearanceContrast] = createSignal<number>(
 export const [glassOpacity, setGlassOpacity] = createSignal<number>(65)
 export const [showSunrays, setShowSunrays] = createSignal<boolean>(true)
 
-// ── Quick Open & Global Search State ──────────────────────────────────────────
+// Quick Open & Global Search State
 export const [isQuickOpenOpen, setIsQuickOpenOpen] = createSignal(false)
 export const toggleQuickOpen = (): void => {
   setIsQuickOpenOpen((prev) => !prev)
@@ -337,7 +334,7 @@ export const [targetEditorLocation, setTargetEditorLocation] = createSignal<{
   column?: number
 } | null>(null)
 
-// ── Terminal Panel State ──────────────────────────────────────────────────────
+// Terminal Panel State
 export interface TerminalSessionInfo {
   id: string
   title: string
@@ -427,7 +424,7 @@ export const closeTerminal = (id: string): void => {
   }, 210)
 }
 
-// ── Real Git Integration State ────────────────────────────────────────────────
+// Git integration
 export const [gitCommits, setGitCommits] = createSignal<GitCommit[]>([])
 export const [gitStatus, setGitStatus] = createSignal<GitStatus | null>(null)
 export const [selectedCommitHash, setSelectedCommitHash] = createSignal<string | null>(null)
@@ -450,92 +447,8 @@ export const refreshGitData = async (): Promise<void> => {
   }
 }
 
-// ── Workspace & File Tree State ───────────────────────────────────────────────
-export const [workspaceRoot, setWorkspaceRoot] = createSignal<string>('')
 export const [selectedFilePath, setSelectedFilePath] = createSignal<string | null>(null)
 export const [openFiles, setOpenFiles] = createSignal<string[]>([])
-
-// ── Directory Browser History & Navigation ────────────────────────────────────
-export const [navHistory, setNavHistory] = createSignal<string[]>([])
-export const [historyIndex, setHistoryIndex] = createSignal<number>(-1)
-export const [selectedGridEntry, setSelectedGridEntry] = createSignal<string | null>(null)
-/** Ask the folder view to select (and scroll to) this path once it's listed. */
-export const [revealRequest, setRevealRequest] = createSignal<string | null>(null)
-export const [browserSearchFilter, setBrowserSearchFilter] = createSignal<string>('')
-export const [browserFilterFocused, setBrowserFilterFocused] = createSignal(false)
-/** The filter tab "melts" into the canvas while focused or holding a query. */
-export const isFilterTabActive = (): boolean =>
-  browserFilterFocused() || browserSearchFilter().length > 0
-
-export interface BrowserTab {
-  id: string
-  path: string
-  name: string
-}
-
-export const [browserTabs, setBrowserTabs] = createSignal<BrowserTab[]>([
-  { id: 'tab-default', path: '', name: 'Workspace' }
-])
-export const [activeTabId, setActiveTabId] = createSignal<string>('tab-default')
-
-/** Middle-click: add a folder tab without leaving the current one (Dolphin-style). */
-export const openTabInBackground = (path: string): void => {
-  const name = path.split(/[/\\]/).filter(Boolean).pop() || '/'
-  setBrowserTabs((prev) => [...prev, { id: `tab-${Date.now()}`, path, name }])
-}
-
-export const openNewTab = (path?: string): void => {
-  const targetPath = path || workspaceRoot() || '.'
-  const name = targetPath.split(/[/\\]/).filter(Boolean).pop() || '/'
-  const newTab: BrowserTab = {
-    id: `tab-${Date.now()}`,
-    path: targetPath,
-    name
-  }
-  setBrowserTabs((prev) => [...prev, newTab])
-  setActiveTabId(newTab.id)
-  navigateTo(targetPath)
-}
-
-export const closeBrowserTab = (id: string, e?: MouseEvent): void => {
-  e?.stopPropagation()
-  const tabs = browserTabs()
-  if (tabs.length <= 1) return
-  const idx = tabs.findIndex((t) => t.id === id)
-  const remaining = tabs.filter((t) => t.id !== id)
-  setBrowserTabs(remaining)
-  if (activeTabId() === id) {
-    const nextActive = remaining[Math.min(idx, remaining.length - 1)]
-    setActiveTabId(nextActive.id)
-    navigateTo(nextActive.path)
-  }
-}
-
-export const switchTab = (id: string): void => {
-  const tab = browserTabs().find((t) => t.id === id)
-  if (tab) {
-    setActiveTabId(tab.id)
-    navigateTo(tab.path)
-  }
-}
-
-// ── Files ↔ editor ───────────────────────────────────────────────────────────
-// The top bar (folder pills, back/forward, parent crumb) is file-browser
-// navigation, so any folder navigation reveals the files view: what you click
-// is what you see. The editor keeps its tabs and comes back in one click
-// (editor pill in the top bar, or Mod+E).
-
-/** Location bar: the folder pills melt into an editable path field. */
-export const [pathEditing, setPathEditing] = createSignal(false)
-export const startPathEdit = (): void => {
-  revealFiles()
-  setPathEditing(true)
-}
-
-/** Show the folder view if the editor is covering it. */
-export const revealFiles = (): void => {
-  if (currentView() === 'editor') setCurrentView('files')
-}
 
 /** Return to the editor (only meaningful when files are open). */
 export const showEditor = (): void => {
@@ -548,80 +461,11 @@ export const toggleEditorView = (): void => {
   else showEditor()
 }
 
-export const navigateTo = (newPath: string): void => {
-  if (!newPath) return
-  const current = workspaceRoot()
-  revealFiles()
-
-  batch(() => {
-    // Always update active tab name & path
-    const activeId = activeTabId()
-    const name = newPath.split(/[/\\]/).filter(Boolean).pop() || '/'
-    setBrowserTabs((prev) =>
-      prev.map((tab) => (tab.id === activeId ? { ...tab, path: newPath, name } : tab))
-    )
-
-    if (current === newPath) return
-
-    const history = navHistory()
-    const idx = historyIndex()
-
-    const updatedHistory = [...history.slice(0, idx + 1), newPath]
-    setNavHistory(updatedHistory)
-    setHistoryIndex(updatedHistory.length - 1)
-    setWorkspaceRoot(newPath)
-    setSelectedGridEntry(null)
-  })
-}
-
-/** Keep the active folder pill's path/name in step with history moves. */
-const syncActiveBrowserTab = (path: string): void => {
-  const activeId = activeTabId()
-  const name = path.split(/[/\\]/).filter(Boolean).pop() || '/'
-  setBrowserTabs((prev) => prev.map((tab) => (tab.id === activeId ? { ...tab, path, name } : tab)))
-}
-
-export const navigateBack = (): void => {
-  const idx = historyIndex()
-  if (idx > 0) {
-    const prevPath = navHistory()[idx - 1]
-    revealFiles()
-    batch(() => {
-      setHistoryIndex(idx - 1)
-      syncActiveBrowserTab(prevPath)
-      setWorkspaceRoot(prevPath)
-      setSelectedGridEntry(null)
-    })
-  }
-}
-
-export const navigateForward = (): void => {
-  const history = navHistory()
-  const idx = historyIndex()
-  if (idx < history.length - 1) {
-    const nextPath = history[idx + 1]
-    revealFiles()
-    batch(() => {
-      setHistoryIndex(idx + 1)
-      syncActiveBrowserTab(nextPath)
-      setWorkspaceRoot(nextPath)
-      setSelectedGridEntry(null)
-    })
-  }
-}
-
-export const canNavigateBack = (): boolean => historyIndex() > 0
-export const canNavigateForward = (): boolean => {
-  const history = navHistory()
-  const idx = historyIndex()
-  return idx >= 0 && idx < history.length - 1
-}
-
-// ── Editor Tabs State ─────────────────────────────────────────────────────────
+// Editor Tabs State
 export const [openTabs, setOpenTabs] = createSignal<EditorTab[]>([])
 export const [activeTabPath, setActiveTabPath] = createSignal<string | null>(null)
 
-// ── In-Memory Document Caches & Dirty File State ──────────────────────────────
+// In-Memory Document Caches & Dirty File State
 export const [dirtyFilePaths, setDirtyFilePaths] = createSignal<Set<string>>(new Set())
 export const [lastSavedPath, setLastSavedPath] = createSignal<string | null>(null)
 
@@ -768,7 +612,7 @@ export const renameOpenFile = (oldPath: string, newPath: string, newName: string
   }
 }
 
-// ── Context Menu & File Operations State ─────────────────────────────────────
+// Context Menu & File Operations State
 export interface ContextMenuTarget {
   path?: string
   isDirectory?: boolean
@@ -839,7 +683,7 @@ export const closeFileActionModal = (): void => {
   setFileActionModalState((prev) => (prev.isOpen ? { ...prev, isOpen: false } : prev))
 }
 
-// ── Inspector Drawer State ───────────────────────────────────────────────────
+// Inspector Drawer State
 export const [isInspectorOpen, setIsInspectorOpen] = createSignal(false)
 export const [inspectorTargetPath, setInspectorTargetPath] = createSignal<string | null>(null)
 const getInitialInspectorWidth = (): number => {
@@ -973,13 +817,13 @@ export const cancelInlineRename = (): void => {
   setInlineRenameState(null)
 }
 
-// ── Chat Sessions State ───────────────────────────────────────────────────────
+// Chat Sessions State
 export const [currentChatSessionId, setCurrentChatSessionId] = createSignal<string>('session-1')
 
 export const [chatSessions, setChatSessions] =
   createSignal<ChatSessionSummary[]>(initialChatSessions)
 
-// ── Sidebar Search Focus Request ──────────────────────────────────────────────
+// Sidebar Search Focus Request
 export const [sidebarSearchFocus, setSidebarSearchFocus] = createSignal(0)
 export const requestSidebarSearchFocus = (): void => {
   setSidebarSearchFocus((n) => n + 1)

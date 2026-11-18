@@ -121,8 +121,7 @@ export const cycleScopeView = (): void => {
   }
 }
 
-// Scope views in cycle order. The carousel renders them twice so the slot that
-// wraps from the far left to the far right is always an invisible one.
+// Duplicate the slots so the carousel wraps out of view.
 const SCOPE_LABELS = ['Files', 'Search', 'Tasks', 'Chat']
 const CAROUSEL_SLOTS = [...SCOPE_LABELS, ...SCOPE_LABELS]
 
@@ -134,7 +133,6 @@ const scopeIndex = (): number => {
   return 0
 }
 
-// Maps a slot to its position relative to the active one, in the range -2..3.
 const slotOffset = (slot: number, step: number): number => {
   const n = CAROUSEL_SLOTS.length
   return ((((slot - step + 2) % n) + n) % n) - 2

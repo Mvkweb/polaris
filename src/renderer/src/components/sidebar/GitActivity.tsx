@@ -56,7 +56,6 @@ const GitCommitRow = (props: {
         props.active ? 'bg-white/[0.11] text-white' : 'text-white/80 hover:bg-white/[0.06]'
       }`}
     >
-      {/* Left Active / Status Rail Slot (8px) */}
       <span class="flex w-2 shrink-0 items-center justify-center self-stretch">
         <Show when={props.index === 0 && !props.active}>
           <span class="h-1.5 w-0.5 rounded-[1px] bg-emerald-400" title="HEAD commit" />
@@ -65,8 +64,6 @@ const GitCommitRow = (props: {
           <span class="h-2 w-0.5 rounded-[1px] bg-[#a855f7]" title="Selected commit" />
         </Show>
       </span>
-
-      {/* Nested L-Connector Rail for commit chain (matching 8bf93386.png row 2) */}
       <Show when={props.isChild}>
         <span
           aria-hidden
@@ -80,26 +77,18 @@ const GitCommitRow = (props: {
         />
         <span aria-hidden class="shrink-0 w-[14px]" />
       </Show>
-
-      {/* PR / Git Branch Mark */}
       <span class="mr-1.5 flex shrink-0 items-center">
         <PrBranchIcon class="w-3.5 h-3.5 text-[#a855f7]" />
       </span>
-
-      {/* Short Hash Badge */}
       <span class="font-mono text-[10.5px] text-white/40 group-hover:text-white/60 mr-1.5 shrink-0 tabular-nums">
         {props.commit.shortHash}
       </span>
-
-      {/* Commit Message with hover gradient mask */}
       <span
         title={props.commit.message}
         class="min-w-0 flex-1 truncate text-[13px] font-normal tracking-[-0.01em] group-hover:[mask-image:linear-gradient(to_left,transparent_36px,black_56px)]"
       >
         {props.commit.message}
       </span>
-
-      {/* Right Timestamp + Copy Action */}
       <div class="flex shrink-0 items-center self-stretch pl-2 text-[12px]">
         <span class="pointer-events-none flex items-center whitespace-nowrap text-white/40 tabular-nums transition-opacity duration-150 group-hover:opacity-0">
           {timeAgo(Math.floor(props.commit.timestamp / 1000))}
