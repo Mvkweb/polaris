@@ -5,22 +5,9 @@ import { randomBytes, randomUUID } from 'crypto'
 import { request } from 'https'
 import { basename, extname } from 'path'
 import { createTask, setCanceler, taskStatus, updateTask } from './tasks'
+import type { UploadService } from '../shared/ipcModels'
 
-/**
- * "Upload to…" — anonymous file hosts, streamed straight from disk as
- * multipart/form-data over https (no deps, no buffering the file in memory).
- * Up to two uploads run at once; the rest queue. The resulting link is copied
- * to the clipboard when an upload finishes.
- */
-
-export interface UploadService {
-  id: string
-  name: string
-  /** short retention label shown in menus */
-  retention: string
-  maxBytes: number
-  group: 'permanent' | 'temporary'
-}
+export type { UploadService } from '../shared/ipcModels'
 
 interface ServiceImpl extends UploadService {
   url: string

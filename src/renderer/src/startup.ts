@@ -1,6 +1,6 @@
 import { createEffect, onMount } from 'solid-js'
 import { prefs } from './components/settings/prefs'
-import { navigateTo, setRevealRequest, workspaceRoot } from './store'
+import { navigateTo, setRevealRequest, workspaceRoot } from './components/browser/state'
 
 const LAST_FOLDER_KEY = 'polaris.lastFolder.v1'
 

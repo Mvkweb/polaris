@@ -112,22 +112,22 @@ export const DEFAULT_SHORTCUTS: ShortcutItem[] = [
   {
     id: 'cycle_scope',
     title: 'Cycle Sidebar Scope',
-    description: 'Cycle between Files, Search, Tasks, and Chat',
+    description: 'Cycle between Files, Search, and Tasks',
     group: 'General & Navigation',
     keys: ['Mod', 'I']
   },
   {
     id: 'switch_items',
     title: 'Switch Items',
-    description: 'Navigate up and down through commits or chat sessions',
+    description: 'Navigate up and down through commits',
     group: 'General & Navigation',
     keys: ['Mod', 'Shift', 'ArrowUp', 'ArrowDown'],
     locked: true
   },
   {
     id: 'new_item',
-    title: 'New Note or Chat',
-    description: 'Create a new markdown note or start a new chat conversation',
+    title: 'New Note',
+    description: 'Open the new Markdown note dialog',
     group: 'General & Navigation',
     keys: ['Mod', 'N']
   },

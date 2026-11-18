@@ -1,17 +1,14 @@
-import { nativeImage } from 'electron'
-import { spawn } from 'child_process'
+import { ipcMain, nativeImage } from 'electron'
+import { execFile, spawn } from 'child_process'
 import { access, readFile, realpath } from 'fs/promises'
 import { constants } from 'fs'
 import { delimiter, join, extname, isAbsolute } from 'path'
 import { homedir } from 'os'
+import { promisify } from 'util'
+import { startDir } from './launch'
+import type { ExternalEditor } from '../shared/ipcModels'
 
-/** An external code editor detected on the host. Serialized over IPC. */
-export interface ExternalEditor {
-  id: string
-  name: string
-  /** data: URL of the editor's real app icon, or null if none was found */
-  icon: string | null
-}
+export type { ExternalEditor } from '../shared/ipcModels'
 
 interface Candidate {
   id: string
@@ -275,4 +272,38 @@ export const openInEditor = async (editorId: string, targetPath: string): Promis
     console.error(`Failed to launch ${editor.name}:`, err)
     return false
   }
+}
+
+const execFileAsync = promisify(execFile)
+
+export function registerEditorIpc(): void {
+  void detectEditors()
+  ipcMain.handle('editor:list', () => listEditors())
+  ipcMain.handle('editor:open', (_, editorId: string, targetPath: string) =>
+    openInEditor(editorId, targetPath)
+  )
+
+  ipcMain.handle('editor:isCodeInstalled', async () => {
+    try {
+      const { stdout } = await execFileAsync('which', ['code'])
+      return Boolean(stdout.trim())
+    } catch {
+      return false
+    }
+  })
+
+  ipcMain.handle('editor:openCode', async (_, targetPath: string) => {
+    try {
+      const p = targetPath || startDir
+      const child = spawn('code', [p], {
+        detached: true,
+        stdio: 'ignore'
+      })
+      child.unref()
+      return true
+    } catch (err) {
+      console.error('Failed to launch code:', err)
+      return false
+    }
+  })
 }

@@ -1,35 +1,9 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { readFile, writeFile } from 'fs/promises'
 import { join } from 'path'
+import type { TaskRecord, TaskStatus } from '../shared/ipcModels'
 
-/**
- * Background task registry (uploads today; anything long-running later).
- * Newest first, capped history, persisted to userData so the panel shows what
- * you did yesterday. Progress broadcasts are coalesced to ~12/s.
- */
-
-export type TaskStatus = 'queued' | 'running' | 'done' | 'error' | 'canceled'
-
-export interface TaskRecord {
-  id: string
-  kind: 'upload'
-  /** producer-specific id, e.g. the upload service (used for Retry) */
-  serviceId: string
-  fileName: string
-  filePath: string
-  /** destination label, e.g. "Litterbox · 1 hour" */
-  target: string
-  status: TaskStatus
-  sent: number
-  total: number
-  url?: string
-  error?: string
-  /** epoch ms when the uploaded file stops existing, if the host says so */
-  expiresAt?: number
-  createdAt: number
-  startedAt?: number
-  finishedAt?: number
-}
+export type { TaskRecord, TaskStatus } from '../shared/ipcModels'
 
 const MAX_HISTORY = 200
 const STORE = (): string => join(app.getPath('userData'), 'tasks.json')
@@ -37,7 +11,6 @@ const STORE = (): string => join(app.getPath('userData'), 'tasks.json')
 let tasks: TaskRecord[] = []
 const cancelers = new Map<string, () => void>()
 
-// ── Broadcast (coalesced) ─────────────────────────────────────────────────
 let flushTimer: NodeJS.Timeout | null = null
 const broadcast = (): void => {
   if (flushTimer) return
@@ -49,7 +22,6 @@ const broadcast = (): void => {
   }, 80)
 }
 
-// ── Persistence (only terminal states matter; debounced) ──────────────────
 let saveTimer: NodeJS.Timeout | null = null
 const persist = (): void => {
   if (saveTimer) clearTimeout(saveTimer)

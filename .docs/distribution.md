@@ -98,8 +98,7 @@ The variants `provide` `polaris-fm` and `conflict` with each other, never with
   - Why a script: makepkg (pacman ≥ 7.1) clones with
     `GIT_CONFIG_GLOBAL=/dev/null`, which hides the tester's GitHub login. The
     script passes their git config via `MAKEPKG_GIT_CONFIG`.
-  - Not needed once public: `paru -S polaris-fm-git`. A one-click in-app Update button (running makepkg in
-  Polaris's terminal) is still to do.
+  - Once public, the sidebar's **Update now** command can use `paru -S polaris-fm-git`.
 - **Installed builds vs the repo:** installed builds keep their own profile in
   `~/.config/polaris-fm`, so they run next to `bun run dev` without sharing
   Chromium's locks. Startup follows Settings → General → Open on launch:

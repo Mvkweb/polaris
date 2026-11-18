@@ -1,5 +1,37 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
 import type { StartupFolder, StartupLocation } from '../shared/startup'
+import type {
+  ExternalEditor,
+  GitCommit,
+  GitStatus,
+  ImageFileData,
+  SearchResult,
+  SystemDrive,
+  TaskRecord,
+  TextSearchOptions,
+  TextSearchResult,
+  UpdateInfo,
+  UploadService,
+  WallpaperPalette
+} from '../shared/ipcModels'
+
+export type {
+  ExternalEditor,
+  GitCommit,
+  GitStatus,
+  ImageFileData,
+  SearchResult,
+  SystemDrive,
+  TaskRecord,
+  TaskStatus,
+  TextMatch,
+  TextSearchOptions,
+  TextSearchResult,
+  UpdateCommit,
+  UpdateInfo,
+  UploadService,
+  WallpaperPalette
+} from '../shared/ipcModels'
 
 export interface FsEntry {
   name: string
@@ -10,92 +42,10 @@ export interface FsEntry {
   size?: number
 }
 
-export interface SearchResult {
-  name: string
-  path: string
-  relativePath: string
-  score?: number
-}
-
-export interface TextMatch {
-  file: string
-  path: string
-  line: number
-  column: number
-  line_text: string
-}
-
-export interface TextSearchResult {
-  matches: TextMatch[]
-  total_matches: number
-  files_searched: number
-  elapsed_ms: number
-}
-
-export interface TextSearchOptions {
-  caseSensitive?: boolean
-  wholeWord?: boolean
-  maxResults?: number
-}
-
-export interface ImageFileData {
-  dataUrl: string
-  size: number
-  format: string
-  isSvg?: boolean
-  svgContent?: string
-}
-
-export interface GitCommit {
-  hash: string
-  shortHash: string
-  message: string
-  author: string
-  timestamp: number
-}
-
-export interface GitStatus {
-  branch: string
-  clean: boolean
-  modifiedCount: number
-  files: string[]
-}
-
-export interface SystemDrive {
-  id: string
-  name: string
-  model: string
-  mountPoint: string
-  device: string
-  fstype: string
-  size: string
-  diskSize?: string
-  usedPercent: number
-  bytesFree: number
-  bytesTotal: number
-  freeSpace: string
-  isRemovable?: boolean
-  isMounted: boolean
-  isReadOnly: boolean
-}
-
 export interface MountDriveResult {
   ok: boolean
   mountPoint?: string
   error?: string
-}
-
-export interface WallpaperPalette {
-  primary: string
-  onPrimary: string
-  primaryContainer: string
-  tertiary: string
-}
-
-export interface ExternalEditor {
-  id: string
-  name: string
-  icon: string | null
 }
 
 export interface FileProperties {
@@ -171,7 +121,10 @@ export interface CustomAPI {
   checkForUpdates: () => Promise<UpdateInfo>
   onUpdateInfo: (callback: (info: UpdateInfo) => void) => () => void
   restartToUpdate: () => Promise<void>
-  getStartupLocation: (preference: StartupFolder, lastFolder: string | null) => Promise<StartupLocation>
+  getStartupLocation: (
+    preference: StartupFolder,
+    lastFolder: string | null
+  ) => Promise<StartupLocation>
   onOpenRequest: (callback: (req: { dir: string; reveal: string | null }) => void) => () => void
   listTasks: () => Promise<TaskRecord[]>
   cancelTask: (id: string) => Promise<boolean>
@@ -182,58 +135,6 @@ export interface CustomAPI {
   onTerminalData: (callback: (id: number, data: string) => void) => () => void
   onTerminalExit: (callback: (id: number, exitCode: number) => void) => () => void
   onDrivesChanged: (callback: () => void) => () => void
-}
-
-export interface UploadService {
-  id: string
-  name: string
-  retention: string
-  maxBytes: number
-  group: 'permanent' | 'temporary'
-}
-
-export type TaskStatus = 'queued' | 'running' | 'done' | 'error' | 'canceled'
-
-export interface TaskRecord {
-  id: string
-  kind: 'upload'
-  /** producer-specific id, e.g. the upload service (used for Retry) */
-  serviceId: string
-  fileName: string
-  filePath: string
-  target: string
-  status: TaskStatus
-  sent: number
-  total: number
-  url?: string
-  error?: string
-  expiresAt?: number
-  createdAt: number
-  startedAt?: number
-  finishedAt?: number
-}
-
-export interface UpdateCommit {
-  hash: string
-  subject: string
-  author: string
-  date: number
-}
-
-export interface UpdateInfo {
-  version: string
-  source: 'git' | 'package' | 'none'
-  branch: string | null
-  current: UpdateCommit | null
-  available: boolean
-  behind: number
-  commits: UpdateCommit[]
-  compareUrl: string | null
-  checking: boolean
-  checkedAt: number | null
-  error: string | null
-  updateCommand: string | null
-  restartReady: boolean
 }
 
 declare global {

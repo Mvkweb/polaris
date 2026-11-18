@@ -3,48 +3,12 @@ import { watch } from 'fs'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { BUILD, INSTALLED } from './launch'
+import type { UpdateCommit, UpdateInfo } from '../shared/ipcModels'
 
-/**
- * Update status for builds that come from a git checkout (dev, and the
- * `polaris-git` package later). Read-only towards the user: `git fetch` only
- * updates remote-tracking refs, never the working tree. Uses the user's own
- * git credentials (SSH key / credential helper) with prompts disabled, so no
- * token is ever needed or stored. Packaged builds without a repo report
- * `source: 'none'` until the paru/AUR wrapper takes over.
- */
+export type { UpdateCommit, UpdateInfo } from '../shared/ipcModels'
 
 const exec = promisify(execFile)
 const CHECK_EVERY = 30 * 60_000
-
-export interface UpdateCommit {
-  hash: string
-  subject: string
-  author: string
-  /** epoch ms */
-  date: number
-}
-
-export interface UpdateInfo {
-  version: string
-  /** git: running from a checkout · package: installed polaris-fm-git */
-  source: 'git' | 'package' | 'none'
-  branch: string | null
-  current: UpdateCommit | null
-  available: boolean
-  /** commits behind; -1 when unknown (packages only know "different") */
-  behind: number
-  /** newest first, at most 8 */
-  commits: UpdateCommit[]
-  /** github.com/<owner>/<repo>/compare/<a>...<b> when known */
-  compareUrl: string | null
-  checking: boolean
-  checkedAt: number | null
-  error: string | null
-  /** shell command the Update button runs in Polaris's terminal */
-  updateCommand: string | null
-  /** a newer package is installed on disk: restart to use it */
-  restartReady: boolean
-}
 
 let info: UpdateInfo = {
   version: app.getVersion(),
@@ -263,7 +227,7 @@ export const registerUpdateIpc = (): void => {
     await checkForUpdates()
     return info
   })
-  // Relaunch into the newly installed version (same args, same window state).
+  // Quit normally so Electron can flush profile storage before relaunching.
   ipcMain.handle('updates:restart', () => {
     app.relaunch()
     app.quit()

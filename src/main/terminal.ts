@@ -1,3 +1,5 @@
+import { execFile, spawn as spawnProcess } from 'child_process'
+import { promisify } from 'util'
 import { startDir } from './launch'
 import { ipcMain, type WebContents } from 'electron'
 import { spawn, type IPty } from 'node-pty'
@@ -70,5 +72,33 @@ export function registerTerminalHandlers(): void {
 
   ipcMain.handle('terminal:kill', (_, id: number) => {
     killSession(id)
+  })
+}
+
+const execFileAsync = promisify(execFile)
+
+export function registerExternalTerminalIpc(): void {
+  ipcMain.handle('terminal:isGhosttyInstalled', async () => {
+    try {
+      const { stdout } = await execFileAsync('which', ['ghostty'])
+      return Boolean(stdout.trim())
+    } catch {
+      return false
+    }
+  })
+
+  ipcMain.handle('terminal:openGhostty', async (_, targetDir?: string) => {
+    try {
+      const dir = targetDir || startDir
+      const child = spawnProcess('ghostty', ['+new-window', `--working-directory=${dir}`], {
+        detached: true,
+        stdio: 'ignore'
+      })
+      child.unref()
+      return true
+    } catch (err) {
+      console.error('Failed to launch ghostty:', err)
+      return false
+    }
   })
 }
