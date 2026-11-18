@@ -1,6 +1,8 @@
 import { createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js'
 import type { DesktopApplication } from '../../../../shared/openWith'
-import { openWithTarget, setOpenWithTarget } from '../../openWith'
+import { opensInPolaris, openWithTarget, setFileTypeApp, setOpenWithTarget } from '../../openWith'
+import { openFileInEditor } from '../../store'
+import polarisIcon from '../../../../../resources/icons/64.png'
 import { fillStyle } from '../../lib/dither'
 import { Aurora } from '../dithercn/aurora'
 import { DitherButton } from '../dithercn/dither-button'
@@ -8,10 +10,17 @@ import { DitherSwitch } from '../dithercn/dither-switch'
 import './open-with.css'
 
 /** The app's own icon (from its desktop entry), or a dithered initial. */
+/** Polaris's own editor, offered first for text and code files. */
+const POLARIS: DesktopApplication = {
+  id: 'polaris-editor',
+  name: 'Polaris editor',
+  recommended: true
+}
+
 const AppIcon = (props: { app: DesktopApplication }) => {
   const [src] = createResource(
     () => props.app.id,
-    (id) => window.api.getAppIcon(id).catch(() => null)
+    (id) => (id === POLARIS.id ? polarisIcon : window.api.getAppIcon(id).catch(() => null))
   )
   return (
     <span class="ow-icon" aria-hidden="true">
@@ -46,7 +55,16 @@ const Chooser = (props: { path: string; name: string }) => {
   const [error, setError] = createSignal('')
   const [opened, setOpened] = createSignal(false)
 
-  const recommended = createMemo(() => info()?.apps.filter((app) => app.recommended) ?? [])
+  const inPolaris = createMemo(() => {
+    const i = info()
+    return !!i && opensInPolaris(i.mimeType, i.editable)
+  })
+  /** What a double-click opens this type in right now (Polaris or a Linux app). */
+  const defaultId = createMemo(() => (inPolaris() ? POLARIS.id : (info()?.defaultAppId ?? null)))
+  const recommended = createMemo(() => [
+    ...(info()?.editable ? [POLARIS] : []),
+    ...(info()?.apps.filter((app) => app.recommended) ?? [])
+  ])
   const others = createMemo(() => info()?.apps.filter((app) => !app.recommended) ?? [])
   // Nothing to suggest: go straight to every app instead of an empty section.
   const allOpen = createMemo(() => showAll() || recommended().length === 0)
@@ -54,12 +72,10 @@ const Chooser = (props: { path: string; name: string }) => {
     const term = query().trim().toLowerCase()
     return term ? others().filter((app) => app.name.toLowerCase().includes(term)) : others()
   })
-  const selected = createMemo(() =>
-    info()?.apps.find((app) => app.id === (selectedId() ?? info()?.defaultAppId))
-  )
-  const defaultName = createMemo(
-    () => info()?.apps.find((app) => app.id === info()?.defaultAppId)?.name
-  )
+  const find = (id: string | null): DesktopApplication | undefined =>
+    id === POLARIS.id && info()?.editable ? POLARIS : info()?.apps.find((app) => app.id === id)
+  const selected = createMemo(() => find(selectedId() ?? defaultId()))
+  const defaultName = createMemo(() => find(defaultId())?.name)
 
   const dismiss = (): void => {
     if (busy()) return
@@ -72,6 +88,12 @@ const Chooser = (props: { path: string; name: string }) => {
     const fileInfo = info()
     if (!app || !fileInfo || busy() || opened()) return
     setError('')
+    if (app.id === POLARIS.id) {
+      if (makeDefault()) setFileTypeApp(fileInfo.mimeType, 'polaris')
+      openFileInEditor(props.path, props.name)
+      dismiss()
+      return
+    }
     setBusy(true)
     try {
       const result = await window.api.openWithApp(
@@ -80,6 +102,8 @@ const Chooser = (props: { path: string; name: string }) => {
         makeDefault() && fileInfo.canSetDefault ? fileInfo.mimeType : undefined
       )
       setBusy(false)
+      // Text/code type handed to another app: Polaris stops opening it itself.
+      if (makeDefault() && fileInfo.editable) setFileTypeApp(fileInfo.mimeType, 'system')
       if (result === 'default-not-saved') {
         setOpened(true)
         setError('The file opened, but Linux didn’t apply the new default.')
@@ -118,7 +142,7 @@ const Chooser = (props: { path: string; name: string }) => {
         />
         <AppIcon app={row.app} />
         <span class="min-w-0 flex-1 truncate">{row.app.name}</span>
-        <Show when={info()?.defaultAppId === row.app.id}>
+        <Show when={defaultId() === row.app.id}>
           <span class="ow-tag">Default</span>
         </Show>
         <svg class="ow-check" viewBox="0 0 16 16" aria-hidden="true">

@@ -3,12 +3,19 @@ import { readdir, readFile, stat } from 'fs/promises'
 import { isAbsolute, join, sep } from 'path'
 import { promisify } from 'util'
 import { ipcMain } from 'electron'
-import type { ChosenOpenResult, DefaultOpenResult, OpenWithInfo } from '../shared/openWith'
+import type {
+  ChosenOpenResult,
+  DefaultOpenOptions,
+  DefaultOpenResult,
+  OpenWithInfo
+} from '../shared/openWith'
 import { dataDirs, parseDesktopEntry } from './desktopEntries'
 import { appIconDataUrl } from './appIcons'
 
 const exec = promisify(execFile)
 const MIME_TYPE = /^[a-z0-9][a-z0-9.+_-]*\/[a-z0-9][a-z0-9.+_-]*$/i
+/** Text files above this open in the default app instead of Polaris's editor. */
+const EDITOR_MAX_BYTES = 10 * 1024 * 1024
 const GENERIC_TYPES = new Set(['application/octet-stream', 'application/x-zerosize'])
 
 const gio = async (...args: string[]): Promise<string> => {
@@ -96,7 +103,13 @@ async function inspectFile(path: string): Promise<OpenWithInfo> {
       recommended: recommended.has(id) || id === defaultAppId
     }))
     .sort((a, b) => Number(b.recommended) - Number(a.recommended) || a.name.localeCompare(b.name))
-  return { mimeType, defaultAppId, canSetDefault: !GENERIC_TYPES.has(mimeType), apps }
+  return {
+    mimeType,
+    defaultAppId,
+    canSetDefault: !GENERIC_TYPES.has(mimeType),
+    editable: await isEditableType(mimeType),
+    apps
+  }
 }
 
 /** Icons are fetched per row as the chooser shows them (lists can be long). */
@@ -106,10 +119,52 @@ async function appIcon(appId: string): Promise<string | null> {
   return appIconDataUrl(iconNames.get(appId))
 }
 
-async function openDefault(path: string): Promise<DefaultOpenResult> {
+/**
+ * Text files per the shared-mime-info database: text/* plus every type that
+ * is (transitively) a subclass of text/plain, e.g. JSON, TOML, XML, shell
+ * scripts. Images stay with image apps even when they're XML (SVG).
+ */
+let subclasses: Promise<Map<string, string[]>> | null = null
+const loadSubclasses = (): Promise<Map<string, string[]>> =>
+  (subclasses ??= (async () => {
+    const parents = new Map<string, string[]>()
+    for (const base of dataDirs()) {
+      const text = await readFile(join(base, 'mime', 'subclasses'), 'utf8').catch(() => '')
+      for (const line of text.split('\n')) {
+        const [child, parent] = line.trim().split(/\s+/)
+        if (child && parent) parents.set(child, [...(parents.get(child) ?? []), parent])
+      }
+    }
+    return parents
+  })())
+
+export async function isEditableType(mimeType: string): Promise<boolean> {
+  if (mimeType.startsWith('image/')) return false
+  if (mimeType.startsWith('text/') || mimeType === 'application/x-zerosize') return true
+  const parents = await loadSubclasses()
+  const seen = new Set<string>()
+  const queue = [mimeType]
+  while (queue.length) {
+    const type = queue.shift()!
+    if (type === 'text/plain') return true
+    if (seen.has(type)) continue
+    seen.add(type)
+    queue.push(...(parents.get(type) ?? []))
+  }
+  return false
+}
+
+async function openDefault(path: string, opts: DefaultOpenOptions): Promise<DefaultOpenResult> {
   if (process.platform !== 'linux') return 'unsupported'
   try {
     const mimeType = await fileMime(path)
+    // A per-type choice wins; otherwise the setting decides for text/code.
+    const choice = opts.choices[mimeType]
+    if (choice !== 'system' && (choice === 'polaris' || opts.preferEditor)) {
+      // Huge logs/dumps would freeze the editor (it loads the whole file).
+      const small = (await stat(path)).size <= EDITOR_MAX_BYTES
+      if (small && (await isEditableType(mimeType))) return 'editor'
+    }
     if (!(await associations(mimeType)).defaultAppId) return 'choose'
     await gio('open', '--', path)
     return 'opened'
@@ -145,7 +200,15 @@ async function openChosen(
 }
 
 export function registerOpenWithIpc(): void {
-  ipcMain.handle('apps:openDefault', (_, path: string) => openDefault(path))
+  ipcMain.handle('apps:openDefault', (_, path: string, opts?: Partial<DefaultOpenOptions>) => {
+    const choices: DefaultOpenOptions['choices'] = {}
+    for (const [type, choice] of Object.entries(opts?.choices ?? {})) {
+      if (MIME_TYPE.test(type) && (choice === 'polaris' || choice === 'system')) {
+        choices[type] = choice
+      }
+    }
+    return openDefault(path, { preferEditor: opts?.preferEditor === true, choices })
+  })
   ipcMain.handle('apps:inspectFile', (_, path: string) => {
     iconNames = null // pick up apps installed since the last chooser
     return inspectFile(path)

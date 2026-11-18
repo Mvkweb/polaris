@@ -373,7 +373,8 @@ export const PAGES: PageDef[] = [
       chips: () => [
         showHiddenFiles() ? 'Hidden files shown' : 'Hidden files hidden',
         foldersFirst() ? 'Folders first' : 'Mixed order',
-        prefs.folderLogos ? 'Project logos' : 'Plain folders'
+        prefs.folderLogos ? 'Project logos' : 'Plain folders',
+        prefs.editableFiles === 'polaris' ? 'Text opens in Polaris' : 'Text opens in default app'
       ],
       primary: () => ({
         label: explorerMode() === 'tree' ? 'Show places' : 'Show file tree',
@@ -423,13 +424,20 @@ export const PAGES: PageDef[] = [
             id: 'sizes',
             title: 'Folder sizes',
             hint: 'Compute sizes in the background',
-            ...pref('folderSizes'),
-            wide: true
+            ...pref('folderSizes')
+          },
+          {
+            kind: 'choice',
+            id: 'editable-files',
+            title: 'Text & code files',
+            hint: 'Double-click target · Open With… sets single types',
+            options: opts(['polaris', 'Polaris editor'], ['system', 'Default app']),
+            ...pref('editableFiles')
           }
         ]
       }
     ],
-    prefKeys: ['folderLogos', 'folderSizes']
+    prefKeys: ['folderLogos', 'folderSizes', 'editableFiles', 'fileTypeApps']
   },
   {
     id: 'Media',

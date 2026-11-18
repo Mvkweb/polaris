@@ -23,6 +23,10 @@ export interface Prefs {
   // files
   folderLogos: boolean
   folderSizes: boolean
+  /** double-click on text/code files: Polaris's editor or the Linux default app */
+  editableFiles: 'polaris' | 'system'
+  /** per-type "Always use…" choices from Open With (an array so reset replaces it) */
+  fileTypeApps: { type: string; app: 'polaris' | 'system' }[]
   // media
   defaultExport: 'png' | 'webp' | 'jpg' | 'gif'
   exportQuality: number
@@ -50,6 +54,8 @@ export const PREF_DEFAULTS: Prefs = {
   formatOnSave: false,
   folderLogos: true,
   folderSizes: false,
+  editableFiles: 'polaris',
+  fileTypeApps: [],
   defaultExport: 'webp',
   exportQuality: 86,
   autoplayVideo: false,
