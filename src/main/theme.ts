@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, ipcMain } from 'electron'
 import { watch, type FSWatcher } from 'fs'
 import { readFile, stat } from 'fs/promises'
 import { homedir } from 'os'
@@ -242,3 +242,9 @@ export const getWallpaperTheme = async (): Promise<WallpaperPalette | null> => {
 
 /** The theme file currently in use (matugen's path until dithergen wins). */
 export const wallpaperThemePath = (): string => currentPath
+
+export function registerThemeIpc(): void {
+  startThemeWatcher()
+  ipcMain.handle('theme:get', () => getWallpaperTheme())
+  ipcMain.handle('theme:path', () => wallpaperThemePath())
+}

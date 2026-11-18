@@ -57,6 +57,7 @@ interface PendingRequest {
   timer: NodeJS.Timeout
 }
 
+/** Electron client for the polaris-core Zig sidecar. */
 export class EmberCoreClient {
   private process: ChildProcess | null = null
   private lineBuffer = ''
