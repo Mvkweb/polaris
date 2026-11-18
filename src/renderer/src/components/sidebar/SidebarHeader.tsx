@@ -3,7 +3,9 @@ import {
   createMemo,
   createSignal,
   For,
+  Match,
   Show,
+  Switch,
   type Accessor,
   type Component,
   type Setter
@@ -23,7 +25,7 @@ import {
   toggleSettings
 } from '../../store'
 import { I } from '../ui/AppIcons'
-import { CheckCheckIcon, KbdHint } from './SidebarControls'
+import { KbdHint } from './SidebarControls'
 
 const PlacesGlyph = (props: { class?: string }) => (
   <svg viewBox="0 0 24 24" fill="none" class={props.class ?? 'w-3.5 h-3.5'}>
@@ -40,25 +42,6 @@ const TreeGlyph = (props: { class?: string }) => (
   <svg viewBox="0 0 24 24" fill="none" class={props.class ?? 'w-3.5 h-3.5'}>
     <path
       d="M4 4v13a2 2 0 0 0 2 2h3M4 9h5M13 7h7M13 17h7M13 12h4"
-      stroke="currentColor"
-      stroke-width="1.75"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-  </svg>
-)
-
-const Undo2Icon = (props: { class?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" class={props.class ?? 'w-3.5 h-3.5'}>
-    <path
-      d="M9 14 4 9l5-5"
-      stroke="currentColor"
-      stroke-width="1.75"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-    <path
-      d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"
       stroke="currentColor"
       stroke-width="1.75"
       stroke-linecap="round"
@@ -114,22 +97,19 @@ export const cycleScopeView = (): void => {
   } else if (v === 'search') {
     setCurrentView('tasks')
     refreshGitData()
-  } else if (v === 'tasks') {
-    setCurrentView('chat')
   } else {
     setCurrentView('files')
   }
 }
 
 // Duplicate the slots so the carousel wraps out of view.
-const SCOPE_LABELS = ['Files', 'Search', 'Tasks', 'Chat']
+const SCOPE_LABELS = ['Files', 'Search', 'Tasks']
 const CAROUSEL_SLOTS = [...SCOPE_LABELS, ...SCOPE_LABELS]
 
 const scopeIndex = (): number => {
   const view = activeSidebarView()
   if (view === 'search') return 1
   if (view === 'tasks') return 2
-  if (view === 'chat') return 3
   return 0
 }
 
@@ -149,8 +129,9 @@ const ScopeCarousel: Component = () => {
   // Absolute step count, so moving from the last view to the first keeps sliding
   // forward instead of rewinding across the strip.
   const step = createMemo<number>((prev) => {
-    const delta = (((scopeIndex() - prev) % 4) + 4) % 4
-    return prev + (delta === 3 ? -1 : delta)
+    const count = SCOPE_LABELS.length
+    const delta = (((scopeIndex() - prev) % count) + count) % count
+    return prev + delta
   }, scopeIndex())
 
   return (
@@ -179,7 +160,6 @@ export function createSidebarHeader(
   handleNewAction: () => void
 ) {
   const [searchOpen, setSearchOpen] = createSignal(false)
-  const [settledShown, setSettledShown] = createSignal(false)
   const spaces = ['All Spaces', 'Ember', 'Notes']
   const [spaceIndex, setSpaceIndex] = createSignal(0)
 
@@ -279,13 +259,9 @@ export function createSidebarHeader(
           class="w-full flex items-center gap-2 px-1.5 h-7 rounded-md text-[13px] font-normal text-white/80 hover:bg-white/[0.06] transition-colors cursor-pointer"
         >
           <I.newNote class="w-3.5 h-3.5 text-white/60 shrink-0" />
-          <span>
-            {activeSidebarView() === 'chat'
-              ? 'New Chat'
-              : activeSidebarView() === 'tasks'
-                ? 'New Task'
-                : 'New Note'}
-          </span>
+          <Show when={activeSidebarView() === 'tasks'} fallback={<span>New Note</span>}>
+            <span>New Task</span>
+          </Show>
           <KbdHint combo="Mod+N" />
         </button>
 
@@ -369,55 +345,25 @@ export function createSidebarHeader(
           <div class="flex max-w-full flex-col items-center gap-1">
             <span class="flex items-center gap-1 text-[13px] font-medium text-white/45 transition-colors group-hover/projects:text-white/85">
               <span class="max-w-40 truncate">
-                {activeSidebarView() === 'files' || activeSidebarView() === 'editor'
-                  ? 'workspace'
-                  : activeSidebarView() === 'search'
-                    ? 'search'
-                    : activeSidebarView() === 'chat'
-                      ? settledShown()
-                        ? 'ember · settled'
-                        : 'ember · chat'
-                      : gitStatus()?.clean
-                        ? gitStatus()?.branch || 'ember'
-                        : `${gitStatus()?.branch || 'ember'} · ${gitStatus()?.modifiedCount} modified`}
+                <Switch fallback="workspace">
+                  <Match when={activeSidebarView() === 'search'}>search</Match>
+                  <Match when={activeSidebarView() === 'tasks'}>
+                    {gitStatus()?.branch || 'ember'}
+                    <Show when={!gitStatus()?.clean}> · {gitStatus()?.modifiedCount} modified</Show>
+                  </Match>
+                </Switch>
               </span>
             </span>
             <DotTrack
-              count={4}
-              activeIndex={
-                activeSidebarView() === 'files' || activeSidebarView() === 'editor'
-                  ? 0
-                  : activeSidebarView() === 'search'
-                    ? 1
-                    : activeSidebarView() === 'tasks'
-                      ? 2
-                      : 3
-              }
+              count={SCOPE_LABELS.length}
+              activeIndex={scopeIndex()}
               class="opacity-0 transition-opacity duration-150 group-hover/projects:opacity-100"
             />
           </div>
         </div>
 
         <div class="flex items-center gap-0.5">
-          <Show
-            when={activeSidebarView() === 'files' || activeSidebarView() === 'editor'}
-            fallback={
-              <button
-                type="button"
-                aria-label={settledShown() ? 'Show active' : 'Show settled'}
-                title={settledShown() ? 'Show active' : 'Show settled'}
-                onClick={() => {
-                  if (currentView() !== 'chat') setCurrentView('chat')
-                  setSettledShown((prev) => !prev)
-                }}
-                class="w-6 h-6 rounded flex items-center justify-center text-white/45 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
-              >
-                <Show when={settledShown()} fallback={<CheckCheckIcon class="w-3.5 h-3.5" />}>
-                  <Undo2Icon class="w-3.5 h-3.5" />
-                </Show>
-              </button>
-            }
-          >
+          <Show when={activeSidebarView() === 'files' || activeSidebarView() === 'editor'}>
             <div
               role="tablist"
               aria-label="Explorer mode"

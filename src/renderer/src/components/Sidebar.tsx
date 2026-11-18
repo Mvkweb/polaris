@@ -1,14 +1,12 @@
 import { createSignal, onCleanup, onMount, Show, type Component } from 'solid-js'
 import {
   activeAccentColor,
-  currentChatSessionId,
   currentView,
   explorerMode,
   isSidebarPinned,
   openContextMenu,
   refreshGitData,
   selectedCommitHash,
-  setCurrentChatSessionId,
   setCurrentNote,
   setCurrentView,
   setIsSidebarPinned,
@@ -21,7 +19,6 @@ import type { FileNode } from '../types'
 import { AnimatedGradient } from './dithercn/animated-gradient'
 import FileTree from './file-tree/FileTree'
 import SearchPanel from './search/SearchPanel'
-import { createChatActivity, startSidebarChat } from './sidebar/ChatActivity'
 import { createSidebarDrives } from './sidebar/Drives'
 import { createGitActivity } from './sidebar/GitActivity'
 import { createSidebarPlaces } from './sidebar/Places'
@@ -38,12 +35,9 @@ const Sidebar: Component = () => {
   const { Places, activePlaceId, clearActivePlace } = createSidebarPlaces()
   const Drives = createSidebarDrives(activePlaceId, clearActivePlace)
   const { GitActivity, filteredCommits } = createGitActivity(searchQuery)
-  const { ChatActivity, filteredSessions } = createChatActivity(searchQuery)
 
   const handleNewAction = (): void => {
-    if (currentView() === 'chat') {
-      startSidebarChat()
-    } else if (currentView() === 'tasks') {
+    if (currentView() === 'tasks') {
       refreshGitData()
     } else {
       setIsNewNoteModalOpen(true)
@@ -84,34 +78,21 @@ const Sidebar: Component = () => {
       return
     }
 
-    // Step through items with Mod+Shift+Up/Down
     if (
+      currentView() === 'tasks' &&
       e.type === 'keydown' &&
       isModKey(e) &&
       e.shiftKey &&
       (e.key === 'ArrowUp' || e.key === 'ArrowDown')
     ) {
-      if (currentView() === 'tasks') {
-        const list = filteredCommits()
-        if (list.length === 0) return
-        e.preventDefault()
-        const currentIdx = list.findIndex((c) => c.hash === selectedCommitHash())
-        const delta = e.key === 'ArrowDown' ? 1 : -1
-        const nextIdx = currentIdx === -1 ? 0 : (currentIdx + delta + list.length) % list.length
-        setSelectedCommitHash(list[nextIdx].hash)
-        return
-      }
-
-      if (currentView() === 'chat') {
-        const rows = filteredSessions()
-        if (rows.length === 0) return
-        e.preventDefault()
-        const currentIdx = rows.findIndex((s) => s.id === currentChatSessionId())
-        const delta = e.key === 'ArrowDown' ? 1 : -1
-        const nextIdx = currentIdx === -1 ? 0 : (currentIdx + delta + rows.length) % rows.length
-        setCurrentChatSessionId(rows[nextIdx].id)
-        return
-      }
+      const list = filteredCommits()
+      if (list.length === 0) return
+      e.preventDefault()
+      const currentIdx = list.findIndex((c) => c.hash === selectedCommitHash())
+      const delta = e.key === 'ArrowDown' ? 1 : -1
+      const nextIdx = currentIdx === -1 ? 0 : (currentIdx + delta + list.length) % list.length
+      setSelectedCommitHash(list[nextIdx].hash)
+      return
     }
 
     if (matchesShortcut(e, 'new_item')) {
@@ -234,10 +215,6 @@ const Sidebar: Component = () => {
 
               <Show when={activeSidebarView() === 'tasks'}>
                 <GitActivity />
-              </Show>
-
-              <Show when={activeSidebarView() === 'chat'}>
-                <ChatActivity />
               </Show>
             </div>
             <UpdateFooter />

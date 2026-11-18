@@ -69,19 +69,3 @@ export interface WallpaperTheme {
   primary_container: string
   thumbnail_path: string
 }
-
-export interface ChatSessionSummary {
-  id: string
-  title: string
-  modelId: string
-  modelName: string
-  modelIcon: string
-  provider: string
-  updatedAt: number
-  createdAt: number
-  messageCount?: number
-  subpath?: string
-  preview?: string
-  fileRefs?: string[]
-  agent?: string
-}

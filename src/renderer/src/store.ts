@@ -1,13 +1,11 @@
 import { batch, createMemo, createSignal } from 'solid-js'
 import type {
-  ChatSessionSummary,
   EditorTab,
   GitCommit,
   GitStatus,
   SystemDrive,
   WallpaperPalette
 } from './types'
-import { initialChatSessions } from './fixtures/sidebar'
 import { currentView, setCurrentView } from './viewState'
 
 export { currentView, setCurrentView, previousView, setPreviousView } from './viewState'
@@ -134,10 +132,6 @@ export const [darkLightness, setDarkLightness] = createSignal(9)
 export const [windowOpacity, setWindowOpacity] = createSignal(95)
 export const [mainPaneGlass, setMainPaneGlass] = createSignal(false)
 export const [workspaceStyle, setWorkspaceStyle] = createSignal<'Card' | 'Boxy'>('Card')
-
-// Agents Settings
-export const [agentsChangeFiles, setAgentsChangeFiles] = createSignal(true)
-export const [selectedHarness, setSelectedHarness] = createSignal<string>('Antigravity')
 
 // Modal Actions
 export const openSettingsModal = (page?: SettingsPage): void => {
@@ -816,12 +810,6 @@ export const startInlineRename = (path: string, name: string): void => {
 export const cancelInlineRename = (): void => {
   setInlineRenameState(null)
 }
-
-// Chat Sessions State
-export const [currentChatSessionId, setCurrentChatSessionId] = createSignal<string>('session-1')
-
-export const [chatSessions, setChatSessions] =
-  createSignal<ChatSessionSummary[]>(initialChatSessions)
 
 // Sidebar Search Focus Request
 export const [sidebarSearchFocus, setSidebarSearchFocus] = createSignal(0)
