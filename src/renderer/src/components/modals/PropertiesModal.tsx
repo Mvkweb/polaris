@@ -260,7 +260,12 @@ export const PropertiesModal: Component = () => {
                   </h3>
 
                   <p class="text-[12px] text-white/70 font-normal mt-0.5 tabular-nums drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-                    {fileKind()} · {props().isDirectory ? `${props().itemCount ?? 0} items` : formatBytes(props().size).split(' (')[0]}
+                    <Show when={!props().isBrokenLink} fallback={fileKind()}>
+                      {fileKind()} ·{' '}
+                      {props().isDirectory
+                        ? `${props().itemCount ?? 0} item${props().itemCount === 1 ? '' : 's'}`
+                        : formatBytes(props().size).split(' (')[0]}
+                    </Show>
                   </p>
                 </div>
 
@@ -315,7 +320,10 @@ export const PropertiesModal: Component = () => {
                             <span class="text-white/75 font-normal truncate">{fileKind()}</span>
                           </div>
 
-                          <div class="h-6 flex items-center justify-between">
+                          <div
+                            class="h-6 flex items-center justify-between"
+                            classList={{ hidden: !!props().isBrokenLink }}
+                          >
                             <span class="text-white/35 w-[84px] shrink-0">
                               {props().isDirectory ? 'Contents' : 'Size'}
                             </span>
