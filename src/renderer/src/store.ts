@@ -613,6 +613,10 @@ export interface ContextMenuTarget {
   name?: string
   isDrive?: boolean
   drive?: SystemDrive
+  /** symlink details, so the menu can offer link actions */
+  isSymlink?: boolean
+  linkTarget?: string
+  isBrokenLink?: boolean
 }
 
 export interface ContextMenuState {
@@ -639,6 +643,8 @@ export const closeContextMenu = (): void => {
 export interface FileClipboard {
   path: string
   action: 'copy' | 'cut'
+  /** a symlink was copied: Paste copies the link, Paste Contents what it points at */
+  isSymlink?: boolean
 }
 
 export const [fileClipboard, setFileClipboard] = createSignal<FileClipboard | null>(null)

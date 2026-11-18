@@ -428,9 +428,14 @@ export const InspectorDrawer: Component = () => {
                     <Show when={file().owner}>
                       <Row label="Owner">{file().owner}</Row>
                     </Show>
-                    <Show when={file().isSymbolicLink && file().realPath}>
-                      <Row label="Target" title={file().realPath}>
-                        {truncateMiddle(file().realPath || '', 26)}
+                    <Show when={file().isSymbolicLink}>
+                      <Row
+                        label={file().isBrokenLink ? 'Broken link' : 'Links to'}
+                        title={file().linkTarget || file().realPath}
+                      >
+                        <span classList={{ 'text-rose-300/90': !!file().isBrokenLink }}>
+                          {truncateMiddle(file().linkTarget || file().realPath || '', 26)}
+                        </span>
                       </Row>
                     </Show>
                   </Section>

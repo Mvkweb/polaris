@@ -150,8 +150,11 @@ export const PropertiesModal: Component = () => {
   const fileKind = createMemo(() => {
     const item = data()
     if (!item) return 'File'
+    if (item.isSymbolicLink) {
+      if (item.isBrokenLink) return 'Broken link'
+      return item.isDirectory ? 'Link to folder' : 'Link to file'
+    }
     if (item.isDirectory) return 'Folder'
-    if (item.isSymbolicLink) return 'Alias'
     const parts = item.name.split('.')
     if (parts.length > 1) {
       const ext = parts.pop()?.toUpperCase()
@@ -322,6 +325,23 @@ export const PropertiesModal: Component = () => {
                                 : formatBytes(props().size)}
                             </span>
                           </div>
+
+                          <Show when={props().isSymbolicLink && props().linkTarget}>
+                            <div class="h-6 flex items-center justify-between gap-2 min-w-0">
+                              <span class="text-white/35 w-[84px] shrink-0">Links to</span>
+                              <span
+                                class="font-mono text-[11px] truncate select-all"
+                                classList={{
+                                  'text-white/65': !props().isBrokenLink,
+                                  'text-rose-300/90': !!props().isBrokenLink
+                                }}
+                                title={props().linkTarget}
+                              >
+                                {props().linkTarget}
+                                <Show when={props().isBrokenLink}> (missing)</Show>
+                              </span>
+                            </div>
+                          </Show>
 
                           <div class="h-6 flex items-center justify-between gap-2 min-w-0">
                             <span class="text-white/35 w-[84px] shrink-0">Where</span>

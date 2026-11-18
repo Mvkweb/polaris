@@ -1,7 +1,7 @@
 import { ipcMain, nativeImage } from 'electron'
-import { lstat, readdir, readFile, realpath, stat } from 'fs/promises'
+import { lstat, readdir, readFile, readlink, realpath, stat } from 'fs/promises'
 import { userInfo } from 'os'
-import { basename, extname } from 'path'
+import { basename, dirname, extname, resolve } from 'path'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 
@@ -59,12 +59,17 @@ export function registerFileDetailsIpc(): void {
       const stats = await lstat(fullPath)
       const isSymlink = stats.isSymbolicLink()
       let realPath: string | undefined = undefined
+      let linkTarget: string | undefined = undefined
+      let isBrokenLink = false
       let targetStats = stats
 
       if (isSymlink) {
+        linkTarget = resolve(dirname(fullPath), await readlink(fullPath))
+        isBrokenLink = true
         try {
           realPath = await realpath(fullPath)
           targetStats = await stat(fullPath)
+          isBrokenLink = false
         } catch {
           // broken symlink
         }
@@ -140,6 +145,8 @@ export function registerFileDetailsIpc(): void {
         isFile: targetStats.isFile(),
         isSymbolicLink: isSymlink,
         realPath,
+        linkTarget,
+        isBrokenLink,
         size: targetStats.size,
         createdTime: targetStats.birthtimeMs || targetStats.ctimeMs,
         modifiedTime: targetStats.mtimeMs,
