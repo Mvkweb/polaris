@@ -84,6 +84,30 @@ sudo pacman -R polaris-fm-git
 pacman removes every file it installed. Your settings stay in
 `~/.config/polaris-fm`; delete that folder too for a fully clean slate.
 
+## Wallpaper colours (matugen)
+
+Polaris can take its colours from your wallpaper through
+[matugen](https://github.com/InioX/matugen). Turn on **Settings → Appearance →
+Sync with wallpaper**; if there's no palette yet, a window walks you through
+it:
+
+1. **Install matugen** (runs `sudo pacman -S matugen` in Polaris's terminal).
+2. **Set it up for me** adds Polaris's template to
+   `~/.config/matugen/config.toml`. It backs up your config first, lets matugen
+   check the result before saving, and refuses (changing nothing) if you
+   already have a different Polaris entry.
+3. Change your wallpaper, or press **Use a wallpaper now…** to pick it, and
+   the colours follow. Only Polaris's palette is generated; your other matugen
+   themes aren't touched.
+
+Prefer doing it by hand? Add this to `~/.config/matugen/config.toml`:
+
+```toml
+[templates.polaris]
+input_path = '/usr/share/polaris-fm/matugen/polaris.json'
+output_path = '~/.config/polaris/theme.json'
+```
+
 ## What it touches
 
 - **Installs only through pacman:** `/usr/lib/polaris-fm`, `/usr/bin/polaris-fm`,

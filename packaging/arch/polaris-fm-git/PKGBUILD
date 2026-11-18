@@ -93,6 +93,8 @@ package() {
 	cp -r out "$app/"
 	install -Dm644 package.json "$app/package.json"
 	install -Dm644 resources/icon.png "$app/resources/icon.png"
+	# matugen template for wallpaper sync (users point their matugen config at it)
+	install -Dm644 resources/themes/polaris.json "$pkgdir/usr/share/polaris-fm/matugen/polaris.json"
 	install -Dm755 core/zig-out/bin/polaris-core "$app/bin/polaris-core"
 
 	# Runtime modules the bundles load with require(); everything else is

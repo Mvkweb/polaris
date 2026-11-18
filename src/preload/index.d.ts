@@ -129,6 +129,12 @@ export interface CustomAPI {
   terminalKill: (id: number) => Promise<void>
   getWallpaperTheme: () => Promise<WallpaperPalette | null>
   getWallpaperThemePath: () => Promise<string>
+  /** read-only status for Settings: is matugen set up for Polaris? */
+  getThemeSetup: () => Promise<import('../shared/ipcModels').ThemeSetupStatus>
+  /** Explicit "Set it up for me": safely add Polaris's template to matugen's config */
+  addMatugenTemplate: () => Promise<import('../shared/ipcModels').MatugenSetupResult>
+  /** Pick an image and write Polaris's palette from it (Polaris-only matugen run) */
+  generateThemeFromImage: () => Promise<boolean>
   /** Write an image studio export as a new file beside the source; resolves to its path. */
   exportImage: (sourcePath: string, stem: string, ext: string, bytes: Uint8Array) => Promise<string>
   /** Project icon (favicon/logo) per folder, null when none */

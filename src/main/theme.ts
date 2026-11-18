@@ -233,6 +233,10 @@ export const getWallpaperTheme = async (): Promise<WallpaperPalette | null> => {
 /** The theme file currently in use (matugen's path until dithergen wins). */
 export const wallpaperThemePath = (): string => currentPath
 
+/** The palette file matugen writes for Polaris (from Polaris's template). */
+export const matugenOutputPath = (): string => MATUGEN_PATH
+export const themeConfigHome = (): string => configHome
+
 export function registerThemeIpc(): void {
   startThemeWatcher()
   ipcMain.handle('theme:get', () => getWallpaperTheme())

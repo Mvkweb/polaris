@@ -1,3 +1,4 @@
+import { setWallpaperSyncWithHelp } from './WallpaperSetup'
 import type { JSX } from 'solid-js'
 import {
   MONODRIVE_ACCENTS,
@@ -15,7 +16,6 @@ import {
   showHiddenFiles,
   updateTrack,
   wallpaperSync,
-  setWallpaperSync,
   closeSettingsModal,
   type SettingsPage
 } from '../../store'
@@ -192,7 +192,7 @@ export const PAGES: PageDef[] = [
       ],
       primary: () => ({
         label: wallpaperSync() ? 'Use my accent' : 'Sync with wallpaper',
-        run: () => setWallpaperSync(!wallpaperSync())
+        run: () => setWallpaperSyncWithHelp(!wallpaperSync())
       })
     },
     sections: [
@@ -205,7 +205,7 @@ export const PAGES: PageDef[] = [
             title: 'Sync with wallpaper',
             hint: 'Accent, glows and folders follow matugen/dithergen',
             get: wallpaperSync,
-            set: setWallpaperSync,
+            set: setWallpaperSyncWithHelp,
             live: true
           },
           {

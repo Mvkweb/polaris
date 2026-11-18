@@ -18,6 +18,7 @@ import { registerSearchIpc } from './search'
 import { loadTasks, registerTaskIpc } from './tasks'
 import { registerTerminalHandlers, registerExternalTerminalIpc, killAllTerminals } from './terminal'
 import { registerThemeIpc } from './theme'
+import { registerMatugenSetupIpc } from './matugenSetup'
 import { registerUpdateIpc } from './updates'
 import { registerUploadIpc } from './uploads'
 
@@ -124,6 +125,7 @@ app.whenReady().then(() => {
   registerFilesystemIpc()
   registerExternalTerminalIpc()
   registerThemeIpc()
+  registerMatugenSetupIpc()
   registerEditorIpc()
   registerOpenWithIpc()
   registerFileDetailsIpc()
