@@ -3,19 +3,9 @@ import { watch, type FSWatcher } from 'fs'
 import { readFile, stat } from 'fs/promises'
 import { homedir } from 'os'
 import { basename, dirname, join } from 'path'
+import type { WallpaperPalette } from '../shared/ipcModels'
 
-/**
- * Wallpaper-synced palette, written by an external generator (matugen or
- * dithergen) from `resources/themes/polaris.json`. Polaris never generates or
- * writes it — it only watches and reads. Kept tiny on purpose: the renderer
- * derives every tint from these few roles with CSS color-mix.
- */
-export interface WallpaperPalette {
-  primary: string
-  onPrimary: string
-  primaryContainer: string
-  tertiary: string
-}
+export type { WallpaperPalette } from '../shared/ipcModels'
 
 const configHome = process.env.XDG_CONFIG_HOME || join(homedir(), '.config')
 

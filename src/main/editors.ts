@@ -6,14 +6,9 @@ import { delimiter, join, extname, isAbsolute } from 'path'
 import { homedir } from 'os'
 import { promisify } from 'util'
 import { startDir } from './launch'
+import type { ExternalEditor } from '../shared/ipcModels'
 
-/** An external code editor detected on the host. Serialized over IPC. */
-export interface ExternalEditor {
-  id: string
-  name: string
-  /** data: URL of the editor's real app icon, or null if none was found */
-  icon: string | null
-}
+export type { ExternalEditor } from '../shared/ipcModels'
 
 interface Candidate {
   id: string

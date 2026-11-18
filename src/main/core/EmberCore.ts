@@ -2,34 +2,9 @@ import { spawn, type ChildProcess } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { app } from 'electron'
+import type { SearchResult, TextSearchOptions, TextSearchResult } from '../../shared/ipcModels'
 
-export interface SearchResult {
-  name: string
-  path: string
-  relativePath: string
-  score?: number
-}
-
-export interface TextMatch {
-  file: string
-  path: string
-  line: number
-  column: number
-  line_text: string
-}
-
-export interface TextSearchResult {
-  matches: TextMatch[]
-  total_matches: number
-  files_searched: number
-  elapsed_ms: number
-}
-
-export interface TextSearchOptions {
-  caseSensitive?: boolean
-  wholeWord?: boolean
-  maxResults?: number
-}
+export type { SearchResult, TextMatch, TextSearchOptions, TextSearchResult } from '../../shared/ipcModels'
 
 export interface StorageItem {
   id: string
