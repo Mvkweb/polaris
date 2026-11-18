@@ -69,6 +69,7 @@ Before claiming task completion or creating a commit, always ensure `bun run che
 ## 4. Documentation Index (`.docs/`)
 
 For in-depth architectural guides, refer to:
+- [Code map](.docs/code-map.md) — Feature owners, entry points and checks.
 - [Performance Specification](file://.docs/performance.md) — 2026 Electron performance benchmarks & rules.
 - [SolidJS Reactivity Guide](file://.docs/solidjs.md) — Fine-grained reactivity and component patterns.
 - [Zig 0.17 Architecture](file://.docs/zig-architecture.md) — Memory allocators, std.Io, and sidecar IPC.

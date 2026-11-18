@@ -32,6 +32,10 @@ bun run build
 
 Invited testers on Arch: see [TESTING.md](TESTING.md).
 
+## Where to change things
+
+The [code map](.docs/code-map.md) points to feature owners, process boundaries and relevant checks.
+
 ## License
 
 Polaris is free software, licensed under the
