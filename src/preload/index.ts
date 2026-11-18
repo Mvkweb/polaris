@@ -26,7 +26,10 @@ const api = {
   renamePath: (oldPath: string, newPath: string) =>
     ipcRenderer.invoke('fs:rename', oldPath, newPath),
   trashPath: (itemPath: string) => ipcRenderer.invoke('fs:trash', itemPath),
-  copyPath: (srcPath: string, destPath: string) => ipcRenderer.invoke('fs:copy', srcPath, destPath),
+  copyPath: (srcPath: string, destPath: string, opts?: { dereference?: boolean }) =>
+    ipcRenderer.invoke('fs:copy', srcPath, destPath, opts),
+  createSymlink: (target: string, dir: string, opts?: { name?: string; absolute?: boolean }) =>
+    ipcRenderer.invoke('fs:createSymlink', target, dir, opts),
   showItemInFolder: (fullPath: string) => ipcRenderer.invoke('shell:showItemInFolder', fullPath),
   openPath: (fullPath: string) => ipcRenderer.invoke('shell:openPath', fullPath),
   isGhosttyInstalled: () => ipcRenderer.invoke('terminal:isGhosttyInstalled'),

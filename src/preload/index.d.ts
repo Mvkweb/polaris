@@ -99,7 +99,14 @@ export interface CustomAPI {
   createDirectory: (dirPath: string) => Promise<boolean>
   renamePath: (oldPath: string, newPath: string) => Promise<boolean>
   trashPath: (itemPath: string) => Promise<boolean>
-  copyPath: (srcPath: string, destPath: string) => Promise<boolean>
+  /** Symlinks are copied as links (verbatim) unless `dereference` is set. */
+  copyPath: (srcPath: string, destPath: string, opts?: { dereference?: boolean }) => Promise<boolean>
+  /** Make a symlink to `target` inside `dir` (relative by default); resolves to its path. */
+  createSymlink: (
+    target: string,
+    dir: string,
+    opts?: { name?: string; absolute?: boolean }
+  ) => Promise<string>
   showItemInFolder: (fullPath: string) => Promise<boolean>
   openPath: (fullPath: string) => Promise<boolean>
   isGhosttyInstalled: () => Promise<boolean>

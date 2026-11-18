@@ -21,6 +21,8 @@ import {
 } from '../../store'
 import { FileIcon } from './FileIcon'
 import { DirtyMark } from '../ui/DirtyMark'
+import { LinkBadge } from '../ui/LinkBadge'
+import { setBrokenLink } from '../../links'
 import { folderIconUrl, refreshFolderIcons } from '../../projectIcons'
 
 interface FileTreeItemProps {
@@ -190,7 +192,13 @@ const FileTreeItem: Component<FileTreeItemProps> = (props) => {
     e.stopPropagation()
     if (isRenaming()) return
     setSelectedFilePath(props.entry.path)
-    if (props.entry.isDirectory) {
+    if (props.entry.isBrokenLink) {
+      setBrokenLink({
+        path: props.entry.path,
+        name: props.entry.name,
+        target: props.entry.linkTarget ?? ''
+      })
+    } else if (props.entry.isDirectory) {
       toggleOpen()
     } else {
       props.onFileClick(props.entry)
@@ -205,7 +213,10 @@ const FileTreeItem: Component<FileTreeItemProps> = (props) => {
     openContextMenu(e.clientX, e.clientY, {
       path: props.entry.path,
       isDirectory: props.entry.isDirectory,
-      name: props.entry.name
+      name: props.entry.name,
+      isSymlink: props.entry.isSymlink,
+      linkTarget: props.entry.linkTarget,
+      isBrokenLink: props.entry.isBrokenLink
     })
   }
 
@@ -246,7 +257,11 @@ const FileTreeItem: Component<FileTreeItemProps> = (props) => {
             : 'text-white/70 hover:text-white hover:bg-white/[0.045]'
         }`}
         style={{ 'padding-left': `${props.depth * INDENT + ROW_PAD}px` }}
-        title={props.entry.path}
+        title={
+          props.entry.isSymlink
+            ? `${props.entry.path} → ${props.entry.linkTarget ?? ''}`
+            : props.entry.path
+        }
       >
         {/* Icon slot: chevron for folders (Pierre/T3 style), file-type icon for files */}
         <Show
@@ -270,7 +285,23 @@ const FileTreeItem: Component<FileTreeItemProps> = (props) => {
         <div class="relative flex-1 min-w-0 flex items-center h-full">
           <Show
             when={isRenaming()}
-            fallback={<span class="truncate tracking-[-0.01em]">{props.entry.name}</span>}
+            fallback={
+              <>
+                <span
+                  class="truncate tracking-[-0.01em]"
+                  classList={{ 'is-broken-name': !!props.entry.isBrokenLink }}
+                >
+                  {props.entry.name}
+                </span>
+                <Show when={props.entry.isSymlink}>
+                  <LinkBadge
+                    broken={props.entry.isBrokenLink}
+                    class="is-inline"
+                    title={`→ ${props.entry.linkTarget ?? ''}`}
+                  />
+                </Show>
+              </>
+            }
           >
             <input
               ref={(el) => (renameInputRef = el)}

@@ -35,6 +35,7 @@ import { uploadFiles, uploadServices } from '../../tasks'
 import { directionLabel } from '../browser/SortControl'
 import { openBrowserFile, showOpenWith, supportsOpenWith } from '../../openWith'
 import { TrashDialog } from '../file-tree/TrashDialog'
+import { makeLink, pasteAsLink, showLinkTarget } from '../../links'
 import { protectedMount, type ProtectedReason } from '../../systemMounts'
 
 const lockLabel = (r: ProtectedReason): string => (r === 'home' ? 'Home drive' : 'System drive')
@@ -189,13 +190,13 @@ export const ContextMenu: Component = () => {
   const handleCut = (): void => {
     const p = targetPath()
     closeContextMenu()
-    setFileClipboard({ path: p, action: 'cut' })
+    setFileClipboard({ path: p, action: 'cut', isSymlink: !!target()?.isSymlink })
   }
 
   const handleCopy = (): void => {
     const p = targetPath()
     closeContextMenu()
-    setFileClipboard({ path: p, action: 'copy' })
+    setFileClipboard({ path: p, action: 'copy', isSymlink: !!target()?.isSymlink })
   }
 
   const handleDuplicate = async (): Promise<void> => {
@@ -243,6 +244,34 @@ export const ContextMenu: Component = () => {
         refreshFileExplorer()
       }
     }
+  }
+
+  // ── Symlinks ────────────────────────────────────────────────────────────
+  const pasteDir = (): string => (isDirectory() ? targetPath() : getParentDir(targetPath()))
+  const handleMakeLink = (): void => {
+    const p = targetPath()
+    closeContextMenu()
+    void makeLink(p)
+  }
+  const handleShowLinkTarget = (): void => {
+    const link = target()?.linkTarget
+    closeContextMenu()
+    if (link) showLinkTarget(link)
+  }
+  const handlePasteAsLink = (relative: boolean): void => {
+    const dir = pasteDir()
+    closeContextMenu()
+    void pasteAsLink(dir, relative)
+  }
+  /** Paste what a copied symlink points at, instead of the link itself. */
+  const handlePasteContents = async (): Promise<void> => {
+    const clip = fileClipboard()
+    const dir = pasteDir()
+    closeContextMenu()
+    if (!clip) return
+    const name = clip.path.replace(/\/+$/, '').split('/').pop() || 'item'
+    await window.api.copyPath(clip.path, `${dir}/${name}`, { dereference: true })
+    refreshFileExplorer()
   }
 
   const handleCopyPath = (): void => {
@@ -358,6 +387,22 @@ export const ContextMenu: Component = () => {
     </DitherDropdownMenuSub>
   )
 
+  const PasteLinkItems = () => (
+    <Show when={fileClipboard()}>
+      <DitherDropdownMenuItem variant="dither" onSelect={() => handlePasteAsLink(false)}>
+        <span>Paste as Link</span>
+      </DitherDropdownMenuItem>
+      <DitherDropdownMenuItem variant="dither" onSelect={() => handlePasteAsLink(true)}>
+        <span>Paste as Relative Link</span>
+      </DitherDropdownMenuItem>
+      <Show when={fileClipboard()?.isSymlink}>
+        <DitherDropdownMenuItem variant="dither" onSelect={() => void handlePasteContents()}>
+          <span>Paste Contents</span>
+        </DitherDropdownMenuItem>
+      </Show>
+    </Show>
+  )
+
   const OpenWithMenu = (props: { terminalShortcut?: string; label?: string }) => (
     <DitherDropdownMenuSub>
       <DitherDropdownMenuSubTrigger variant="dither">
@@ -470,6 +515,7 @@ export const ContextMenu: Component = () => {
                     <span>Paste</span>
                     <DitherDropdownMenuShortcut>{modKey}+V</DitherDropdownMenuShortcut>
                   </DitherDropdownMenuItem>
+                  <PasteLinkItems />
 
                   <DitherDropdownMenuSeparator />
 
@@ -603,6 +649,16 @@ export const ContextMenu: Component = () => {
                   <DitherDropdownMenuShortcut>{modKey}+D</DitherDropdownMenuShortcut>
                 </DitherDropdownMenuItem>
 
+                <DitherDropdownMenuItem variant="dither" onSelect={handleMakeLink}>
+                  <span>Make Link</span>
+                </DitherDropdownMenuItem>
+
+                <Show when={target()?.isSymlink && target()?.linkTarget}>
+                  <DitherDropdownMenuItem variant="dither" onSelect={handleShowLinkTarget}>
+                    <span>{target()?.isBrokenLink ? 'Show Missing Target' : 'Show Link Target'}</span>
+                  </DitherDropdownMenuItem>
+                </Show>
+
                 <Show when={isDirectory()}>
                   <DitherDropdownMenuItem
                     variant="dither"
@@ -612,6 +668,7 @@ export const ContextMenu: Component = () => {
                     <span>Paste</span>
                     <DitherDropdownMenuShortcut>{modKey}+V</DitherDropdownMenuShortcut>
                   </DitherDropdownMenuItem>
+                  <PasteLinkItems />
                 </Show>
 
                 <DitherDropdownMenuSeparator />

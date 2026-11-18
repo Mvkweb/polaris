@@ -20,6 +20,10 @@ export interface FsEntry {
   path: string
   isDirectory: boolean
   isSymlink: boolean
+  /** symlinks: what the link points at (absolute) */
+  linkTarget?: string
+  /** symlinks whose target is missing (or loops) */
+  isBrokenLink?: boolean
   extension?: string
   size?: number
   modifiedTime?: number
@@ -50,6 +54,9 @@ export interface FileProperties {
   isFile: boolean
   isSymbolicLink: boolean
   realPath?: string
+  /** where the link points (one hop, absolute), also for broken links */
+  linkTarget?: string
+  isBrokenLink?: boolean
   size: number
   createdTime: number
   modifiedTime: number

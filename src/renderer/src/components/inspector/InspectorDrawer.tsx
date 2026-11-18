@@ -92,6 +92,8 @@ function formatDate(ms: number): { relative: string; exact: string } {
 }
 
 function formatKind(props: FileProperties): string {
+  if (props.isBrokenLink) return 'Broken link'
+  if (props.isSymbolicLink) return props.isDirectory ? 'Link to folder' : 'Link to file'
   if (props.isDirectory) {
     return props.itemCount !== undefined ? `Folder (${props.itemCount} items)` : 'Folder'
   }
@@ -378,15 +380,19 @@ export const InspectorDrawer: Component = () => {
                         {file().name}
                       </h2>
                       <p class="font-mono text-[11px] text-white/40 truncate">
-                        {size().human} · {kind()}
+                        <Show when={!file().isBrokenLink} fallback={kind()}>
+                          {size().human} · {kind()}
+                        </Show>
                       </p>
                     </div>
                   </div>
 
                   <Section title="info">
-                    <Row label="Size" title={size().exact}>
-                      {size().human}
-                    </Row>
+                    <Show when={!file().isBrokenLink}>
+                      <Row label="Size" title={size().exact}>
+                        {size().human}
+                      </Row>
+                    </Show>
                     <Row label="Kind" title={file().mime || kind()}>
                       {kind()}
                     </Row>
@@ -428,9 +434,14 @@ export const InspectorDrawer: Component = () => {
                     <Show when={file().owner}>
                       <Row label="Owner">{file().owner}</Row>
                     </Show>
-                    <Show when={file().isSymbolicLink && file().realPath}>
-                      <Row label="Target" title={file().realPath}>
-                        {truncateMiddle(file().realPath || '', 26)}
+                    <Show when={file().isSymbolicLink}>
+                      <Row
+                        label={file().isBrokenLink ? 'Broken link' : 'Links to'}
+                        title={file().linkTarget || file().realPath}
+                      >
+                        <span classList={{ 'text-rose-300/90': !!file().isBrokenLink }}>
+                          {truncateMiddle(file().linkTarget || file().realPath || '', 26)}
+                        </span>
                       </Row>
                     </Show>
                   </Section>

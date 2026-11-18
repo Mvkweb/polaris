@@ -1,0 +1,75 @@
+/* Symlink corner badge: a tiny dark chip with an arrow, sitting on the icon. */
+.link-badge {
+  position: absolute;
+  left: 2px;
+  bottom: 2px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #0b0b0d;
+  color: rgb(255 255 255 / 0.85);
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.1),
+    0 2px 6px rgb(0 0 0 / 0.5);
+  pointer-events: none;
+}
+.link-badge svg {
+  width: 11px;
+  height: 11px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.link-badge.is-broken {
+  color: #fecaca;
+  background: #2a0b0e;
+  box-shadow:
+    0 0 0 1px rgb(248 113 113 / 0.35),
+    0 2px 6px rgb(0 0 0 / 0.5);
+}
+.link-badge-hatch {
+  position: absolute;
+  inset: 0;
+  opacity: 0.45;
+}
+/* Tree rows: inline, after the name */
+.link-badge.is-inline {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  margin-left: 6px;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08);
+}
+.link-badge.is-inline svg {
+  width: 9px;
+  height: 9px;
+}
+/* Larger, in-flow badge (dialog headers) */
+.link-badge.is-large {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+}
+.link-badge.is-large svg {
+  width: 13px;
+  height: 13px;
+}
+/* Names of broken links read as dimmed + struck through */
+.is-broken-name {
+  color: rgb(254 202 202 / 0.75) !important;
+  text-decoration: line-through;
+  text-decoration-color: rgb(248 113 113 / 0.5);
+}

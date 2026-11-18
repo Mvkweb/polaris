@@ -32,6 +32,8 @@ import {
 } from '../../store'
 import { openBrowserFile } from '../../openWith'
 import { MonodriveFolderIcon, MonodriveFileIcon, ImageThumbnail } from './MonodriveIcons'
+import { LinkBadge } from '../ui/LinkBadge'
+import { setBrokenLink } from '../../links'
 import type { FsEntry, SystemDrive } from '../../types'
 import emberLogo from '../../assets/ember-logo.svg'
 
@@ -274,6 +276,10 @@ export const FolderView: Component = () => {
   }
 
   const handleItemDoubleClick = async (entry: FsEntry): Promise<void> => {
+    if (entry.isBrokenLink) {
+      setBrokenLink({ path: entry.path, name: entry.name, target: entry.linkTarget ?? '' })
+      return
+    }
     if (entry.isDirectory) {
       navigateTo(entry.path)
     } else {
@@ -622,7 +628,10 @@ export const FolderView: Component = () => {
                       openContextMenu(e.clientX, e.clientY, {
                         name: entry.name,
                         path: entry.path,
-                        isDirectory: entry.isDirectory
+                        isDirectory: entry.isDirectory,
+                        isSymlink: entry.isSymlink,
+                        linkTarget: entry.linkTarget,
+                        isBrokenLink: entry.isBrokenLink
                       })
                     }}
                     class={`group relative flex flex-col items-center pt-2 pb-2.5 px-1.5 rounded-xl transition-colors duration-100 cursor-pointer select-none outline-none ${
@@ -631,7 +640,7 @@ export const FolderView: Component = () => {
                   >
                     {/* Icon / Image Thumbnail Container */}
                     <div
-                      class="flex items-center justify-center mb-1.5 group-hover:scale-[1.03] transition-transform duration-100"
+                      class="relative flex items-center justify-center mb-1.5 group-hover:scale-[1.03] transition-transform duration-100"
                       style={{
                         width: `${gridIconSize()}px`,
                         height: `${gridIconSize()}px`
@@ -652,6 +661,9 @@ export const FolderView: Component = () => {
                       >
                         <MonodriveFolderIcon />
                       </Show>
+                      <Show when={entry.isSymlink}>
+                        <LinkBadge broken={entry.isBrokenLink} />
+                      </Show>
                     </div>
 
                     {/* Filename Label (Centered, 2-line clamp with ellipsis) */}
@@ -661,7 +673,12 @@ export const FolderView: Component = () => {
                           ? 'text-white font-semibold'
                           : 'text-white/80 group-hover:text-white'
                       }`}
-                      title={entry.name}
+                      classList={{ 'is-broken-name': !!entry.isBrokenLink }}
+                      title={
+                        entry.isSymlink
+                          ? `${entry.name} → ${entry.linkTarget ?? ''}${entry.isBrokenLink ? ' (missing)' : ''}`
+                          : entry.name
+                      }
                     >
                       {entry.name}
                     </span>
