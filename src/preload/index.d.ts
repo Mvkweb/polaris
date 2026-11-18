@@ -122,6 +122,8 @@ export interface CustomAPI {
   terminalKill: (id: number) => Promise<void>
   getWallpaperTheme: () => Promise<WallpaperPalette | null>
   getWallpaperThemePath: () => Promise<string>
+  /** read-only status for Settings: is matugen set up for Polaris? */
+  getThemeSetup: () => Promise<import('../shared/ipcModels').ThemeSetupStatus>
   /** Write an image studio export as a new file beside the source; resolves to its path. */
   exportImage: (sourcePath: string, stem: string, ext: string, bytes: Uint8Array) => Promise<string>
   /** Project icon (favicon/logo) per folder, null when none */

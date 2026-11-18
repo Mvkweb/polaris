@@ -1,3 +1,4 @@
+import { WallpaperSetup } from './WallpaperSetup'
 import type { JSX } from 'solid-js'
 import {
   MONODRIVE_ACCENTS,
@@ -214,6 +215,14 @@ export const PAGES: PageDef[] = [
             title: 'Wallpaper syntax',
             hint: 'Code colours orbit the wallpaper hue',
             ...pref('syntaxFromWallpaper')
+          },
+          {
+            kind: 'custom',
+            id: 'wallpaper-setup',
+            title: 'Wallpaper palette',
+            live: true,
+            render: () => <WallpaperSetup />,
+            wide: true
           },
           {
             kind: 'swatches',

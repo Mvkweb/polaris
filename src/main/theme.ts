@@ -3,7 +3,10 @@ import { watch, type FSWatcher } from 'fs'
 import { readFile, stat } from 'fs/promises'
 import { homedir } from 'os'
 import { basename, dirname, join } from 'path'
-import type { WallpaperPalette } from '../shared/ipcModels'
+import { app } from 'electron'
+import { execFile } from 'child_process'
+import type { ThemeSetupStatus, WallpaperPalette } from '../shared/ipcModels'
+import { INSTALLED } from './launch'
 
 export type { WallpaperPalette } from '../shared/ipcModels'
 
@@ -233,8 +236,31 @@ export const getWallpaperTheme = async (): Promise<WallpaperPalette | null> => {
 /** The theme file currently in use (matugen's path until dithergen wins). */
 export const wallpaperThemePath = (): string => currentPath
 
+/**
+ * Is wallpaper sync actually wired up? Only reads: Polaris never edits
+ * matugen's config (the user owns it), it just says what's missing.
+ */
+const themeSetupStatus = async (): Promise<ThemeSetupStatus> => {
+  const templatePath = INSTALLED
+    ? '/usr/share/polaris-fm/matugen/polaris.json'
+    : join(app.getAppPath(), 'resources', 'themes', 'polaris.json')
+  const matugenInstalled = await new Promise<boolean>((done) =>
+    execFile('which', ['matugen'], (err) => done(!err))
+  )
+  const config = await readFile(join(configHome, 'matugen', 'config.toml'), 'utf8').catch(() => '')
+  const out = MATUGEN_PATH.replace(homedir(), '~')
+  return {
+    found: (await getWallpaperTheme()) !== null,
+    outputPath: out,
+    templatePath,
+    matugenInstalled,
+    matugenConfigured: config.includes(MATUGEN_PATH) || config.includes(out)
+  }
+}
+
 export function registerThemeIpc(): void {
   startThemeWatcher()
   ipcMain.handle('theme:get', () => getWallpaperTheme())
   ipcMain.handle('theme:path', () => wallpaperThemePath())
+  ipcMain.handle('theme:setup', () => themeSetupStatus())
 }

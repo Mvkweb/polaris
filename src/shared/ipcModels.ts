@@ -145,3 +145,17 @@ export interface UpdateInfo {
   /** a newer package is installed on disk: restart to use it */
   restartReady: boolean
 }
+
+/** What Settings shows about wallpaper sync (read-only checks, nothing is changed). */
+export interface ThemeSetupStatus {
+  /** a valid palette was found (matugen or dithergen) */
+  found: boolean
+  /** the palette file Polaris reads (matugen writes it) */
+  outputPath: string
+  /** the matugen template Polaris ships */
+  templatePath: string
+  /** `matugen` is on PATH */
+  matugenInstalled: boolean
+  /** matugen's config mentions Polaris's output file */
+  matugenConfigured: boolean
+}
