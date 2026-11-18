@@ -7,7 +7,7 @@ Start with the feature you are changing. Electron main owns OS access, preload e
 | Launch arguments, single instance, installed profile | [Electron launch](../src/main/launch.ts) |
 | Restore or choose a startup folder | [Renderer startup](../src/renderer/src/startup.ts), [main startup](../src/main/startup.ts), [startup tests](../tests/startup.test.ts) |
 | Folder grid, tabs, path bar and navigation | [Browser](../src/renderer/src/components/browser/) |
-| Sidebar layout, Places and drives | [Sidebar](../src/renderer/src/components/Sidebar.tsx), [UI layout](ui-layout.md) |
+| Sidebar layout, Places, drives and activity | [Sidebar](../src/renderer/src/components/Sidebar.tsx), [sections](../src/renderer/src/components/sidebar/), [UI layout](ui-layout.md) |
 | File reads, writes and properties | [Filesystem](../src/main/filesystem.ts), [file details](../src/main/fileDetails.ts) |
 | Drive discovery, mounting and storage analysis | [Drives](../src/main/drives.ts), [native storage analysis](../core/src/storage.zig) |
 | Indexing, search and Git | [Search](../src/main/search.ts), [Git](../src/main/git.ts), [native engine](../core/src/), [sidecar client](../src/main/core/EmberCore.ts) |
