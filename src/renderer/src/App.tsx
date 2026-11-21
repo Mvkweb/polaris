@@ -21,6 +21,8 @@ import { MonodriveIconDefs } from './components/browser/MonodriveIcons'
 import EditorPane from './components/editor/EditorPane'
 import { InspectorDrawer } from './components/inspector/InspectorDrawer'
 import PropertiesModal from './components/modals/PropertiesModal'
+import { CompressDialog } from './components/modals/CompressDialog'
+import { TrashDialog } from './components/file-tree/TrashDialog'
 import {
   activeTerminalId,
   addTerminal,
@@ -50,7 +52,8 @@ import {
   navigateBack,
   navigateForward,
   openNewTab,
-  setRevealRequest
+  setRevealRequest,
+  trashModalState
 } from './store'
 import { matchesShortcut } from './shortcuts'
 import { useThemeVariables, useWallpaperTheme } from './theme'
@@ -231,6 +234,10 @@ const App: Component = () => {
       <FileActionModal />
       <StorageMapModal />
       <PropertiesModal />
+      <CompressDialog />
+      <Show when={trashModalState().isOpen}>
+        <TrashDialog />
+      </Show>
 
       {/* Ember-style Sidebar */}
       <Sidebar />

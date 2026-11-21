@@ -1,5 +1,7 @@
 import { ipcMain, shell } from 'electron'
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 'path'
+import { existsSync } from 'fs'
+import { homedir } from 'os'
 import {
   cp,
   lstat,
@@ -8,6 +10,7 @@ import {
   readFile,
   readlink,
   rename,
+  rm,
   stat,
   symlink,
   unlink,
@@ -138,6 +141,88 @@ export function registerFilesystemIpc(): void {
       return true
     } catch (err) {
       console.error('Failed to move item to Trash:', itemPath, err)
+      return false
+    }
+  })
+
+  ipcMain.handle('fs:deletePermanent', async (_, itemPath: string) => {
+    try {
+      await rm(itemPath, { recursive: true, force: true })
+      // If item was in a Trash 'files' directory, also clean up corresponding .trashinfo
+      const dir = dirname(itemPath)
+      const name = basename(itemPath)
+      if (basename(dir) === 'files') {
+        const trashRoot = dirname(dir)
+        const infoPath = join(trashRoot, 'info', `${name}.trashinfo`)
+        if (existsSync(infoPath)) {
+          await unlink(infoPath).catch(() => {})
+        }
+      }
+      return true
+    } catch (err) {
+      console.error('Failed to permanently delete:', itemPath, err)
+      return false
+    }
+  })
+
+  ipcMain.handle('fs:restoreFromTrash', async (_, itemPath: string) => {
+    try {
+      const dir = dirname(itemPath)
+      const name = basename(itemPath)
+      if (basename(dir) !== 'files') {
+        return { success: false, error: 'Item is not in a trash files directory' }
+      }
+      const trashRoot = dirname(dir)
+      const infoPath = join(trashRoot, 'info', `${name}.trashinfo`)
+      if (!existsSync(infoPath)) {
+        return { success: false, error: 'Trash info file not found' }
+      }
+      const infoContent = await readFile(infoPath, 'utf-8')
+      const pathMatch = infoContent.match(/^Path=(.+)$/m)
+      if (!pathMatch || !pathMatch[1]) {
+        return { success: false, error: 'Original path not found in trash info' }
+      }
+      const originalPath = decodeURIComponent(pathMatch[1].trim())
+      const targetDir = dirname(originalPath)
+      await mkdir(targetDir, { recursive: true })
+      await rename(itemPath, originalPath)
+      await unlink(infoPath).catch(() => {})
+      return { success: true, restoredPath: originalPath }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('Failed to restore from trash:', itemPath, err)
+      return { success: false, error: msg }
+    }
+  })
+
+  ipcMain.handle('fs:emptyTrash', async (_, trashPath?: string) => {
+    try {
+      let root = trashPath
+      if (root && basename(root) === 'files') {
+        root = dirname(root)
+      }
+      if (!root) {
+        const home = homedir()
+        const dataHome = process.env.XDG_DATA_HOME || join(home, '.local', 'share')
+        root = join(dataHome, 'Trash')
+      }
+      const filesDir = join(root, 'files')
+      const infoDir = join(root, 'info')
+      if (existsSync(filesDir)) {
+        const entries = await readdir(filesDir)
+        for (const e of entries) {
+          await rm(join(filesDir, e), { recursive: true, force: true }).catch(() => {})
+        }
+      }
+      if (existsSync(infoDir)) {
+        const entries = await readdir(infoDir)
+        for (const e of entries) {
+          await rm(join(infoDir, e), { recursive: true, force: true }).catch(() => {})
+        }
+      }
+      return true
+    } catch (err) {
+      console.error('Failed to empty trash:', err)
       return false
     }
   })

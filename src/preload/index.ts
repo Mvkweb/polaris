@@ -14,6 +14,7 @@ const api = {
   getSystemDrives: () => ipcRenderer.invoke('system:getDrives'),
   mountDrive: (devicePath: string) => ipcRenderer.invoke('system:mountDrive', devicePath),
   getUserPlaces: () => ipcRenderer.invoke('system:getUserPlaces'),
+  getTrashPath: (fromPath?: string) => ipcRenderer.invoke('system:getTrashPath', fromPath),
   getStorageBreakdown: (targetPath?: string) =>
     ipcRenderer.invoke('system:getStorageBreakdown', targetPath),
   getWorkspaceRoot: () => ipcRenderer.invoke('fs:getWorkspaceRoot'),
@@ -26,6 +27,9 @@ const api = {
   renamePath: (oldPath: string, newPath: string) =>
     ipcRenderer.invoke('fs:rename', oldPath, newPath),
   trashPath: (itemPath: string) => ipcRenderer.invoke('fs:trash', itemPath),
+  deletePermanent: (itemPath: string) => ipcRenderer.invoke('fs:deletePermanent', itemPath),
+  restoreFromTrash: (itemPath: string) => ipcRenderer.invoke('fs:restoreFromTrash', itemPath),
+  emptyTrash: (trashPath?: string) => ipcRenderer.invoke('fs:emptyTrash', trashPath),
   copyPath: (srcPath: string, destPath: string, opts?: { dereference?: boolean }) =>
     ipcRenderer.invoke('fs:copy', srcPath, destPath, opts),
   createSymlink: (target: string, dir: string, opts?: { name?: string; absolute?: boolean }) =>
@@ -62,6 +66,14 @@ const api = {
   generateThemeFromImage: () => ipcRenderer.invoke('theme:generateFromImage'),
   exportImage: (sourcePath: string, stem: string, ext: string, bytes: Uint8Array) =>
     ipcRenderer.invoke('media:exportImage', sourcePath, stem, ext, bytes),
+  compressArchive: (
+    sources: string[],
+    destDir: string,
+    archiveName: string,
+    format: import('../shared/ipcModels').ArchiveFormat
+  ) => ipcRenderer.invoke('archive:compress', sources, destDir, archiveName, format),
+  extractArchive: (archivePath: string, destDir?: string) =>
+    ipcRenderer.invoke('archive:extract', archivePath, destDir),
   projectIcons: (dirs: string[]) => ipcRenderer.invoke('fs:projectIcons', dirs),
   uploadServices: () => ipcRenderer.invoke('upload:services'),
   startUpload: (paths: string[], serviceId: string) =>

@@ -1,12 +1,21 @@
 import { createSignal, onMount, Show, type Component } from 'solid-js'
-import { closeEditorTab, isFileDirty, refreshFileExplorer } from '../../store'
+import {
+  closeEditorTab,
+  isFileDirty,
+  refreshFileExplorer,
+  trashModalState,
+  closeTrashModal
+} from '../../store'
 import { DitherButton } from '../dithercn/dither-button'
 import { prefs } from '../settings/prefs'
 
 interface TrashDialogProps {
-  path: string
-  name: string
-  onDismiss: () => void
+  path?: string
+  name?: string
+  permanent?: boolean
+  paths?: string[]
+  onDismiss?: () => void
+  onClose?: () => void
 }
 
 export const TrashDialog: Component<TrashDialogProps> = (props) => {
@@ -14,25 +23,49 @@ export const TrashDialog: Component<TrashDialogProps> = (props) => {
   const [busy, setBusy] = createSignal(false)
   const [failed, setFailed] = createSignal(false)
 
+  const activePath = () => props.path ?? trashModalState().path
+  const activePaths = () => {
+    const list = props.paths ?? trashModalState().paths
+    return list && list.length > 0 ? list : [activePath()]
+  }
+  const isMultiple = () => activePaths().length > 1
+  const count = () => activePaths().length
+  const activeName = () => props.name ?? trashModalState().name
+  const isPermanent = () => props.permanent ?? trashModalState().permanent
+
   const dismiss = (): void => {
-    if (dialog.open) dialog.close()
-    props.onDismiss()
+    if (dialog?.open) dialog.close()
+    closeTrashModal()
+    ;(props.onDismiss ?? props.onClose)?.()
   }
 
-  const moveToTrash = async (): Promise<void> => {
-    if (busy()) return
+  const handleDelete = async (): Promise<void> => {
+    const targets = activePaths()
+    if (targets.length === 0 || busy()) return
     setBusy(true)
 
-    let moved = false
+    let allSuccess = true
     try {
-      moved = (await window.api?.trashPath(props.path)) === true
+      for (const p of targets) {
+        let success = false
+        if (isPermanent()) {
+          success = (await window.api?.deletePermanent(p)) === true
+        } else {
+          success = (await window.api?.trashPath(p)) === true
+        }
+        if (success) {
+          closeEditorTab(p)
+        } else {
+          allSuccess = false
+        }
+      }
     } catch (err) {
-      console.error('Trash request failed:', err)
+      console.error('Delete request failed:', err)
+      allSuccess = false
     }
 
     setBusy(false)
-    if (moved) {
-      closeEditorTab(props.path)
+    if (allSuccess) {
       refreshFileExplorer()
       dismiss()
       return
@@ -44,8 +77,13 @@ export const TrashDialog: Component<TrashDialogProps> = (props) => {
   }
 
   onMount(() => {
-    if (prefs.confirmTrash || isFileDirty(props.path)) dialog.showModal()
-    else void moveToTrash()
+    setBusy(false)
+    setFailed(false)
+    if (isPermanent() || prefs.confirmTrash || activePaths().some((p) => isFileDirty(p))) {
+      dialog.showModal()
+    } else {
+      void handleDelete()
+    }
   })
 
   return (
@@ -58,11 +96,17 @@ export const TrashDialog: Component<TrashDialogProps> = (props) => {
         e.preventDefault()
         if (!busy()) dismiss()
       }}
-      class="m-auto w-[380px] max-w-[calc(100%-2rem)] rounded-2xl border border-transparent bg-[#0d0b10] p-5 text-white shadow-2xl backdrop:bg-black/55 forced-colors:border-[CanvasText]"
+      onClick={(e) => {
+        if (e.target === dialog && !busy()) dismiss()
+      }}
+      class="m-auto w-[380px] max-w-[calc(100%-2rem)] overflow-hidden rounded-[18px] border border-transparent bg-[#070708] p-5 text-white shadow-[0_18px_44px_-18px_rgba(0,0,0,0.7)] backdrop:bg-black/55 forced-colors:border-[CanvasText]"
     >
       <h2 id="trash-dialog-title" class="text-[15px] font-semibold">
-        <Show when={failed()} fallback="Move to Trash?">
-          Couldn’t move to Trash
+        <Show
+          when={failed()}
+          fallback={isPermanent() ? 'Delete Permanently?' : 'Move to Trash?'}
+        >
+          {isPermanent() ? 'Couldn’t delete item' : 'Couldn’t move to Trash'}
         </Show>
       </h2>
       <p
@@ -73,18 +117,47 @@ export const TrashDialog: Component<TrashDialogProps> = (props) => {
         <Show
           when={failed()}
           fallback={
-            <>
-              <strong>{props.name}</strong> will be moved to Trash.
-            </>
+            isPermanent() ? (
+              isMultiple() ? (
+                <>
+                  <strong>{count()} items</strong> will be permanently deleted. This action cannot be
+                  undone.
+                </>
+              ) : (
+                <>
+                  <strong>{activeName()}</strong> will be permanently deleted. This action cannot be
+                  undone.
+                </>
+              )
+            ) : isMultiple() ? (
+              <>
+                <strong>{count()} items</strong> will be moved to Trash.
+              </>
+            ) : (
+              <>
+                <strong>{activeName()}</strong> will be moved to Trash.
+              </>
+            )
           }
         >
-          Polaris couldn’t move <strong>{props.name}</strong> to Trash. Check that the item still
-          exists and the drive supports Trash.
+          {isPermanent() ? (
+            <>
+              Polaris couldn’t permanently delete{' '}
+              {isMultiple() ? `${count()} items` : <strong>{activeName()}</strong>}. Check file
+              permissions.
+            </>
+          ) : (
+            <>
+              Polaris couldn’t move{' '}
+              {isMultiple() ? `${count()} items` : <strong>{activeName()}</strong>} to Trash. Check
+              that the item still exists and the drive supports Trash.
+            </>
+          )}
         </Show>
       </p>
-      <Show when={!failed() && isFileDirty(props.path)}>
+      <Show when={!failed() && activePaths().some((p) => isFileDirty(p))}>
         <p class="mt-2 text-[13px] text-white/75">
-          Moving this file to Trash will discard its unsaved edits.
+          Deleting this file will discard its unsaved edits.
         </p>
       </Show>
       <div class="mt-5 flex flex-wrap justify-end gap-2">
@@ -98,13 +171,15 @@ export const TrashDialog: Component<TrashDialogProps> = (props) => {
             color="red"
             disabled={busy()}
             loading={busy()}
-            onClick={moveToTrash}
+            onClick={handleDelete}
             size="sm"
           >
-            Move to Trash
+            {isPermanent() ? 'Delete' : 'Move to Trash'}
           </DitherButton>
         </Show>
       </div>
     </dialog>
   )
 }
+
+export default TrashDialog
