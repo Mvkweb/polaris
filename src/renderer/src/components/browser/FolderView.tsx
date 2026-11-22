@@ -572,7 +572,7 @@ export const FolderView: Component<FolderViewProps> = (props) => {
     <div class="flex-1 flex flex-col h-full w-full select-none overflow-hidden bg-transparent text-white">
       {/* ── Monodrive Central Icon Grid Canvas ── */}
       <main
-        class="flex-1 overflow-y-auto px-6 py-5 outline-none"
+        class={`flex-1 overflow-y-auto ${props.paneId ? 'px-4 py-3' : 'px-6 py-5'} outline-none`}
         tabIndex={0}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -755,7 +755,9 @@ export const FolderView: Component<FolderViewProps> = (props) => {
       />
 
       {/* ── Monodrive Clean Seamless Footer Status Bar ── */}
-      <footer class="shrink-0 h-7 px-6 bg-transparent flex items-center justify-between text-[11px] font-mono text-white/35 select-none">
+      <footer
+        class={`shrink-0 h-7 ${props.paneId ? 'px-3.5 border-t border-white/[0.03]' : 'px-6'} bg-transparent flex items-center justify-between text-[11px] font-mono text-white/35 select-none`}
+      >
         <div class="flex items-center gap-1.5">
           <Show when={selectedPaths().size > 0}>
             <span class="text-[var(--accent)]" style={{ 'font-variant-numeric': 'tabular-nums' }}>
