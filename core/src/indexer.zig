@@ -4,6 +4,7 @@ pub const FileEntry = struct {
     name: []const u8,
     path: []const u8,
     relative_path: []const u8,
+    is_directory: bool = false,
 };
 
 pub const WorkspaceIndex = struct {
@@ -113,6 +114,18 @@ pub const WorkspaceIndex = struct {
             }
 
             if (entry.kind == .directory) {
+                const full_path = try std.Io.Dir.path.join(alloc, &.{ self.root_path, rel_path });
+                const name = try alloc.dupe(u8, entry.name);
+
+                try self.entries.append(alloc, .{
+                    .name = name,
+                    .path = full_path,
+                    .relative_path = rel_path,
+                    .is_directory = true,
+                });
+
+                if (self.entries.items.len >= 150_000) return;
+
                 var sub_dir = dir.openDir(io, entry.name, .{ .iterate = true }) catch continue;
                 defer sub_dir.close(io);
                 try self.walk(io, sub_dir, rel_path);
@@ -124,6 +137,7 @@ pub const WorkspaceIndex = struct {
                     .name = name,
                     .path = full_path,
                     .relative_path = rel_path,
+                    .is_directory = false,
                 });
             }
         }

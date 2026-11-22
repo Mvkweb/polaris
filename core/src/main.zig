@@ -132,6 +132,7 @@ pub fn main(init: std.process.Init) !void {
                         .path = entry.path,
                         .relativePath = entry.relative_path,
                         .score = match.score,
+                        .isDirectory = entry.is_directory,
                     });
                 }
             }

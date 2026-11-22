@@ -3,6 +3,7 @@ import type { FsEntry } from '../../types'
 import { openBrowserFile } from '../../openWith'
 import {
   workspaceRoot,
+  navigateTo,
   selectedFilePath,
   setSelectedFilePath,
   openFileInEditor,
@@ -383,19 +384,24 @@ const FileTreeItem: Component<FileTreeItemProps> = (props) => {
   )
 }
 
-const handleFileSelect = (entry: { path: string; name: string }): void => {
-  openFileInEditor(entry.path, entry.name)
+const handleFileSelect = (entry: { path: string; name: string; isDirectory?: boolean }): void => {
+  if (entry.isDirectory) {
+    navigateTo(entry.path)
+  } else {
+    openFileInEditor(entry.path, entry.name)
+  }
 }
 
 interface SearchResultItem {
   name: string
   path: string
   relativePath: string
+  isDirectory?: boolean
 }
 
 interface SearchResultRowProps {
   res: SearchResultItem
-  onFileClick: (entry: { path: string; name: string }) => void
+  onFileClick: (entry: SearchResultItem) => void
 }
 
 const SearchResultRow: Component<SearchResultRowProps> = (props) => {
@@ -477,7 +483,7 @@ const SearchResultRow: Component<SearchResultRowProps> = (props) => {
         setSelectedFilePath(props.res.path)
         openContextMenu(e.clientX, e.clientY, {
           path: props.res.path,
-          isDirectory: false,
+          isDirectory: props.res.isDirectory ?? false,
           name: props.res.name
         })
       }}
@@ -488,7 +494,11 @@ const SearchResultRow: Component<SearchResultRowProps> = (props) => {
       }`}
       title={props.res.path}
     >
-      <FileIcon name={props.res.name} isDirectory={false} class="shrink-0" />
+      <FileIcon
+        name={props.res.name}
+        isDirectory={props.res.isDirectory ?? false}
+        class="shrink-0"
+      />
       <div class="relative flex-1 min-w-0 flex items-center h-full">
         <Show
           when={isRenaming()}
@@ -613,7 +623,7 @@ export const FileTree: Component<FileTreeProps> = (props) => {
     searchTimer = setTimeout(async () => {
       try {
         if (window.api?.searchFiles) {
-          const results = await window.api.searchFiles(q)
+          const results = await window.api.searchFiles(q, workspaceRoot())
           setSearchResults(results)
         } else {
           setSearchResults([])

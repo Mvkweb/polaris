@@ -318,7 +318,7 @@ export const QuickOpenModal: Component = () => {
 
     setIsSearching(true)
     try {
-      const res = await api.searchFiles(q)
+      const res = await api.searchFiles(q, workspaceRoot())
       if (id !== searchId) return
       batch(() => {
         setResults(res.slice(0, MAX_RESULTS))

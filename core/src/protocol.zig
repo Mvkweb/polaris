@@ -11,6 +11,7 @@ pub const SearchResult = struct {
     path: []const u8,
     relativePath: []const u8,
     score: i32,
+    isDirectory: bool = false,
 };
 
 pub const IndexResult = struct {

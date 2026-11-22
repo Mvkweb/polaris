@@ -72,6 +72,10 @@ export class EmberCoreClient {
     return null
   }
 
+  public getLastIndexedRoot(): string | null {
+    return this.lastIndexedRoot
+  }
+
   public isAvailable(): boolean {
     if (!this.binaryPath) {
       this.binaryPath = this.resolveBinaryPath()
