@@ -96,9 +96,18 @@ export interface UploadService {
 
 export type TaskStatus = 'queued' | 'running' | 'done' | 'error' | 'canceled'
 
+export type ArchiveFormat = 'zip' | 'tar.gz' | 'tar.xz' | 'tar.zst' | '7z'
+
+export interface ArchiveResult {
+  success: boolean
+  archivePath?: string
+  destDir?: string
+  error?: string
+}
+
 export interface TaskRecord {
   id: string
-  kind: 'upload'
+  kind: 'upload' | 'archive' | 'extract' | string
   /** producer-specific id, e.g. the upload service (used for Retry) */
   serviceId: string
   fileName: string

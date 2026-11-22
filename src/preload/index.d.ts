@@ -90,6 +90,7 @@ export interface CustomAPI {
     videos?: string
     trash?: string
   }>
+  getTrashPath: (fromPath?: string) => Promise<string>
   getStorageBreakdown: (targetPath?: string) => Promise<any>
   getWorkspaceRoot: () => Promise<string>
   getCoreStatus: () => Promise<{ available: boolean; running: boolean }>
@@ -99,6 +100,9 @@ export interface CustomAPI {
   createDirectory: (dirPath: string) => Promise<boolean>
   renamePath: (oldPath: string, newPath: string) => Promise<boolean>
   trashPath: (itemPath: string) => Promise<boolean>
+  deletePermanent: (itemPath: string) => Promise<boolean>
+  restoreFromTrash: (itemPath: string) => Promise<{ success: boolean; restoredPath?: string; error?: string }>
+  emptyTrash: (trashPath?: string) => Promise<boolean>
   /** Symlinks are copied as links (verbatim) unless `dereference` is set. */
   copyPath: (srcPath: string, destPath: string, opts?: { dereference?: boolean }) => Promise<boolean>
   /** Make a symlink to `target` inside `dir` (relative by default); resolves to its path. */
@@ -137,6 +141,16 @@ export interface CustomAPI {
   generateThemeFromImage: () => Promise<boolean>
   /** Write an image studio export as a new file beside the source; resolves to its path. */
   exportImage: (sourcePath: string, stem: string, ext: string, bytes: Uint8Array) => Promise<string>
+  compressArchive: (
+    sources: string[],
+    destDir: string,
+    archiveName: string,
+    format: import('../shared/ipcModels').ArchiveFormat
+  ) => Promise<import('../shared/ipcModels').ArchiveResult>
+  extractArchive: (
+    archivePath: string,
+    destDir?: string
+  ) => Promise<import('../shared/ipcModels').ArchiveResult>
   /** Project icon (favicon/logo) per folder, null when none */
   projectIcons: (dirs: string[]) => Promise<Record<string, string | null>>
   uploadServices: () => Promise<UploadService[]>
