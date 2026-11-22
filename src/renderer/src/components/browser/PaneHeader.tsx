@@ -1,4 +1,5 @@
-import { Component, For, createMemo, Show } from 'solid-js'
+import { Component, For, Show, createEffect, createMemo } from 'solid-js'
+import { fillStyle } from '../../lib/dither'
 
 export interface PaneHeaderProps {
   paneId: 'left' | 'right'
@@ -19,7 +20,7 @@ const ChevronLeftIcon: Component<{ class?: string }> = (props) => (
     viewBox="0 0 24 24"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
-    class={props.class ?? 'w-3.5 h-3.5'}
+    class={props.class ?? 'w-4 h-4'}
   >
     <path
       d="M15 6C15 6 9.00001 10.4189 9 12C8.99999 13.5812 15 18 15 18"
@@ -36,7 +37,7 @@ const ChevronRightIcon: Component<{ class?: string }> = (props) => (
     viewBox="0 0 24 24"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
-    class={props.class ?? 'w-3.5 h-3.5'}
+    class={props.class ?? 'w-4 h-4'}
   >
     <path
       d="M9.00005 6C9.00005 6 15 10.4189 15 12C15 13.5812 9 18 9 18"
@@ -66,46 +67,40 @@ const CloseIcon: Component<{ class?: string }> = (props) => (
 )
 
 export const PaneHeader: Component<PaneHeaderProps> = (props) => {
+  // Root pill first, then each segment; the last one is the active pill.
   const segments = createMemo(() => {
     const raw = props.path() || '/'
     const parts = raw.split(/[/\\]/).filter(Boolean)
-    if (parts.length === 0) {
-      return [{ name: '/', path: '/' }]
-    }
+    if (parts.length === 0) return [{ name: '/', path: '/', last: true }]
 
-    const isAbsolute = raw.startsWith('/')
-    const result: Array<{ name: string; path: string }> = []
-    let currentPath = isAbsolute ? '' : ''
+    const out: Array<{ name: string; path: string; last: boolean }> = [
+      { name: '/', path: '/', last: false }
+    ]
+    const absolute = raw.startsWith('/')
+    let current = ''
+    parts.forEach((part, i) => {
+      current += absolute ? `/${part}` : `${part}/`
+      out.push({ name: part, path: current, last: i === parts.length - 1 })
+    })
+    return out
+  })
 
-    for (const part of parts) {
-      currentPath += isAbsolute ? `/${part}` : `${part}/`
-      result.push({ name: part, path: currentPath })
-    }
-
-    return result
+  // Keep the active pill in view: deep paths scroll their crumbs to the end.
+  let crumbs: HTMLDivElement | undefined
+  createEffect(() => {
+    props.path()
+    crumbs?.scrollTo({ left: crumbs.scrollWidth })
   })
 
   return (
     <div
-      class="h-8 px-2.5 shrink-0 flex items-center justify-between border-b border-white/[0.06] bg-black/25 text-xs select-none backdrop-blur-md transition-colors"
-      classList={{
-        'border-b-[var(--accent,#4da3f5)]/30 bg-black/40': props.isActive()
-      }}
+      class="relative h-9 px-2 shrink-0 flex items-center justify-between gap-2 border-b border-white/[0.06] select-none"
+      classList={{ 'bg-white/[0.03]': props.isActive() }}
       onPointerDown={() => props.onActivate()}
+      aria-label={`${props.paneId} pane`}
     >
-      {/* Left: Nav Buttons & Breadcrumbs */}
-      <div class="flex items-center gap-1 min-w-0 overflow-x-auto no-scrollbar">
-        {/* Active Indicator dot */}
-        <div
-          class="w-1.5 h-1.5 rounded-full mr-1 shrink-0 transition-all duration-200"
-          classList={{
-            'bg-[var(--accent,#4da3f5)] shadow-[0_0_6px_var(--accent,#4da3f5)] scale-110': props.isActive(),
-            'bg-white/20': !props.isActive()
-          }}
-          title={props.isActive() ? 'Active Pane' : 'Click to activate'}
-        />
-
-        {/* Back / Forward */}
+      {/* Left: nav + breadcrumb pills (same pill language as the top bar) */}
+      <div class="flex items-center gap-0.5 min-w-0 flex-1">
         <button
           type="button"
           onClick={(e) => {
@@ -113,14 +108,14 @@ export const PaneHeader: Component<PaneHeaderProps> = (props) => {
             props.onNavigateBack()
           }}
           disabled={!props.canGoBack()}
-          class={`w-5 h-5 rounded flex items-center justify-center transition-colors ${
+          class={`w-6 h-6 shrink-0 rounded-full flex items-center justify-center transition-colors ${
             props.canGoBack()
-              ? 'text-white/70 hover:text-white hover:bg-white/10 cursor-pointer'
+              ? 'text-white/70 hover:text-white hover:bg-white/[0.08] cursor-pointer'
               : 'text-white/20 cursor-not-allowed'
           }`}
           title="Back"
         >
-          <ChevronLeftIcon />
+          <ChevronLeftIcon class="w-3.5 h-3.5" />
         </button>
 
         <button
@@ -130,75 +125,72 @@ export const PaneHeader: Component<PaneHeaderProps> = (props) => {
             props.onNavigateForward()
           }}
           disabled={!props.canGoForward()}
-          class={`w-5 h-5 rounded flex items-center justify-center transition-colors ${
+          class={`w-6 h-6 shrink-0 rounded-full flex items-center justify-center transition-colors ${
             props.canGoForward()
-              ? 'text-white/70 hover:text-white hover:bg-white/10 cursor-pointer'
+              ? 'text-white/70 hover:text-white hover:bg-white/[0.08] cursor-pointer'
               : 'text-white/20 cursor-not-allowed'
           }`}
           title="Forward"
         >
-          <ChevronRightIcon />
+          <ChevronRightIcon class="w-3.5 h-3.5" />
         </button>
 
-        {/* Breadcrumb Segments */}
-        <div class="flex items-center gap-0.5 ml-1 text-white/50 overflow-hidden text-ellipsis whitespace-nowrap">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              props.onNavigateTo('/')
-            }}
-            class="px-1 py-0.5 rounded text-[11px] text-white/40 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-            title="Root (/)"
-          >
-            /
-          </button>
-
+        <div
+          ref={crumbs}
+          class="flex items-center gap-1 min-w-0 flex-1 overflow-x-auto no-scrollbar ml-1"
+        >
           <For each={segments()}>
-            {(seg, idx) => {
-              const isLast = () => idx() === segments().length - 1
-              return (
-                <div class="flex items-center gap-0.5">
-                  <span class="text-white/20 text-[10px] select-none">&gt;</span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      props.onNavigateTo(seg.path)
-                    }}
-                    class={`px-1.5 py-0.5 rounded text-[11px] transition-colors cursor-pointer ${
-                      isLast()
-                        ? 'font-semibold text-white bg-white/[0.06]'
-                        : 'text-white/60 hover:text-white hover:bg-white/10'
-                    }`}
-                    title={seg.path}
-                  >
-                    {seg.name}
-                  </button>
-                </div>
-              )
-            }}
+            {(seg) => (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  props.onNavigateTo(seg.path)
+                }}
+                class={`shrink-0 px-2 py-0.5 rounded-full text-[12px] transition-colors cursor-pointer ${
+                  seg.last
+                    ? 'bg-white/[0.10] text-white font-medium shadow-sm'
+                    : 'text-white/45 hover:text-white hover:bg-white/[0.06]'
+                }`}
+                title={seg.path}
+              >
+                {seg.name}
+              </button>
+            )}
           </For>
         </div>
       </div>
 
-      {/* Right: Close button or Active Badge */}
-      <div class="flex items-center gap-2 shrink-0 ml-2">
-        <Show when={props.showClose}>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              props.onClose?.()
-            }}
-            class="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium text-white/50 hover:text-white hover:bg-white/10 transition-colors cursor-pointer group"
-            title="Close Split View (F3)"
-          >
-            <CloseIcon class="text-white/50 group-hover:text-white" />
-            <span>Close</span>
-          </button>
-        </Show>
-      </div>
+      {/* Right: close split view */}
+      <Show when={props.showClose}>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            props.onClose?.()
+          }}
+          class="w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
+          title="Close Split View (F3)"
+          aria-label="Close split view"
+        >
+          <CloseIcon />
+        </button>
+      </Show>
+
+      {/* Active pane: dithered accent underline riding the header hairline */}
+      <Show when={props.isActive()}>
+        <span
+          aria-hidden="true"
+          class="pointer-events-none absolute inset-x-0 -bottom-px h-[4px]"
+          style={fillStyle('gradient', {
+            color: '--accent',
+            edge: 'bottom',
+            length: 4,
+            to: 0,
+            cell: 1
+          })}
+        />
+      </Show>
     </div>
   )
 }

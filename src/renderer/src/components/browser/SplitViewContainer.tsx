@@ -84,10 +84,11 @@ export const SplitViewContainer: Component = () => {
         <div
           class="min-h-0 min-w-0 flex flex-col relative overflow-hidden transition-[box-shadow] duration-150"
           style={{
-            width: `${splitRatio() * 100}%`
-          }}
-          classList={{
-            'ring-1 ring-inset ring-[var(--accent,#4da3f5)]/30': activePane() === 'left'
+            width: `${splitRatio() * 100}%`,
+            'box-shadow':
+              activePane() === 'left'
+                ? 'inset 0 0 0 1px color-mix(in oklab, var(--accent, #4da3f5) 28%, transparent)'
+                : 'none'
           }}
           onPointerDown={() => setActivePane('left')}
         >
@@ -124,8 +125,8 @@ export const SplitViewContainer: Component = () => {
           <div
             class="w-[1px] h-full transition-colors duration-100"
             classList={{
-              'bg-white/10 group-hover:bg-[var(--accent,#4da3f5)]/60': !isDragging(),
-              'bg-[var(--accent,#4da3f5)] shadow-[0_0_8px_var(--accent,#4da3f5)]': isDragging()
+              'bg-white/[0.07] group-hover:bg-[var(--accent,#4da3f5)]/50': !isDragging(),
+              'bg-[var(--accent,#4da3f5)]': isDragging()
             }}
           />
         </div>
@@ -134,10 +135,11 @@ export const SplitViewContainer: Component = () => {
         <div
           class="min-h-0 min-w-0 flex flex-col relative overflow-hidden transition-[box-shadow] duration-150"
           style={{
-            width: `${(1 - splitRatio()) * 100}%`
-          }}
-          classList={{
-            'ring-1 ring-inset ring-[var(--accent,#4da3f5)]/30': activePane() === 'right'
+            width: `${(1 - splitRatio()) * 100}%`,
+            'box-shadow':
+              activePane() === 'right'
+                ? 'inset 0 0 0 1px color-mix(in oklab, var(--accent, #4da3f5) 28%, transparent)'
+                : 'none'
           }}
           onPointerDown={() => setActivePane('right')}
         >
