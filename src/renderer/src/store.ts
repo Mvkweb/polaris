@@ -609,6 +609,7 @@ export const renameOpenFile = (oldPath: string, newPath: string, newName: string
 // Context Menu & File Operations State
 export interface ContextMenuTarget {
   path?: string
+  paths?: string[]
   isDirectory?: boolean
   name?: string
   isDrive?: boolean
@@ -681,6 +682,38 @@ export const openFileActionModal = (
 
 export const closeFileActionModal = (): void => {
   setFileActionModalState((prev) => (prev.isOpen ? { ...prev, isOpen: false } : prev))
+}
+
+// ── Compress Modal State ─────────────────────────────────────────────────────
+export interface CompressModalState {
+  isOpen: boolean
+  sources: string[]
+  destDir: string
+  defaultName: string
+}
+
+export const [compressModalState, setCompressModalState] = createSignal<CompressModalState>({
+  isOpen: false,
+  sources: [],
+  destDir: '',
+  defaultName: ''
+})
+
+export const openCompressModal = (
+  sources: string[],
+  destDir: string,
+  defaultName = 'archive'
+): void => {
+  setCompressModalState({
+    isOpen: true,
+    sources,
+    destDir,
+    defaultName
+  })
+}
+
+export const closeCompressModal = (): void => {
+  setCompressModalState((prev) => (prev.isOpen ? { ...prev, isOpen: false } : prev))
 }
 
 // Inspector Drawer State
@@ -788,6 +821,56 @@ export const openStorageMapModal = (
 
 export const closeStorageMapModal = (): void => {
   setStorageMapModalState((prev) => (prev.isOpen ? { ...prev, isOpen: false } : prev))
+}
+
+// ── Trash Modal State ────────────────────────────────────────────────────────
+export interface TrashModalState {
+  isOpen: boolean
+  path: string
+  name: string
+  paths?: string[]
+  permanent?: boolean
+}
+
+export const [trashModalState, setTrashModalState] = createSignal<TrashModalState>({
+  isOpen: false,
+  path: '',
+  name: '',
+  paths: [],
+  permanent: false
+})
+
+export const openTrashModal = (
+  path: string,
+  name: string,
+  permanent = false,
+  paths?: string[]
+): void => {
+  setTrashModalState({
+    isOpen: true,
+    path,
+    name,
+    paths: paths && paths.length > 0 ? paths : [path],
+    permanent
+  })
+}
+
+export const closeTrashModal = (): void => {
+  setTrashModalState((prev) => (prev.isOpen ? { ...prev, isOpen: false } : prev))
+}
+
+export const isTrashPath = (p?: string): boolean => {
+  if (!p) return false
+  const norm = p.replace(/\\/g, '/')
+  return (
+    norm.includes('/.local/share/Trash') ||
+    norm.includes('/.Trash') ||
+    norm.includes('/.Trash-') ||
+    norm.endsWith('/Trash') ||
+    norm.endsWith('/Trash/files') ||
+    norm === 'trash' ||
+    norm.startsWith('trash')
+  )
 }
 
 export const [explorerRefreshTrigger, setExplorerRefreshTrigger] = createSignal(0)

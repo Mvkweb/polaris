@@ -21,6 +21,7 @@ import { registerThemeIpc } from './theme'
 import { registerMatugenSetupIpc } from './matugenSetup'
 import { registerUpdateIpc } from './updates'
 import { registerUploadIpc } from './uploads'
+import { registerArchiveIpc } from './archive'
 
 Menu.setApplicationMenu(null)
 
@@ -132,6 +133,7 @@ app.whenReady().then(() => {
   registerSearchIpc()
   registerGitIpc()
   registerDrivesIpc()
+  registerArchiveIpc()
 
   createWindow()
 

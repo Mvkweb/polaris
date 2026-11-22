@@ -1,4 +1,6 @@
 export type {
+  ArchiveFormat,
+  ArchiveResult,
   ExternalEditor,
   GitCommit,
   GitStatus,

@@ -28,7 +28,9 @@ import {
   gridLabelSize,
   showThumbnails,
   openContextMenu,
-  openPropertiesModal
+  openPropertiesModal,
+  openTrashModal,
+  isTrashPath
 } from '../../store'
 import { openBrowserFile } from '../../openWith'
 import { MonodriveFolderIcon, MonodriveFileIcon, ImageThumbnail } from './MonodriveIcons'
@@ -509,6 +511,18 @@ export const FolderView: Component = () => {
     } else if (e.key === 'Backspace') {
       e.preventDefault()
       navigateBack()
+    } else if (e.key === 'Delete') {
+      e.preventDefault()
+      const selSet = selectedPaths()
+      const primarySel = selectedGridEntry()
+      const pathsToDelete =
+        selSet.size > 0 ? Array.from(selSet) : primarySel ? [primarySel] : []
+      if (pathsToDelete.length > 0) {
+        const firstItem = items.find((i) => i.path === pathsToDelete[0])
+        const firstName = firstItem?.name || pathsToDelete[0].split('/').pop() || 'item'
+        const inTrashFolder = isTrashPath(currentPath()) || isTrashPath(pathsToDelete[0])
+        openTrashModal(pathsToDelete[0], firstName, e.shiftKey || inTrashFolder, pathsToDelete)
+      }
     }
   }
 
@@ -625,9 +639,14 @@ export const FolderView: Component = () => {
                       e.preventDefault()
                       e.stopPropagation()
                       if (!selectedPaths().has(entry.path)) selectOnly(entry.path)
+                      const currentSet = selectedPaths()
+                      const paths = currentSet.has(entry.path) && currentSet.size > 1
+                        ? Array.from(currentSet)
+                        : [entry.path]
                       openContextMenu(e.clientX, e.clientY, {
                         name: entry.name,
                         path: entry.path,
+                        paths,
                         isDirectory: entry.isDirectory,
                         isSymlink: entry.isSymlink,
                         linkTarget: entry.linkTarget,

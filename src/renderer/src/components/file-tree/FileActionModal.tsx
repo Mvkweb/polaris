@@ -143,11 +143,10 @@ export const FileActionModal: Component = () => {
           reach={240}
           strength={0.4}
           color="ink"
-          rim
           role="dialog"
           aria-modal="true"
           aria-label={title()}
-          class="confirm-card relative w-[380px] max-w-[92vw] overflow-hidden rounded-2xl bg-[#0d0b10] p-5 shadow-[0_32px_80px_rgba(0,0,0,0.85)] border border-white/[0.08] flex flex-col outline-none"
+          class="confirm-card relative w-[380px] max-w-[92vw] overflow-hidden rounded-2xl bg-[#070708] p-5 shadow-[0_18px_44px_-18px_rgba(0,0,0,0.7)] border border-transparent flex flex-col outline-none"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}

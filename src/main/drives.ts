@@ -318,10 +318,58 @@ export function registerDrivesIpc(): void {
         result.trash = linuxTrashFiles
       } else if (existsSync(linuxTrashRoot)) {
         result.trash = linuxTrashRoot
+      } else {
+        result.trash = linuxTrashFiles
       }
     }
 
     return result
+  })
+
+  ipcMain.handle('system:getTrashPath', async (_, fromPath?: string) => {
+    const home = homedir()
+    const uid = process.getuid ? process.getuid() : 1000
+
+    if (process.platform === 'darwin') {
+      const macTrash = join(home, '.Trash')
+      return existsSync(macTrash) ? macTrash : home
+    }
+
+    if (process.platform === 'win32') {
+      return home
+    }
+
+    // On Linux: Check if fromPath resides on a secondary mount with its own .Trash-$UID
+    if (fromPath && typeof fromPath === 'string') {
+      try {
+        const { readFileSync } = await import('fs')
+        const mountsContent = readFileSync('/proc/mounts', 'utf-8')
+        const mountPoints = mountsContent
+          .split('\n')
+          .map((line) => line.split(' ')[1])
+          .filter(Boolean)
+          .sort((a, b) => b.length - a.length)
+
+        for (const mp of mountPoints) {
+          if (mp !== '/' && mp !== '/home' && (fromPath === mp || fromPath.startsWith(mp + '/'))) {
+            const driveTrashFiles = join(mp, `.Trash-${uid}`, 'files')
+            const driveTrashRoot = join(mp, `.Trash-${uid}`)
+            const driveSharedTrash = join(mp, '.Trash', String(uid), 'files')
+            if (existsSync(driveTrashFiles)) return driveTrashFiles
+            if (existsSync(driveTrashRoot)) return driveTrashRoot
+            if (existsSync(driveSharedTrash)) return driveSharedTrash
+          }
+        }
+      } catch {}
+    }
+
+    // Default to user's home trash
+    const dataHome = process.env.XDG_DATA_HOME || join(home, '.local', 'share')
+    const linuxTrashFiles = join(dataHome, 'Trash', 'files')
+    const linuxTrashRoot = join(dataHome, 'Trash')
+    if (existsSync(linuxTrashFiles)) return linuxTrashFiles
+    if (existsSync(linuxTrashRoot)) return linuxTrashRoot
+    return linuxTrashFiles
   })
 
   ipcMain.handle('system:getStorageBreakdown', async (_, targetPath: string) => {

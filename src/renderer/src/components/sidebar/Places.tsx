@@ -42,6 +42,7 @@ export function createSidebarPlaces() {
             list.push({ id: 'pictures', name: 'Pictures', path: u.pictures, icon: I.pictures })
           if (u.videos) list.push({ id: 'videos', name: 'Videos', path: u.videos, icon: I.videos })
           if (u.trash) list.push({ id: 'trash', name: 'Trash', path: u.trash, icon: I.trash })
+          else list.push({ id: 'trash', name: 'Trash', path: 'trash', icon: I.trash })
 
           setPlaces(list)
         }
@@ -51,7 +52,19 @@ export function createSidebarPlaces() {
     }
   }
 
-  const handleSelectPlace = (place: Place): void => {
+  const handleSelectPlace = async (place: Place): Promise<void> => {
+    if (place.id === 'trash') {
+      setActivePlaceId('trash')
+      let trashDest = place.path
+      try {
+        if (window.api?.getTrashPath) {
+          const resolved = await window.api.getTrashPath(currentPath())
+          if (resolved) trashDest = resolved
+        }
+      } catch {}
+      if (trashDest && trashDest !== 'trash') navigateTo(trashDest)
+      return
+    }
     if (!place.path) return
     setActivePlaceId(place.id)
     navigateTo(place.path)
