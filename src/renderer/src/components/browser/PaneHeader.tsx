@@ -31,7 +31,7 @@ export const PaneHeader: Component<PaneHeaderProps> = (props) => {
 
   return (
     <div
-      class="h-8 px-3 shrink-0 flex items-center justify-between border-b border-white/[0.04] bg-white/[0.015] text-xs select-none transition-colors"
+      class="h-8 px-5 shrink-0 flex items-center justify-between text-xs select-none transition-colors"
       onPointerDown={() => props.onActivate()}
       aria-label={`${props.paneId} pane`}
     >
