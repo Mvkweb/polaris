@@ -33,6 +33,49 @@ function isTarArchive(filePath: string): boolean {
   return false
 }
 
+// Cache binary availability to avoid repeated process spawns
+let cached7zCmd: string | null = null
+let hasChecked7z = false
+let cachedZipCmd: boolean | null = null
+let cachedUnzipCmd: boolean | null = null
+
+function checkBinary(bin: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    try {
+      const p = spawn(bin, ['--help'], { windowsHide: true })
+      p.on('error', () => resolve(false))
+      p.on('close', () => resolve(true))
+    } catch {
+      resolve(false)
+    }
+  })
+}
+
+async function resolve7z(): Promise<string | null> {
+  if (hasChecked7z) return cached7zCmd
+  for (const bin of ['7z', '7za', '7zz']) {
+    if (await checkBinary(bin)) {
+      cached7zCmd = bin
+      hasChecked7z = true
+      return bin
+    }
+  }
+  hasChecked7z = true
+  return null
+}
+
+async function hasZip(): Promise<boolean> {
+  if (cachedZipCmd !== null) return cachedZipCmd
+  cachedZipCmd = await checkBinary('zip')
+  return cachedZipCmd
+}
+
+async function hasUnzip(): Promise<boolean> {
+  if (cachedUnzipCmd !== null) return cachedUnzipCmd
+  cachedUnzipCmd = await checkBinary('unzip')
+  return cachedUnzipCmd
+}
+
 function runProcess(
   cmd: string,
   args: string[],
@@ -137,12 +180,28 @@ export function registerArchiveIpc(): void {
         cmd = 'tar'
         args = ['--zstd', '-cf', archivePath, ...items]
       } else if (format === '7z') {
-        cmd = '7z'
+        const p7z = await resolve7z()
+        if (!p7z) {
+          const errMsg = '7-zip (7z, 7za, or 7zz) is required for .7z archives. Please install 7-zip or p7zip.'
+          updateTask(taskId, { status: 'error', error: errMsg, finishedAt: Date.now() })
+          return { success: false, error: errMsg }
+        }
+        cmd = p7z
         args = ['a', '-y', archivePath, ...items]
       } else {
-        // default zip
-        cmd = '7z'
-        args = ['a', '-tzip', '-y', archivePath, ...items]
+        // format === 'zip'
+        const p7z = await resolve7z()
+        if (p7z) {
+          cmd = p7z
+          args = ['a', '-tzip', '-y', archivePath, ...items]
+        } else if (await hasZip()) {
+          cmd = 'zip'
+          args = ['-r', '-q', archivePath, ...items]
+        } else {
+          const errMsg = 'No zip compressor found. Please install 7-zip (7z/7za/7zz) or zip.'
+          updateTask(taskId, { status: 'error', error: errMsg, finishedAt: Date.now() })
+          return { success: false, error: errMsg }
+        }
       }
 
       const result = await runProcess(cmd, args, workingDir, taskId)
@@ -190,15 +249,25 @@ export function registerArchiveIpc(): void {
       })
       updateTask(taskId, { status: 'running', startedAt: Date.now() })
 
-      let cmd = '7z'
+      let cmd = 'tar'
       let args: string[] = []
 
       if (isTarArchive(archivePath)) {
         cmd = 'tar'
         args = ['-xf', archivePath, '-C', outDir]
       } else {
-        cmd = '7z'
-        args = ['x', '-y', `-o${outDir}`, archivePath]
+        const p7z = await resolve7z()
+        if (p7z) {
+          cmd = p7z
+          args = ['x', '-y', `-o${outDir}`, archivePath]
+        } else if (archivePath.toLowerCase().endsWith('.zip') && (await hasUnzip())) {
+          cmd = 'unzip'
+          args = ['-q', '-o', '-d', outDir, archivePath]
+        } else {
+          const errMsg = 'No extraction tool found. Please install 7-zip (7z/7za/7zz) or unzip.'
+          updateTask(taskId, { status: 'error', error: errMsg, finishedAt: Date.now() })
+          return { success: false, error: errMsg }
+        }
       }
 
       const result = await runProcess(cmd, args, outDir, taskId)
