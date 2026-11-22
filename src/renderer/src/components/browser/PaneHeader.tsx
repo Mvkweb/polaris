@@ -31,7 +31,7 @@ export const PaneHeader: Component<PaneHeaderProps> = (props) => {
 
   return (
     <div
-      class="h-8 px-3 shrink-0 flex items-center justify-between border-b border-white/[0.04] bg-white/[0.015] text-xs select-none transition-colors"
+      class="h-8 px-3 shrink-0 flex items-center justify-between border-b border-white/[0.06] bg-white/[0.015] text-xs select-none transition-colors"
       onPointerDown={() => props.onActivate()}
       aria-label={`${props.paneId} pane`}
     >
@@ -57,8 +57,12 @@ export const PaneHeader: Component<PaneHeaderProps> = (props) => {
                   }}
                   class={`px-1 py-0.5 rounded transition-colors cursor-pointer ${
                     seg.isLast
-                      ? 'font-medium text-white/90 hover:text-white'
-                      : 'text-white/40 hover:text-white/70 hover:bg-white/[0.04]'
+                      ? props.isActive()
+                        ? 'font-medium text-white'
+                        : 'font-medium text-white/70'
+                      : props.isActive()
+                        ? 'text-white/45 hover:text-white/80 hover:bg-white/[0.04]'
+                        : 'text-white/30 hover:text-white/60 hover:bg-white/[0.04]'
                   }`}
                   title={seg.path}
                 >
