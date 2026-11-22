@@ -89,16 +89,16 @@ export const SplitViewContainer: Component = () => {
         </div>
       }
     >
-      <div class="flex-1 min-h-0 min-w-0 flex flex-row relative select-none overflow-hidden">
-        {/* Left Pane */}
+      <div class="flex-1 min-h-0 min-w-0 flex flex-row p-1.5 gap-1.5 relative select-none overflow-hidden">
+        {/* Left Pane Card */}
         <div
-          class="min-h-0 min-w-0 flex-1 flex flex-col relative overflow-hidden transition-colors duration-150"
+          class="min-h-0 min-w-0 flex-1 flex flex-col relative overflow-hidden rounded-[14px] border transition-colors duration-150"
           style={{
             flex: `${splitRatio()}`
           }}
           classList={{
-            'bg-black/25': activePane() === 'left',
-            'bg-transparent': activePane() !== 'left'
+            'bg-black/35 border-white/[0.08]': activePane() === 'left',
+            'bg-white/[0.015] border-white/[0.03]': activePane() !== 'left'
           }}
           onPointerDown={() => setActivePane('left')}
         >
@@ -122,33 +122,31 @@ export const SplitViewContainer: Component = () => {
           />
         </div>
 
-        {/* Resizable 1px Divider */}
+        {/* Resizable Divider Handle */}
         <div
-          class="shrink-0 w-1 relative z-20 flex items-center justify-center cursor-col-resize select-none group"
+          class="shrink-0 w-2 relative z-20 flex items-center justify-center cursor-col-resize select-none group -mx-0.5"
           onPointerDown={startDividerDrag}
           title="Drag to resize panes"
         >
-          {/* Expanded hit-area for smooth dragging */}
           <div class="absolute inset-y-0 -left-1.5 -right-1.5 cursor-col-resize" />
-          {/* Crisp 1px vertical line */}
           <div
-            class="w-px h-full transition-colors duration-150"
+            class="w-1 h-8 rounded-full transition-colors duration-150"
             classList={{
-              'bg-white/[0.08] group-hover:bg-[var(--accent,#4da3f5)]/60': !isDragging(),
-              'bg-[var(--accent,#4da3f5)]': isDragging()
+              'bg-white/15 group-hover:bg-[var(--accent,#4da3f5)]/60': !isDragging(),
+              'bg-[var(--accent,#4da3f5)] shadow-[0_0_8px_var(--accent,#4da3f5)]': isDragging()
             }}
           />
         </div>
 
-        {/* Right Pane */}
+        {/* Right Pane Card */}
         <div
-          class="min-h-0 min-w-0 flex-1 flex flex-col relative overflow-hidden transition-colors duration-150"
+          class="min-h-0 min-w-0 flex-1 flex flex-col relative overflow-hidden rounded-[14px] border transition-colors duration-150"
           style={{
             flex: `${1 - splitRatio()}`
           }}
           classList={{
-            'bg-black/25': activePane() === 'right',
-            'bg-transparent': activePane() !== 'right'
+            'bg-black/35 border-white/[0.08]': activePane() === 'right',
+            'bg-white/[0.015] border-white/[0.03]': activePane() !== 'right'
           }}
           onPointerDown={() => setActivePane('right')}
         >

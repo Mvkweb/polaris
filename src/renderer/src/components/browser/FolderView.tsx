@@ -756,7 +756,7 @@ export const FolderView: Component<FolderViewProps> = (props) => {
 
       {/* ── Monodrive Clean Seamless Footer Status Bar ── */}
       <footer
-        class={`shrink-0 h-7 ${props.paneId ? 'px-3.5 border-t border-white/[0.03]' : 'px-6'} bg-transparent flex items-center justify-between text-[11px] font-mono text-white/35 select-none`}
+        class={`shrink-0 h-7 ${props.paneId ? 'px-4' : 'px-6'} bg-transparent flex items-center justify-between text-[11px] font-mono text-white/35 select-none`}
       >
         <div class="flex items-center gap-1.5">
           <Show when={selectedPaths().size > 0}>
@@ -772,9 +772,11 @@ export const FolderView: Component<FolderViewProps> = (props) => {
           </Show>
         </div>
 
-        <div class="truncate max-w-[320px] text-white/25" title={currentPath()}>
-          {currentPath()}
-        </div>
+        <Show when={!props.paneId}>
+          <div class="truncate max-w-[320px] text-white/25" title={currentPath()}>
+            {currentPath()}
+          </div>
+        </Show>
       </footer>
     </div>
   )
