@@ -24,6 +24,160 @@ export const [browserTabs, setBrowserTabs] = createSignal<BrowserTab[]>([
 ])
 export const [activeTabId, setActiveTabId] = createSignal<string>('tab-default')
 
+// ── Split View State ──────────────────────────────────────────────────────
+export type PaneId = 'left' | 'right'
+
+export const [isSplitViewOpen, setIsSplitViewOpen] = createSignal(false)
+export const [activePane, setActivePaneSignal] = createSignal<PaneId>('left')
+
+// Right pane signals
+export const [rightWorkspaceRoot, setRightWorkspaceRoot] = createSignal<string>('')
+export const [rightNavHistory, setRightNavHistory] = createSignal<string[]>([])
+export const [rightHistoryIndex, setRightHistoryIndex] = createSignal<number>(-1)
+export const [rightSelectedGridEntry, setRightSelectedGridEntry] = createSignal<string | null>(null)
+export const [rightRevealRequest, setRightRevealRequest] = createSignal<string | null>(null)
+export const [rightBrowserSearchFilter, setRightBrowserSearchFilter] = createSignal<string>('')
+
+// Left pane saved selection & filter when inactive
+export const [leftSelectedGridEntry, setLeftSelectedGridEntry] = createSignal<string | null>(null)
+export const [leftBrowserSearchFilter, setLeftBrowserSearchFilter] = createSignal<string>('')
+
+const readSavedSplit = (): number => {
+  try {
+    const v = localStorage.getItem('polaris.splitView.ratio')
+    if (v) {
+      const n = parseFloat(v)
+      if (!Number.isNaN(n) && n >= 0.2 && n <= 0.8) return n
+    }
+  } catch {}
+  return 0.5
+}
+
+export const [splitRatio, setSplitRatio] = createSignal(readSavedSplit())
+export const persistSplitRatio = (ratio: number): void => {
+  const clamped = Math.max(0.2, Math.min(0.8, ratio))
+  setSplitRatio(clamped)
+  try {
+    localStorage.setItem('polaris.splitView.ratio', String(clamped))
+  } catch {}
+}
+
+export const setActivePane = (pane: PaneId): void => {
+  if (activePane() === pane) return
+  batch(() => {
+    setActivePaneSignal(pane)
+    if (pane === 'right') {
+      const rRoot = rightWorkspaceRoot()
+      if (rRoot) setWorkspaceRoot(rRoot)
+      setSelectedGridEntry(rightSelectedGridEntry())
+      setBrowserSearchFilter(rightBrowserSearchFilter())
+    } else {
+      const lHistory = navHistory()
+      const lIdx = historyIndex()
+      const lRoot = lIdx >= 0 && lIdx < lHistory.length ? lHistory[lIdx] : workspaceRoot()
+      if (lRoot) setWorkspaceRoot(lRoot)
+      setSelectedGridEntry(leftSelectedGridEntry())
+      setBrowserSearchFilter(leftBrowserSearchFilter())
+    }
+  })
+}
+
+export const navigateToRight = (newPath: string): void => {
+  if (!newPath) return
+  revealFiles()
+  batch(() => {
+    const history = rightNavHistory()
+    const idx = rightHistoryIndex()
+    if (idx >= 0 && history[idx] === newPath) return
+    const updatedHistory = [...history.slice(0, idx + 1), newPath]
+    setRightNavHistory(updatedHistory)
+    setRightHistoryIndex(updatedHistory.length - 1)
+    setRightWorkspaceRoot(newPath)
+    setRightSelectedGridEntry(null)
+    if (activePane() === 'right') {
+      setWorkspaceRoot(newPath)
+      setSelectedGridEntry(null)
+    }
+  })
+}
+
+export const navigateBackRight = (): void => {
+  const idx = rightHistoryIndex()
+  if (idx > 0) {
+    const prevPath = rightNavHistory()[idx - 1]
+    revealFiles()
+    batch(() => {
+      setRightHistoryIndex(idx - 1)
+      setRightWorkspaceRoot(prevPath)
+      setRightSelectedGridEntry(null)
+      if (activePane() === 'right') {
+        setWorkspaceRoot(prevPath)
+        setSelectedGridEntry(null)
+      }
+    })
+  }
+}
+
+export const navigateForwardRight = (): void => {
+  const history = rightNavHistory()
+  const idx = rightHistoryIndex()
+  if (idx >= 0 && idx < history.length - 1) {
+    const nextPath = history[idx + 1]
+    revealFiles()
+    batch(() => {
+      setRightHistoryIndex(idx + 1)
+      setRightWorkspaceRoot(nextPath)
+      setRightSelectedGridEntry(null)
+      if (activePane() === 'right') {
+        setWorkspaceRoot(nextPath)
+        setSelectedGridEntry(null)
+      }
+    })
+  }
+}
+
+export const canNavigateBackRight = (): boolean => rightHistoryIndex() > 0
+export const canNavigateForwardRight = (): boolean => {
+  const history = rightNavHistory()
+  const idx = rightHistoryIndex()
+  return idx >= 0 && idx < history.length - 1
+}
+
+export const openSplitView = (): void => {
+  if (isSplitViewOpen()) return
+  const currentRoot = workspaceRoot() || '.'
+  revealFiles()
+  batch(() => {
+    setRightWorkspaceRoot(currentRoot)
+    setRightNavHistory([currentRoot])
+    setRightHistoryIndex(0)
+    setRightSelectedGridEntry(null)
+    setRightBrowserSearchFilter('')
+    setIsSplitViewOpen(true)
+    setActivePaneSignal('left')
+  })
+}
+
+export const closeSplitView = (): void => {
+  if (!isSplitViewOpen()) return
+  batch(() => {
+    setIsSplitViewOpen(false)
+    setActivePaneSignal('left')
+    const lHistory = navHistory()
+    const lIdx = historyIndex()
+    const lRoot = lIdx >= 0 && lIdx < lHistory.length ? lHistory[lIdx] : workspaceRoot()
+    if (lRoot) setWorkspaceRoot(lRoot)
+  })
+}
+
+export const toggleSplitView = (): void => {
+  if (isSplitViewOpen()) {
+    closeSplitView()
+  } else {
+    openSplitView()
+  }
+}
+
 export const openTabInBackground = (path: string): void => {
   const name = path.split(/[/\\]/).filter(Boolean).pop() || '/'
   setBrowserTabs((prev) => [...prev, { id: `tab-${Date.now()}`, path, name }])
@@ -77,6 +231,10 @@ export const revealFiles = (): void => {
 
 export const navigateTo = (newPath: string): void => {
   if (!newPath) return
+  if (isSplitViewOpen() && activePane() === 'right') {
+    navigateToRight(newPath)
+    return
+  }
   const current = workspaceRoot()
   revealFiles()
 
@@ -108,6 +266,10 @@ const syncActiveBrowserTab = (path: string): void => {
 }
 
 export const navigateBack = (): void => {
+  if (isSplitViewOpen() && activePane() === 'right') {
+    navigateBackRight()
+    return
+  }
   const idx = historyIndex()
   if (idx > 0) {
     const prevPath = navHistory()[idx - 1]
@@ -122,6 +284,10 @@ export const navigateBack = (): void => {
 }
 
 export const navigateForward = (): void => {
+  if (isSplitViewOpen() && activePane() === 'right') {
+    navigateForwardRight()
+    return
+  }
   const history = navHistory()
   const idx = historyIndex()
   if (idx < history.length - 1) {
@@ -136,8 +302,17 @@ export const navigateForward = (): void => {
   }
 }
 
-export const canNavigateBack = (): boolean => historyIndex() > 0
+export const canNavigateBack = (): boolean => {
+  if (isSplitViewOpen() && activePane() === 'right') {
+    return canNavigateBackRight()
+  }
+  return historyIndex() > 0
+}
+
 export const canNavigateForward = (): boolean => {
+  if (isSplitViewOpen() && activePane() === 'right') {
+    return canNavigateForwardRight()
+  }
   const history = navHistory()
   const idx = historyIndex()
   return idx >= 0 && idx < history.length - 1
