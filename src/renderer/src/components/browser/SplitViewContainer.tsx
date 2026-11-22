@@ -9,11 +9,9 @@ import {
   setSplitRatio,
   persistSplitRatio,
   closeSplitView,
-  workspaceRoot,
-  navigateTo,
-  navigateBack,
-  navHistory,
-  historyIndex,
+  leftWorkspaceRoot,
+  navigateToLeft,
+  navigateBackLeft,
   rightWorkspaceRoot,
   navigateToRight,
   navigateBackRight,
@@ -72,7 +70,6 @@ export const SplitViewContainer: Component = () => {
       window.removeEventListener('pointercancel', onUp)
       document.body.style.userSelect = ''
       document.body.style.cursor = ''
-      // Only write to localStorage ONCE on release:
       persistSplitRatio(latestRatio)
     }
 
@@ -81,13 +78,6 @@ export const SplitViewContainer: Component = () => {
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
     window.addEventListener('pointercancel', onUp)
-  }
-
-  const leftCurrentPath = () => {
-    if (activePane() === 'left') return workspaceRoot() || '.'
-    const history = navHistory()
-    const idx = historyIndex()
-    return (idx >= 0 && idx < history.length ? history[idx] : workspaceRoot()) || '.'
   }
 
   return (
@@ -116,16 +106,16 @@ export const SplitViewContainer: Component = () => {
         >
           <PaneHeader
             paneId="left"
-            path={leftCurrentPath}
+            path={leftWorkspaceRoot}
             isActive={() => activePane() === 'left'}
-            onNavigateTo={(p) => navigateTo(p)}
+            onNavigateTo={(p) => navigateToLeft(p)}
             onActivate={() => setActivePane('left')}
           />
           <FolderView
             paneId="left"
-            root={leftCurrentPath}
-            navigateTo={(p) => navigateTo(p)}
-            navigateBack={navigateBack}
+            root={leftWorkspaceRoot}
+            navigateTo={(p) => navigateToLeft(p)}
+            navigateBack={navigateBackLeft}
             selectedEntry={leftSelectedGridEntry}
             setSelectedEntry={setLeftSelectedGridEntry}
             searchFilter={leftBrowserSearchFilter}
@@ -165,7 +155,7 @@ export const SplitViewContainer: Component = () => {
         >
           <PaneHeader
             paneId="right"
-            path={() => rightWorkspaceRoot() || '.'}
+            path={rightWorkspaceRoot}
             isActive={() => activePane() === 'right'}
             onNavigateTo={(p) => navigateToRight(p)}
             onActivate={() => setActivePane('right')}
