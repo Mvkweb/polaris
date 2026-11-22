@@ -122,7 +122,7 @@ export interface CustomAPI {
   getFileProperties: (fullPath: string) => Promise<FileProperties>
   readImage: (filePath: string) => Promise<ImageFileData>
   indexWorkspace: (rootPath?: string) => Promise<{ indexed_count: number; elapsed_ms: number }>
-  searchFiles: (query: string) => Promise<SearchResult[]>
+  searchFiles: (query: string, rootPath?: string) => Promise<SearchResult[]>
   searchText: (query: string, options?: TextSearchOptions) => Promise<TextSearchResult>
   gitGetLog: (repoPath?: string, maxCount?: number) => Promise<GitCommit[]>
   gitGetStatus: (repoPath?: string) => Promise<GitStatus>

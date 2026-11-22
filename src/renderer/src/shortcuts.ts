@@ -141,6 +141,13 @@ export const DEFAULT_SHORTCUTS: ShortcutItem[] = [
 
   // Files
   {
+    id: 'toggle_split_view',
+    title: 'Toggle Split View',
+    description: 'Split the file browser into two side-by-side panes (Dolphin F3)',
+    group: 'Files',
+    keys: ['F3']
+  },
+  {
     id: 'sort_name',
     title: 'Sort by Name',
     description: 'Press again to reverse (A–Z / Z–A)',

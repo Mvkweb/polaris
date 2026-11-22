@@ -47,21 +47,37 @@ export function registerSearchIpc(): void {
     }
   )
 
-  ipcMain.handle('fs:searchFiles', async (_, query: string) => {
+  ipcMain.handle('fs:searchFiles', async (_, query: string, rootPath?: string) => {
     if (!query || !query.trim()) return []
     const trimmed = query.trim()
+    const targetDir = resolve(rootPath || startDir)
 
     if (emberCore.isAvailable()) {
       try {
+        if (emberCore.getLastIndexedRoot() !== targetDir) {
+          const gitFiles = await getGitFiles(targetDir)
+          await emberCore.index(targetDir, gitFiles ?? undefined)
+        }
         return await emberCore.search(trimmed, 60)
       } catch (err) {
         console.warn('[EmberCore] Sidecar search failed, using fallback:', err)
       }
     }
 
-    const targetDir = startDir
-    const results: Array<{ name: string; path: string; relativePath: string }> = []
-    const IGNORED = new Set(['.git', 'node_modules', 'out', 'dist', 'build', '.cache'])
+    const results: Array<{ name: string; path: string; relativePath: string; isDirectory?: boolean }> = []
+    const IGNORED = new Set([
+      '.git',
+      'node_modules',
+      'out',
+      'dist',
+      'build',
+      '.cache',
+      'target',
+      '.zig-cache',
+      'zig-out',
+      '.next',
+      '.turbo'
+    ])
     const queue: Array<{ dir: string; rel: string }> = [{ dir: targetDir, rel: '' }]
 
     while (queue.length > 0 && results.length < 60) {
@@ -81,17 +97,21 @@ export function registerSearchIpc(): void {
         const entryRel = current.rel ? `${current.rel}/${entry.name}` : entry.name
         const entryFull = join(current.dir, entry.name)
 
-        if (entry.isDirectory()) {
-          queue.push({ dir: entryFull, rel: entryRel })
-        } else if (
+        const matches =
           entry.name.toLowerCase().includes(trimmed.toLowerCase()) ||
           entryRel.toLowerCase().includes(trimmed.toLowerCase())
-        ) {
+
+        if (matches) {
           results.push({
             name: entry.name,
             path: entryFull,
-            relativePath: entryRel
+            relativePath: entryRel,
+            isDirectory: entry.isDirectory()
           })
+        }
+
+        if (entry.isDirectory()) {
+          queue.push({ dir: entryFull, rel: entryRel })
         }
       }
     }

@@ -46,7 +46,7 @@ const api = {
   getFileProperties: (fullPath: string) => ipcRenderer.invoke('fs:getFileProperties', fullPath),
   readImage: (filePath: string) => ipcRenderer.invoke('fs:readImage', filePath),
   indexWorkspace: (rootPath?: string) => ipcRenderer.invoke('fs:indexWorkspace', rootPath),
-  searchFiles: (query: string) => ipcRenderer.invoke('fs:searchFiles', query),
+  searchFiles: (query: string, rootPath?: string) => ipcRenderer.invoke('fs:searchFiles', query, rootPath),
   searchText: (query: string, options?: any) => ipcRenderer.invoke('fs:searchText', query, options),
   gitGetLog: (repoPath?: string, maxCount?: number) =>
     ipcRenderer.invoke('git:getLog', repoPath, maxCount),

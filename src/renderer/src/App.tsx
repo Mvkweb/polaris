@@ -2,7 +2,7 @@ import { createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid
 import type { Component } from 'solid-js'
 import Sidebar from './components/Sidebar'
 import BrowserTopBar from './components/browser/BrowserTopBar'
-import FolderView from './components/browser/FolderView'
+import SplitViewContainer from './components/browser/SplitViewContainer'
 import TasksPanel from './components/tasks/TasksPanel'
 import { initTasks } from './tasks'
 import { initUpdates } from './updates'
@@ -53,6 +53,7 @@ import {
   navigateForward,
   openNewTab,
   setRevealRequest,
+  toggleSplitView,
   trashModalState
 } from './store'
 import { matchesShortcut } from './shortcuts'
@@ -111,6 +112,7 @@ const handleGlobalKeyDown = (e: KeyboardEvent): void => {
     ['settings', toggleSettingsModal],
     // Not inside the terminal: shells use Ctrl+E (end of line).
     ['toggle_editor_view', () => !inTerminal && toggleEditorView()],
+    ['toggle_split_view', toggleSplitView],
     ['edit_path', startPathEdit],
     ['sort_name', () => setSort('name')],
     ['sort_modified', () => setSort('modified')],
@@ -269,7 +271,7 @@ const App: Component = () => {
               when={currentView() === 'editor'}
               fallback={
                 <div class="view-swap flex-1 min-h-0 min-w-0 flex flex-col">
-                  <FolderView />
+                  <SplitViewContainer />
                 </div>
               }
             >

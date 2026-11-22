@@ -22,7 +22,8 @@ import {
   setExplorerMode,
   setIsSidebarPinned,
   sidebarSearchFocus,
-  toggleSettings
+  toggleSettings,
+  workspaceRoot
 } from '../../store'
 import { I } from '../ui/AppIcons'
 import { KbdHint } from './SidebarControls'
@@ -159,6 +160,13 @@ export function createSidebarHeader(
   setSearchQuery: Setter<string>,
   handleNewAction: () => void
 ) {
+  const currentFolderName = createMemo(() => {
+    const root = workspaceRoot()
+    if (!root) return 'workspace'
+    const parts = root.replace(/\\/g, '/').split('/').filter(Boolean)
+    return parts.pop() || 'workspace'
+  })
+
   const [searchOpen, setSearchOpen] = createSignal(false)
   const spaces = ['All Spaces', 'Ember', 'Notes']
   const [spaceIndex, setSpaceIndex] = createSignal(0)
@@ -345,7 +353,7 @@ export function createSidebarHeader(
           <div class="flex max-w-full flex-col items-center gap-1">
             <span class="flex items-center gap-1 text-[13px] font-medium text-white/45 transition-colors group-hover/projects:text-white/85">
               <span class="max-w-40 truncate">
-                <Switch fallback="workspace">
+                <Switch fallback={currentFolderName()}>
                   <Match when={activeSidebarView() === 'search'}>search</Match>
                   <Match when={activeSidebarView() === 'tasks'}>
                     {gitStatus()?.branch || 'ember'}

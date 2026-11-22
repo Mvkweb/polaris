@@ -72,14 +72,53 @@ const samePathSet = (a: Set<string>, b: Set<string>): boolean => {
   return true
 }
 
-export const FolderView: Component = () => {
+export interface FolderViewProps {
+  paneId?: 'left' | 'right'
+  root?: () => string
+  navigateTo?: (path: string) => void
+  navigateBack?: () => void
+  selectedEntry?: () => string | null
+  setSelectedEntry?: (entry: string | null) => void
+  revealRequest?: () => string | null
+  setRevealRequest?: (req: string | null) => void
+  searchFilter?: () => string
+  isActive?: () => boolean
+  onActivate?: () => void
+}
+
+export const FolderView: Component<FolderViewProps> = (props) => {
+  const currentRoot = () => (props.root ? props.root() : workspaceRoot())
+  const doNavigate = (p: string): void => {
+    if (props.navigateTo) props.navigateTo(p)
+    else navigateTo(p)
+  }
+  const doNavigateBack = (): void => {
+    if (props.navigateBack) props.navigateBack()
+    else navigateBack()
+  }
+  const getSelectedEntry = () => (props.selectedEntry ? props.selectedEntry() : selectedGridEntry())
+  const setEntrySelected = (val: string | null): void => {
+    if (props.setSelectedEntry) props.setSelectedEntry(val)
+    else setSelectedGridEntry(val)
+  }
+  const getRevealRequest = () => (props.revealRequest ? props.revealRequest() : revealRequest())
+  const clearRevealRequest = (): void => {
+    if (props.setRevealRequest) props.setRevealRequest(null)
+    else setRevealRequest(null)
+  }
+  const getSearchFilter = () => (props.searchFilter ? props.searchFilter() : browserSearchFilter())
+  const isPaneActive = () => (props.isActive ? props.isActive() : true)
+  const activate = (): void => {
+    props.onActivate?.()
+  }
+
   const [entries, setEntries] = createSignal<FsEntry[]>([])
   const [isLoading, setIsLoading] = createSignal(false)
   const [drives, setDrives] = createSignal<SystemDrive[]>([])
 
   // Multi-selection for marquee drags. The store's selectedGridEntry stays as the
   // primary (keyboard/properties) selection and mirrors the last marquee hit.
-  const initialPrimary = selectedGridEntry()
+  const initialPrimary = getSelectedEntry()
   const [selectedPaths, setSelectedPaths] = createSignal<Set<string>>(
     initialPrimary ? new Set<string>([initialPrimary]) : new Set<string>()
   )
@@ -106,7 +145,7 @@ export const FolderView: Component = () => {
   let currentRequestId = 0
 
   createEffect(() => {
-    const root = workspaceRoot()
+    const root = currentRoot()
     explorerRefreshTrigger()
     if (!root) return
 
@@ -145,7 +184,7 @@ export const FolderView: Component = () => {
   })
 
   const filteredEntries = createMemo(() => {
-    const q = browserSearchFilter().trim().toLowerCase()
+    const q = getSearchFilter().trim().toLowerCase()
     const hidden = showHiddenFiles()
     let list = entries()
 
@@ -187,12 +226,12 @@ export const FolderView: Component = () => {
   // A typed/pasted file path asks to be revealed: select + scroll to it as soon
   // as it shows up in the listing (it may still be loading after navigation).
   createEffect(() => {
-    const want = revealRequest()
+    const want = getRevealRequest()
     if (!want || !filteredEntries().some((e) => e.path === want)) return
     batch(() => {
       setSelectedPaths(new Set([want]))
-      setSelectedGridEntry(want)
-      setRevealRequest(null)
+      setEntrySelected(want)
+      clearRevealRequest()
     })
     requestAnimationFrame(() =>
       document
@@ -216,13 +255,13 @@ export const FolderView: Component = () => {
     if (!changed) return
 
     setSelectedPaths(next)
-    const primary = selectedGridEntry()
+    const primary = getSelectedEntry()
     if (primary && !next.has(primary)) {
-      setSelectedGridEntry(next.size ? Array.from(next)[next.size - 1] : null)
+      setEntrySelected(next.size ? Array.from(next)[next.size - 1] : null)
     }
   })
 
-  const currentPath = () => workspaceRoot() || '.'
+  const currentPath = () => currentRoot() || '.'
 
   // Volume free space lookup
   const currentDrive = createMemo(() => {
@@ -247,13 +286,15 @@ export const FolderView: Component = () => {
   })
 
   const selectOnly = (path: string | null): void => {
+    activate()
     batch(() => {
       setSelectedPaths(path ? new Set<string>([path]) : new Set<string>())
-      setSelectedGridEntry(path)
+      setEntrySelected(path)
     })
   }
 
   const handleItemClick = (entry: FsEntry, e: MouseEvent): void => {
+    activate()
     if (suppressClick) {
       suppressClick = false
       return
@@ -267,7 +308,7 @@ export const FolderView: Component = () => {
 
       batch(() => {
         setSelectedPaths(next)
-        setSelectedGridEntry(
+        setEntrySelected(
           willSelect ? entry.path : next.size ? Array.from(next)[next.size - 1] : null
         )
       })
@@ -278,12 +319,13 @@ export const FolderView: Component = () => {
   }
 
   const handleItemDoubleClick = async (entry: FsEntry): Promise<void> => {
+    activate()
     if (entry.isBrokenLink) {
       setBrokenLink({ path: entry.path, name: entry.name, target: entry.linkTarget ?? '' })
       return
     }
     if (entry.isDirectory) {
-      navigateTo(entry.path)
+      doNavigate(entry.path)
     } else {
       await openBrowserFile(entry.path, entry.name)
     }
@@ -340,12 +382,13 @@ export const FolderView: Component = () => {
     if (!samePathSet(next, selectedPaths())) {
       batch(() => {
         setSelectedPaths(next)
-        setSelectedGridEntry(next.size ? Array.from(next)[next.size - 1] : null)
+        setEntrySelected(next.size ? Array.from(next)[next.size - 1] : null)
       })
     }
   }
 
   const handlePointerDown = (e: PointerEvent): void => {
+    activate()
     if (e.button !== 0 || e.pointerType === 'touch') return
 
     suppressClick = false
@@ -403,7 +446,7 @@ export const FolderView: Component = () => {
       if (!dragState.additive) {
         batch(() => {
           setSelectedPaths(new Set<string>())
-          setSelectedGridEntry(null)
+          setEntrySelected(null)
         })
       }
     }
@@ -478,6 +521,7 @@ export const FolderView: Component = () => {
   }
 
   const handleKeyDown = (e: KeyboardEvent): void => {
+    if (!isPaneActive()) return
     if (e.target instanceof HTMLInputElement) return
 
     if (e.key === 'Escape' && dragState) {
@@ -488,7 +532,7 @@ export const FolderView: Component = () => {
     const items = filteredEntries()
     if (items.length === 0) return
 
-    const selected = selectedGridEntry()
+    const selected = getSelectedEntry()
     const currentIndex = items.findIndex((item) => item.path === selected)
 
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
@@ -510,11 +554,11 @@ export const FolderView: Component = () => {
       }
     } else if (e.key === 'Backspace') {
       e.preventDefault()
-      navigateBack()
+      doNavigateBack()
     } else if (e.key === 'Delete') {
       e.preventDefault()
       const selSet = selectedPaths()
-      const primarySel = selectedGridEntry()
+      const primarySel = getSelectedEntry()
       const pathsToDelete =
         selSet.size > 0 ? Array.from(selSet) : primarySel ? [primarySel] : []
       if (pathsToDelete.length > 0) {
@@ -542,13 +586,14 @@ export const FolderView: Component = () => {
     <div class="flex-1 flex flex-col h-full w-full select-none overflow-hidden bg-transparent text-white">
       {/* ── Monodrive Central Icon Grid Canvas ── */}
       <main
-        class="flex-1 overflow-y-auto px-6 py-5 outline-none"
+        class={`flex-1 overflow-y-auto ${props.paneId ? 'px-4 py-3' : 'px-6 py-5'} outline-none`}
         tabIndex={0}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
         onClick={(e) => {
+          activate()
           if (suppressClick) {
             suppressClick = false
             return
@@ -558,6 +603,7 @@ export const FolderView: Component = () => {
           }
         }}
         onContextMenu={(e) => {
+          activate()
           const isItem = (e.target as HTMLElement).closest('[data-grid-item="true"]')
           if (!isItem) {
             e.preventDefault()
@@ -588,8 +634,8 @@ export const FolderView: Component = () => {
                 />
                 <span class="text-[14px] font-medium text-white/40">Empty Folder</span>
                 <span class="text-[12px] text-white/25 mt-1">
-                  {browserSearchFilter()
-                    ? `No items match "${browserSearchFilter()}"`
+                  {getSearchFilter()
+                    ? `No items match "${getSearchFilter()}"`
                     : 'This folder contains no files or subdirectories.'}
                 </span>
               </div>
@@ -638,6 +684,7 @@ export const FolderView: Component = () => {
                     onContextMenu={(e) => {
                       e.preventDefault()
                       e.stopPropagation()
+                      activate()
                       if (!selectedPaths().has(entry.path)) selectOnly(entry.path)
                       const currentSet = selectedPaths()
                       const paths = currentSet.has(entry.path) && currentSet.size > 1
@@ -727,7 +774,9 @@ export const FolderView: Component = () => {
       />
 
       {/* ── Monodrive Clean Seamless Footer Status Bar ── */}
-      <footer class="shrink-0 h-7 px-6 bg-transparent flex items-center justify-between text-[11px] font-mono text-white/35 select-none">
+      <footer
+        class={`shrink-0 h-7 ${props.paneId ? 'px-5' : 'px-6'} bg-transparent flex items-center justify-between text-[11px] font-mono text-white/35 select-none`}
+      >
         <div class="flex items-center gap-1.5">
           <Show when={selectedPaths().size > 0}>
             <span class="text-[var(--accent)]" style={{ 'font-variant-numeric': 'tabular-nums' }}>
@@ -742,9 +791,11 @@ export const FolderView: Component = () => {
           </Show>
         </div>
 
-        <div class="truncate max-w-[320px] text-white/25" title={currentPath()}>
-          {currentPath()}
-        </div>
+        <Show when={!props.paneId}>
+          <div class="truncate max-w-[320px] text-white/25" title={currentPath()}>
+            {currentPath()}
+          </div>
+        </Show>
       </footer>
     </div>
   )

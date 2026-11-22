@@ -24,7 +24,9 @@ import {
   setBrowserFilterFocused,
   inspectorVisibleWidth,
   inspectorResizing,
-  INSPECTOR_TRANSITION
+  INSPECTOR_TRANSITION,
+  isSplitViewOpen,
+  toggleSplitView
 } from '../../store'
 import { I } from '../ui/AppIcons'
 import { EditorPill } from './EditorPill'
@@ -96,6 +98,18 @@ const SearchIcon: Component<{ class?: string }> = (props) => (
       stroke-width="1.75"
       stroke-linecap="round"
     />
+  </svg>
+)
+
+const ColumnsIcon: Component<{ class?: string }> = (props) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    class={props.class ?? 'w-3.5 h-3.5'}
+  >
+    <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.75" />
+    <path d="M12 4V20" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" />
   </svg>
 )
 
@@ -323,6 +337,20 @@ export const BrowserTopBar: Component = () => {
         />
         <EditorPill />
         <SortControl />
+        <button
+          type="button"
+          onClick={toggleSplitView}
+          class={`w-7 h-7 rounded-md flex items-center justify-center transition-colors cursor-pointer ${
+            isSplitViewOpen()
+              ? 'bg-[var(--accent,#4da3f5)]/20 text-[var(--accent,#4da3f5)]'
+              : 'text-white/45 hover:text-white hover:bg-white/[0.06]'
+          }`}
+          title="Split View (F3)"
+          aria-label="Toggle split view"
+          aria-pressed={isSplitViewOpen()}
+        >
+          <ColumnsIcon />
+        </button>
         <button
           type="button"
           onClick={() => toggleInspector()}
